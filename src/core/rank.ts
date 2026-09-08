@@ -7,6 +7,8 @@ export const ASSUMPTIONS: string[] = [
   'Knockout state is not shared across difficulties.',
   'Rolls award at Great Vault item level, as reflected by the source report.',
   'Delves and Prey Hunts are not simmed and are excluded from consideration.',
+  'A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.',
+  'Ranking is limited to bosses you expect to kill this week.',
 ]
 
 /** Exported so a frontend can override the copy without forking the ranking logic. */
@@ -15,22 +17,20 @@ export function fallbackMessage(thresholdPct: number): string {
 }
 
 /**
- * E[value of a uniform draw from `values` after one uniformly random element has
- * already been removed], averaged over which element was removed. Computed
- * directly (not via the mean-preserving shortcut) so the arithmetic is auditable
- * against a hand-checked pool.
+ * Ranks deployable bosses best-first: highest ev, ties broken by bestCase value, then
+ * by original encounter order (index in `deployable`, which preserves bossEvals' order).
  */
-function expectedSecondRollValue(values: number[]): number {
-  const n = values.length
-  if (n <= 1) return 0
-  const total = values.reduce((a, b) => a + b, 0)
-  let sum = 0
-  for (const v of values) sum += (total - v) / (n - 1)
-  return sum / n
-}
-
-function remainingValues(boss: BossEval): number[] {
-  return boss.pool.filter((p) => !p.knockedOut).map((p) => p.value)
+function rankDeployable(deployable: BossEval[]): BossEval[] {
+  return deployable
+    .map((boss, index) => ({ boss, index }))
+    .sort((a, b) => {
+      if (b.boss.ev !== a.boss.ev) return b.boss.ev - a.boss.ev
+      const bestA = a.boss.bestCase?.value ?? 0
+      const bestB = b.boss.bestCase?.value ?? 0
+      if (bestB !== bestA) return bestB - bestA
+      return a.index - b.index
+    })
+    .map((r) => r.boss)
 }
 
 export function recommend(bossEvals: BossEval[], settings: Settings, report: NormalizedReport): Recommendation {
@@ -54,51 +54,29 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
   }
 
   if (settings.rollsAvailable <= 1) {
-    const best = deployable.reduce((a, b) => (b.ev > a.ev ? b : a))
+    const best = rankDeployable(deployable)[0]
     const allocations: Allocation[] = [
       { encounterId: best.encounterId, encounterName: best.encounterName, rolls: 1, expectedGain: best.ev, expectedGainPct: best.evPct },
     ]
     return { allocations, totalExpectedGainPct: best.evPct, fallback: null, assumptions: ASSUMPTIONS, warnings }
   }
 
-  // rollsAvailable >= 2: enumerate every multiset of size 2 over deployable bosses --
-  // two rolls on the same boss (without replacement within that boss's pool), or one
-  // roll each on two different bosses (independent draws).
-  let bestTotal = -Infinity
-  let bestAllocations: Allocation[] = []
+  // rollsAvailable >= 2: a boss only offers a bonus roll on its first kill per
+  // difficulty per week, so the two rolls must land on two distinct bosses -- the
+  // top two deployable bosses by ev (ties: bestCase value, then encounter order).
+  const ranked = rankDeployable(deployable)
+  const chosen = ranked.slice(0, 2)
+  const allocations: Allocation[] = chosen.map((boss) => ({
+    encounterId: boss.encounterId,
+    encounterName: boss.encounterName,
+    rolls: 1,
+    expectedGain: boss.ev,
+    expectedGainPct: boss.evPct,
+  }))
 
-  for (let i = 0; i < deployable.length; i++) {
-    const bossA = deployable[i]
-    const sameBossTotal = bossA.ev + expectedSecondRollValue(remainingValues(bossA))
-    if (sameBossTotal > bestTotal) {
-      bestTotal = sameBossTotal
-      bestAllocations = [
-        {
-          encounterId: bossA.encounterId,
-          encounterName: bossA.encounterName,
-          rolls: 2,
-          expectedGain: sameBossTotal,
-          expectedGainPct: baseline > 0 ? (sameBossTotal / baseline) * 100 : 0,
-        },
-      ]
-    }
-
-    for (let j = i + 1; j < deployable.length; j++) {
-      const bossB = deployable[j]
-      const crossTotal = bossA.ev + bossB.ev
-      if (crossTotal > bestTotal) {
-        bestTotal = crossTotal
-        bestAllocations = [
-          { encounterId: bossA.encounterId, encounterName: bossA.encounterName, rolls: 1, expectedGain: bossA.ev, expectedGainPct: bossA.evPct },
-          { encounterId: bossB.encounterId, encounterName: bossB.encounterName, rolls: 1, expectedGain: bossB.ev, expectedGainPct: bossB.evPct },
-        ]
-      }
-    }
-  }
-
-  const totalExpectedGain = bestAllocations.reduce((sum, a) => sum + a.expectedGain, 0)
+  const totalExpectedGain = allocations.reduce((sum, a) => sum + a.expectedGain, 0)
   return {
-    allocations: bestAllocations,
+    allocations,
     totalExpectedGainPct: baseline > 0 ? (totalExpectedGain / baseline) * 100 : 0,
     fallback: null,
     assumptions: ASSUMPTIONS,

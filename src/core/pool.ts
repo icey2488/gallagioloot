@@ -1,5 +1,6 @@
 import type { NormalizedItem, NormalizedReport } from '../types'
 import type { BossEval, KnockoutState, PoolEntry, Settings } from './types'
+import { rollsToTarget } from './vault'
 
 const CURIO_NOTE = 'Curio counts as one item; value assumes you pick your best missing tier slot'
 const CURIO_NAME = 'Curio (any missing tier slot)'
@@ -34,6 +35,7 @@ function isKnockedOut(itemIds: number[], entries: KnockoutState['entries'], repo
 export function buildBossPools(report: NormalizedReport, knockout: KnockoutState, settings: Settings): BossEval[] {
   const difficultyMismatch = knockout.difficulty !== report.difficulty
   const knockoutEntries = difficultyMismatch ? [] : knockout.entries
+  const expectedKills = settings.expectedKills ? new Set(settings.expectedKills) : null
 
   const groups = new Map<number, NormalizedItem[]>()
   for (const item of report.items) {
@@ -90,9 +92,20 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     const evPct = report.baseline > 0 ? (ev / report.baseline) * 100 : 0
     const bestCase = remaining > 0 ? remainingEntries.reduce((a, b) => (b.value > a.value ? b : a)) : null
 
+    const thresholdValue = (settings.thresholdPct / 100) * report.baseline
+    for (const entry of remainingEntries) {
+      const { expected, worstCase, expectedTruncated } = rollsToTarget(remainingEntries, entry.key, thresholdValue)
+      entry.rollsToTargetExpected = expected
+      entry.rollsToTargetWorst = worstCase
+      entry.rollsToTargetTruncated = expectedTruncated
+    }
+
     const knockedOutCount = pool.length - remaining
     if (knockedOutCount > 0) notes.push(`${knockedOutCount} item${knockedOutCount === 1 ? '' : 's'} knocked out`)
     if (remaining === 0) notes.push('pool exhausted')
+
+    const inExpectedKills = !expectedKills || expectedKills.has(encounterId)
+    if (!inExpectedKills) notes.push('not in expected kills this week')
 
     bossEvals.push({
       encounterId,
@@ -103,7 +116,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       ev,
       evPct,
       bestCase,
-      deployable: remaining > 0 && evPct >= settings.thresholdPct,
+      deployable: inExpectedKills && remaining > 0 && evPct >= settings.thresholdPct,
       notes,
     })
   }

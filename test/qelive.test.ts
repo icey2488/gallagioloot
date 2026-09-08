@@ -159,6 +159,34 @@ describe('normalizeQELiveReport tier fallback', () => {
     expect(tierItems.map((i) => i.encounterId)).toEqual([9001])
   })
 
+  it('scopes the report to the dominant raid instance, excluding rows resolved to a different raid instance active this tier (regression: QE Live reports span every "Raid" dropLoc row across the whole raid tier, not just one instance -- a second raid lair boss otherwise leaks in as an extra deployable encounter)', () => {
+    const lookup = makeLookup()
+    // A boss from a *different* raid instance (1317, "The Tidebound Grotto") that also
+    // resolves cleanly via pickBestSource -- not a Dungeon/Delves leak, not a tier-token
+    // misattachment, just a second real raid instance sharing dropLoc "Raid".
+    lookup.itemSources.set(268217, [{ instanceId: 1317, encounterId: 2849 }])
+    lookup.itemMeta.set(268217, { name: 'Rising Tide Wristguards', inventoryType: 9 })
+    lookup.encounterNames.set(2849, 'Nymrissa Wavecaller')
+    lookup.instanceNames.set(1317, 'The Tidebound Grotto')
+    lookup.instanceTypes.set(1317, 'raid')
+
+    const report = makeReport({
+      results: [
+        { item: 270162, dropLoc: 'Raid', dropType: 'bonus', dropDifficulty: 3, level: 334, score: 0.056, rawDiff: 19816, percDiff: 5.662 },
+        { item: 270164, dropLoc: 'Raid', dropType: 'bonus', dropDifficulty: 3, level: 334, score: 0.045, rawDiff: 15696, percDiff: 4.485 },
+        { item: 268217, dropLoc: 'Raid', dropType: 'bonus', dropDifficulty: 3, level: 334, score: 0.03, rawDiff: 10000, percDiff: 3.0 },
+      ],
+    })
+    const result = normalizeQELiveReport('wzfyzqxqjqej', report, lookup)
+
+    expect(result.items.map((i) => i.itemId).sort()).toEqual([270162, 270164])
+    expect(result.items.find((i) => i.itemId === 268217)).toBeUndefined()
+    expect(new Set(result.items.map((i) => i.instanceId))).toEqual(new Set([1320]))
+    expect(result.instanceId).toBe(1320)
+    expect(result.instanceName).toBe('The Venomous Abyss')
+    expect(result.warnings.some((w) => w.includes('different raid instance'))).toBe(true)
+  })
+
   it('still drops and warns when the item has no slot and no learned/seed mapping', () => {
     const lookup = makeLookup()
     lookup.itemSources.set(555555, [{ instanceId: -100, encounterId: -100 }])

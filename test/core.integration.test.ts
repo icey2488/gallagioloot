@@ -5,7 +5,8 @@ import { normalizeQELiveReport, parseQELiveResponseBody } from '../src/normalize
 import { buildBossPools } from '../src/core/pool'
 import { recommend } from '../src/core/rank'
 import { createState } from '../src/core/knockout'
-import type { Settings } from '../src/core/types'
+import { compareVault } from '../src/core/vault'
+import type { BossEval, Settings } from '../src/core/types'
 import type { NormalizedReport, EncounterItemEntry, InstanceEntry } from '../src/types'
 
 // Hits the real Raidbots and QE Live APIs. Only runs when explicitly requested
@@ -44,10 +45,27 @@ function printReportTable(label: string, report: NormalizedReport, rollsAvailabl
       remaining: b.remaining,
       'ev%': b.evPct.toFixed(3),
       bestCase: b.bestCase?.name ?? '-',
+      'rollsToTarget(bestCase) exp/worst/trunc': b.bestCase
+        ? `${b.bestCase.rollsToTargetExpected?.toFixed(2)} / ${b.bestCase.rollsToTargetWorst} / ${b.bestCase.rollsToTargetTruncated?.toFixed(2)}`
+        : '-',
       deployable: b.deployable,
     }))
   )
   console.log(`[${label}] rolls=${rollsAvailable} -- recommendation:`, JSON.stringify(recommendation, null, 2))
+
+  if (rollsAvailable === 1) {
+    const topBoss = [...bossEvals].filter((b) => b.deployable).sort((a, b) => b.ev - a.ev)[0] as BossEval | undefined
+    if (topBoss?.bestCase) {
+      const vaultDecision = compareVault({
+        vaultItem: { name: `Made-up Vault Item (from ${topBoss.encounterName})`, gainPct: 3.0, itemId: topBoss.bestCase.itemIds[0] },
+        bossEvals,
+        recommendation,
+        settings,
+        report,
+      })
+      console.log(`[${label}] compareVault example (vault item attributed to top boss "${topBoss.encounterName}", gainPct 3.0):`, JSON.stringify(vaultDecision, null, 2))
+    }
+  }
 
   return { bossEvals, recommendation }
 }

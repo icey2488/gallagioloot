@@ -118,7 +118,15 @@ export function normalizeQELiveReport(
   const [specWord, ...classWords] = raw.spec.split(' ')
   const charClass = classWords.join(' ') || undefined
 
-  const items: NormalizedItem[] = []
+  // QE Live rows carry no instance id of their own -- pickBestSource resolves each row
+  // independently, purely by item id, so a row can legitimately resolve to *any* raid
+  // instance active this tier (e.g. the main raid and a smaller "raid lair"), not just
+  // the one instance this report is meant to represent. A NormalizedReport is
+  // single-instance by schema (matching the Raidbots normalizer, which reads the
+  // instance directly off the report's own droptimizer metadata), so a first pass
+  // resolves every row and tallies instances to find the dominant (most-represented)
+  // one; a second pass keeps only rows resolving to that instance.
+  const resolved: Array<{ row: QELiveResult; source: { instanceId: number; encounterId: number } }> = []
   const unresolved: QELiveResult[] = []
   const resolvedInstanceCounts = new Map<number, number>()
 
@@ -126,6 +134,27 @@ export function normalizeQELiveReport(
     const source = pickBestSource(lookup, row.item, contentType)
     if (!source) {
       unresolved.push(row)
+      continue
+    }
+    resolved.push({ row, source })
+    resolvedInstanceCounts.set(source.instanceId, (resolvedInstanceCounts.get(source.instanceId) ?? 0) + 1)
+  }
+
+  let dominantInstanceId: number | undefined
+  let dominantCount = 0
+  for (const [id, count] of resolvedInstanceCounts) {
+    if (count > dominantCount) {
+      dominantInstanceId = id
+      dominantCount = count
+    }
+  }
+
+  const items: NormalizedItem[] = []
+  let otherInstanceExcluded = 0
+
+  for (const { row, source } of resolved) {
+    if (source.instanceId !== dominantInstanceId) {
+      otherInstanceExcluded++
       continue
     }
 
@@ -143,22 +172,13 @@ export function normalizeQELiveReport(
       delta: row.rawDiff,
       pct: row.percDiff,
     })
-
-    resolvedInstanceCounts.set(source.instanceId, (resolvedInstanceCounts.get(source.instanceId) ?? 0) + 1)
   }
 
-  // Items with no positive-instance source in encounter-items.json (tier tokens
-  // pointed at the aggregate catalyst bucket) fall back to the seed/learned tier
-  // lookup. QE Live rows don't carry an instance id of their own, so the current raid
-  // tier's instance is inferred from whichever instance the report's other rows
-  // resolved to most often.
-  let dominantInstanceId: number | undefined
-  let dominantCount = 0
-  for (const [id, count] of resolvedInstanceCounts) {
-    if (count > dominantCount) {
-      dominantInstanceId = id
-      dominantCount = count
-    }
+  if (otherInstanceExcluded > 0) {
+    const dominantName = dominantInstanceId !== undefined ? lookup.instanceNames.get(dominantInstanceId) : undefined
+    warnings.push(
+      `${otherInstanceExcluded} item${otherInstanceExcluded === 1 ? '' : 's'} excluded: belong to a different raid instance than ${dominantName ?? 'this report'}`
+    )
   }
 
   for (const row of unresolved) {
@@ -205,6 +225,8 @@ export function normalizeQELiveReport(
     contentType,
     difficulty,
     baseline,
+    instanceId: dominantInstanceId,
+    instanceName: dominantInstanceId !== undefined ? lookup.instanceNames.get(dominantInstanceId) : undefined,
     items,
     warnings,
   }

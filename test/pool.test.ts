@@ -163,4 +163,51 @@ describe('buildBossPools', () => {
     expect(boss.deployable).toBe(false)
     expect(boss.notes).toContain('pool exhausted')
   })
+
+  it('evaluates every boss regardless of expectedKills, but marks bosses outside it non-deployable with a note', () => {
+    const report = makeReport([
+      item({ itemId: 100, encounterId: 2888, encounterName: "Nek'zali the Soulcoiler", delta: 1000 }),
+      item({ itemId: 200, encounterId: 2887, encounterName: 'The Twin Fangs', delta: 5000 }),
+    ])
+    const settings: Settings = { ...SETTINGS, expectedKills: [2888] }
+    const bosses = buildBossPools(report, makeKnockout(), settings)
+
+    expect(bosses).toHaveLength(2)
+    const inList = bosses.find((b) => b.encounterId === 2888)!
+    const outOfList = bosses.find((b) => b.encounterId === 2887)!
+
+    expect(inList.deployable).toBe(true)
+    expect(outOfList.remaining).toBe(1) // still evaluated, so the table can show it
+    expect(outOfList.ev).toBe(5000)
+    expect(outOfList.deployable).toBe(false)
+    expect(outOfList.notes).toContain('not in expected kills this week')
+  })
+
+  it('treats an undefined expectedKills as every boss being in play', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 })])
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
+    expect(boss.deployable).toBe(true)
+    expect(boss.notes).not.toContain('not in expected kills this week')
+  })
+
+  it('populates rollsToTarget fields on remaining (non-knocked-out) pool entries only', () => {
+    const report = makeReport([
+      item({ itemId: 100, delta: 1000 }),
+      item({ itemId: 200, delta: 2000 }),
+      item({ itemId: 300, delta: 3000 }),
+    ])
+    const knockout = makeKnockout({
+      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll' }],
+    })
+    const [boss] = buildBossPools(report, knockout, SETTINGS)
+
+    const knockedOutEntry = boss.pool.find((p) => p.itemIds[0] === 100)!
+    expect(knockedOutEntry.rollsToTargetExpected).toBeUndefined()
+
+    const remainingEntry = boss.pool.find((p) => p.itemIds[0] === 200)!
+    // 2 remaining entries after the knockout -- (n+1)/2 = 1.5, worst case n = 2.
+    expect(remainingEntry.rollsToTargetExpected).toBeCloseTo(1.5, 10)
+    expect(remainingEntry.rollsToTargetWorst).toBe(2)
+    expect(remainingEntry.rollsToTargetTruncated).toBeGreaterThan(0)
+  })
 })
