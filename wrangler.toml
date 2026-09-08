@@ -1,0 +1,20 @@
+name = "gallagioloot-proxy"
+main = "src/index.ts"
+compatibility_date = "2025-05-01"
+
+# Variables you can override per-deployment.
+# Restrict CORS to the GallagioLoot site origin. Localhost is always allowed for dev
+# regardless of this value (see src/index.ts corsHeaders()).
+[vars]
+ALLOWED_ORIGIN = "https://gallagioloot.icehunter.net"
+
+# Optional: enable observability for debugging
+[observability]
+enabled = true
+
+# Production route (not deployed by this job — config only):
+#   gallagioloot-proxy.icehunter.net -> this worker
+# Uncomment and fill in a zone_id when ready to deploy:
+# [[routes]]
+# pattern = "gallagioloot-proxy.icehunter.net/*"
+# zone_name = "icehunter.net"
