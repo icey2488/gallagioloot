@@ -169,6 +169,32 @@ Verified 2026-09-08 against a live Raidbots report (`jk6WmLFEnBpEqWueDkyRqA`) an
 
 ---
 
+## Decision engine
+
+`src/core/` decides where to spend a Nebulous Voidcore bonus roll, given a `NormalizedReport` and a per-character knockout state. It's pure TypeScript with zero Worker/runtime dependencies (no `fetch`, no Cache API/KV, no `Date.now()` except via caller-supplied timestamps) so a future frontend can import it directly instead of going through this Worker.
+
+### Mechanics modeled
+
+A Voidcore is spent on a specific boss after killing it and transmutes into an item from that boss's loot pool for the player's current spec, at Great Vault item level (which the source reports already reflect). Each successful roll "knocks out" that item from the pool for that character at that difficulty — it won't drop again until every eligible item has been transmuted. Voidcores are character-bound.
+
+**Community-reported, not documented in-game (treated as an assumption and surfaced in every `Recommendation`):** the knockout table is shared across a character's specs at a given difficulty — except for spec-specific drops — and is **not** shared across difficulties.
+
+### The model
+
+- **Pool** (`buildBossPools` in `src/core/pool.ts`): groups a report's items by boss (encounter), excluding trash (negative encounter ids) and off-spec items (unless `includeOffSpec`). Duplicate rows for the same item within a boss (catalyst variants, multiple slots) collapse into one `PoolEntry`, taking the max delta across them. A downgrade (`delta < 0`) floors to `value: 0` — the player just won't equip it, so it's not a loss, only a wasted roll. Applying a knockout state whose `difficulty` doesn't match the report's difficulty is refused (with a note on every affected boss) rather than silently misapplied.
+- **Curio**: a class-neutral token (e.g. Ula'tek's "Slumbering Coil Curio") is exchangeable for *any* missing tier slot, so all `viaCurio` rows for that boss collapse into a single `PoolEntry` of kind `'curio'` — one item in the pool, knocked out as one item, valued at the best of the slots it could fill.
+- **EV**: `ev` is the uniform-draw mean over the boss's remaining (non-knocked-out) pool; `evPct = ev / baseline * 100`. A boss is `deployable` when it has a remaining pool and `evPct >= thresholdPct` (default `0.2`, i.e. 0.2% of baseline — low by design, since with an empty knockout state almost every boss clears it; the threshold mostly bites once a character has knocked out most of a boss's upgrades).
+- **Allocation** (`recommend` in `src/core/rank.ts`):
+  - 1 roll: pick the deployable boss with the highest `ev`.
+  - 2 rolls (from season week 8 on — the caller supplies `rollsAvailable`, this code never computes it from dates): every size-2 multiset of deployable bosses is considered. Two rolls on different bosses are independent draws, so their expected gains just add. Two rolls on the *same* boss are without replacement: the first roll's expectation is the pool mean; the second is computed exactly as the average, over which item the first roll could have removed, of the mean of what's left. For a pool of `n >= 2` this always comes out to another `ev` (by symmetry of sampling without replacement — verified against live data below), so two rolls on one boss ≈ `2 * ev` whenever its pool has at least 2 remaining items; for a 1-item pool, the second roll is worth 0 (the pool would be empty). The best single- or double-boss combination wins.
+  - If no boss is deployable, `allocations` is empty and `fallback` explains why (`'below-threshold'` vs `'no-pool'`) with a message suggesting the Great Vault's Thalassian Tokens of Merit instead — exported as `fallbackMessage()` so a frontend can override the copy.
+  - `assumptions` always lists the modeling assumptions above (including the unverified cross-spec knockout sharing) regardless of whether a recommendation was possible.
+- **Knockout state** (`src/core/knockout.ts`): `createState`/`addEntry` (idempotent per item id)/`removeEntry`/`markSpecSpecific`/`serialize`/`deserialize` (tolerant of unknown/missing fields) plus a `StorageAdapter` interface (`load`/`save`/`list`) with an in-memory implementation for tests — a browser adapter (e.g. `localStorage`) is left to the frontend. `storageKey()` builds the persistence key as `${region}:${realm}:${character}:${difficulty}`, lowercased. `reconcile(state, report, outcome)` records a roll's outcome and returns the updated state plus freshly rebuilt `BossEval[]`/`Recommendation` in one call, for a post-kill UI screen; a curio constituent knockout naturally knocks out the whole collapsed curio entry, since `buildBossPools` matches on any of a `PoolEntry`'s `itemIds`.
+
+### Live sanity check
+
+`npm run test:live` (via `test/core.integration.test.ts`) runs the full pipeline — normalize → `buildBossPools` → `recommend` — against both live fixture reports with an empty knockout state at the default 0.2% threshold, for 1 and 2 rolls, and prints the per-boss table. With no knockouts yet, every boss in both reports clears the threshold, and the 2-roll allocation always doubles the best single boss's expected gain (its pool has more than one remaining item, so the without-replacement math reduces to exactly `2 * ev`) rather than splitting across two bosses — cross-boss splitting only wins once the best boss's pool is nearly exhausted.
+
 ## Local development
 
 ```bash

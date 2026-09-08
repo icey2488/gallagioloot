@@ -1,11 +1,11 @@
 # GallagioLoot Proxy — Project Instructions for Claude Code
 
-Data layer for GallagioLoot (WoW bonus roll optimizer): a Cloudflare Worker that fetches Raidbots droptimizer reports and QE Live upgrade reports and normalizes both into a shared `NormalizedReport` schema. No ranking/EV/UI logic here — that's a separate job/repo.
+Data layer + decision engine for GallagioLoot (WoW bonus roll optimizer): a Cloudflare Worker that fetches Raidbots droptimizer reports and QE Live upgrade reports and normalizes both into a shared `NormalizedReport` schema, plus a pure `src/core/` module (no Worker/runtime dependencies) that turns a normalized report and a knockout state into a bonus-roll recommendation. No UI here — that's a separate job/repo.
 
 ## Code style
 
 - **TypeScript, with a build-free Workers runtime.** Wrangler bundles `src/index.ts` directly; no separate build step to run locally.
-- Keep normalizer logic (`src/normalize/raidbots.ts`, `src/normalize/qelive.ts`) and the encounter-items lookup (`src/lookup/encounterItems.ts`) **pure** — no `fetch`, no Cache API/KV access — so they're testable with plain fixtures. `src/index.ts` (the Worker handler) does all I/O and calls into these.
+- Keep normalizer logic (`src/normalize/raidbots.ts`, `src/normalize/qelive.ts`), the encounter-items lookup (`src/lookup/encounterItems.ts`), and the decision engine (`src/core/`) **pure** — no `fetch`, no Cache API/KV access, no `Date.now()` (timestamps are caller-supplied) — so they're testable with plain fixtures and importable by a future frontend. `src/index.ts` (the Worker handler) does all I/O and calls into these.
 - Minimal dependencies: standard library + Workers runtime API + `@cloudflare/workers-types` only.
 
 ## Testing
