@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeQELiveReport, parseQELiveResponseBody, type QELiveRawReport } from '../src/normalize/qelive'
+import { normalizeQELiveReport, parseQELiveResponseBody, INVENTORY_TYPE_TO_SLOT, type QELiveRawReport } from '../src/normalize/qelive'
+import type { LearnedTierData } from '../src/lookup/tierLearned'
 import type { EncounterItemsLookup } from '../src/types'
 
 function makeLookup(): EncounterItemsLookup {
@@ -7,14 +8,20 @@ function makeLookup(): EncounterItemsLookup {
     itemSources: new Map([
       [270162, [{ instanceId: 1320, encounterId: 2888 }]],
       [270164, [{ instanceId: 1320, encounterId: 2894 }]],
+      // Tier item: static encounter-items.json points it at the aggregate catalyst
+      // bucket (-100), so pickBestSource can't resolve it -- only positive sources count.
+      [271483, [{ instanceId: -100, encounterId: -100 }]],
     ]),
     itemMeta: new Map([
       [270162, { name: 'Soulcoiler Ritual Vessel', inventoryType: 12 }],
       [270164, { name: "Gebbo's Bottomless Bag", inventoryType: 2 }],
+      [271483, { name: 'Serpent Crown of the Ophidian Oracle', inventoryType: 1 }],
     ]),
     encounterNames: new Map([
       [2888, "Nek'zali the Soulcoiler"],
       [2894, 'The Lost Explorers'],
+      [2887, 'The Twin Fangs'],
+      [2895, "Ula'tek"],
     ]),
     instanceNames: new Map([[1320, 'The Venomous Abyss']]),
     instanceTypes: new Map([[1320, 'raid']]),
@@ -110,5 +117,60 @@ describe('normalizeQELiveReport', () => {
     expect(result.metric).toBe('hps')
     expect(result.spec).toBe('restoration')
     expect(result.charClass).toBe('Shaman')
+  })
+})
+
+describe('INVENTORY_TYPE_TO_SLOT', () => {
+  it('maps the tier armor inventory type ids to their slots', () => {
+    expect(INVENTORY_TYPE_TO_SLOT[1]).toBe('head')
+    expect(INVENTORY_TYPE_TO_SLOT[3]).toBe('shoulder')
+    expect(INVENTORY_TYPE_TO_SLOT[5]).toBe('chest')
+    expect(INVENTORY_TYPE_TO_SLOT[20]).toBe('chest')
+    expect(INVENTORY_TYPE_TO_SLOT[7]).toBe('legs')
+    expect(INVENTORY_TYPE_TO_SLOT[10]).toBe('hands')
+  })
+})
+
+describe('normalizeQELiveReport tier fallback', () => {
+  function reportWithTierRow(): QELiveRawReport {
+    return makeReport({
+      results: [
+        { item: 270162, dropLoc: 'Raid', dropType: 'bonus', dropDifficulty: 3, level: 334, score: 0.056, rawDiff: 19816, percDiff: 5.662 },
+        { item: 270164, dropLoc: 'Raid', dropType: 'bonus', dropDifficulty: 3, level: 334, score: 0.045, rawDiff: 15696, percDiff: 4.485 },
+        { item: 271483, dropLoc: 'Raid', dropType: 'bonus', dropDifficulty: 3, level: 334, score: 0.04, rawDiff: 14000, percDiff: 4.0 },
+      ],
+    })
+  }
+
+  it('resolves a tier item with no positive encounter-items.json source via the seed, emitting one row per boss with viaCurio flags', () => {
+    const result = normalizeQELiveReport('wzfyzqxqjqej', reportWithTierRow(), makeLookup())
+    const tierItems = result.items.filter((i) => i.itemId === 271483)
+    expect(tierItems.map((i) => i.encounterId).sort()).toEqual([2887, 2895])
+    expect(tierItems.every((i) => i.tierSlot === 'head')).toBe(true)
+    expect(tierItems.find((i) => i.encounterId === 2895)?.viaCurio).toBe(true)
+    expect(tierItems.find((i) => i.encounterId === 2887)?.viaCurio).toBe(false)
+    expect(result.warnings.some((w) => w.includes('271483'))).toBe(false)
+  })
+
+  it('prefers the learned cache over the seed when a learned mapping exists for the item', () => {
+    const learned = new Map<number, LearnedTierData>([[1320, { byItem: { 271483: [9001] }, bySlot: {} }]])
+    const result = normalizeQELiveReport('wzfyzqxqjqej', reportWithTierRow(), makeLookup(), learned)
+    const tierItems = result.items.filter((i) => i.itemId === 271483)
+    expect(tierItems.map((i) => i.encounterId)).toEqual([9001])
+  })
+
+  it('still drops and warns when the item has no slot and no learned/seed mapping', () => {
+    const lookup = makeLookup()
+    lookup.itemSources.set(555555, [{ instanceId: -100, encounterId: -100 }])
+    // No itemMeta entry -- inventoryType/slot unknown.
+    const report = makeReport({
+      results: [
+        { item: 270162, dropLoc: 'Raid', dropType: 'bonus', dropDifficulty: 3, level: 334, score: 0.056, rawDiff: 19816, percDiff: 5.662 },
+        { item: 555555, dropLoc: 'Raid', dropType: 'bonus', dropDifficulty: 3, level: 334, score: 0.02, rawDiff: 7000, percDiff: 2 },
+      ],
+    })
+    const result = normalizeQELiveReport('wzfyzqxqjqej', report, lookup)
+    expect(result.items.find((i) => i.itemId === 555555)).toBeUndefined()
+    expect(result.warnings).toContain('Item 555555 had no encounter mapping')
   })
 })

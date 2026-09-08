@@ -28,6 +28,20 @@ Fetches `https://questionablyepic.com/api/getUpgradeReport.php?reportID={id}`, n
 
 Returns the cached Raidbots item → encounter/instance lookup as JSON, for debugging. Not meant for production consumption — it's a full dump of the lookup maps built from Raidbots' static data files.
 
+### `GET /tier-map/:instanceId`
+
+Returns the merged seed + learned tier-slot mapping for a raid instance, for debugging:
+
+```ts
+{
+  instanceId: number
+  known: boolean            // registered in the static seed table (src/lookup/tierSeed.ts)?
+  curioEncounterId?: number // e.g. 2895 (Ula'tek) for The Venomous Abyss
+  bySlot: Record<string, number[]>  // tier slot -> encounter ids (seed ∪ learned)
+  byItem: Record<number, number[]>  // item id -> encounter ids (learned cache only; the seed has no per-item data)
+}
+```
+
 ### `GET /` or `GET /health`
 
 Health check.
@@ -74,6 +88,8 @@ type NormalizedItem = {
   pct: number                   // delta / baseline * 100
   catalystSourceId?: number     // raidbots only, when the row is a catalyst conversion
   offSpec?: boolean
+  viaCurio?: boolean            // true when encounterId is a class-neutral curio token source (e.g. Ula'tek), not a direct tier-slot boss
+  tierSlot?: string             // the tier armor slot this row was resolved for (e.g. "head"); set only on tier-token rows resolved via the seed/learned lookup
 }
 ```
 
@@ -107,7 +123,49 @@ Used to join QE Live's bare item ids to `(instanceId, encounterId, name, slot)`,
 - `encounter-items.json` is an array of `{ id, name, inventoryType, sources: [{ instanceId, encounterId }], ... }` — matches the spec.
 - `instances.json` is an array of `{ id, name, type, encounters: [{ id, name, trash? }] }` — matches the spec.
 - **`encounter-names.json` and `instance-names.json` are flat `{ [id: string]: name }` objects, not arrays** (the spec assumed arrays). `buildEncounterItemsLookup()` handles this directly; instance/encounter names are also backfilled from `instances.json` itself so trash/negative ids (e.g. `-97` "Trash Drop") resolve even when absent from the flat name files.
-- Items that are only obtainable via catalyst conversion (their `sources` point at aggregate buckets like `-100` "Catalyst Season 2" rather than a real boss) have no positive-instance source in `encounter-items.json` and so cannot be joined to a specific encounter — these surface as "no encounter mapping" warnings rather than a bug. Observed on the live Sep 2026 season 2 gear (tier-set pieces like "Serpent Crown of the Ophidian Oracle").
+- Items that are only obtainable via catalyst conversion (their `sources` point at aggregate buckets like `-100` "Catalyst Season 2" rather than a real boss) have no positive-instance source in `encounter-items.json` and so cannot be joined to a specific encounter via `pickBestSource`. Tier-set armor pieces hit this exact case (`sources: [{ instanceId: -100, encounterId: -100 }]`) — see **Tier-token resolution** below for how these are still resolved instead of dropped.
+
+---
+
+## Tier-token resolution
+
+Raidbots' static `encounter-items.json` points tier-set armor items (head/shoulder/chest/hands/legs tokens) at an aggregate catalyst bucket (`instanceId: -100`) instead of a real boss, so `pickBestSource` alone can't join them to an encounter. Two layers resolve them instead, tried in order:
+
+1. **Learned cache** (`src/lookup/tierLearned.ts`) — every `/raidbots/:id` request extracts `(instanceId, itemId) -> encounterId[]` and `(instanceId, tierSlot) -> encounterId[]` from that report's own `simbot.meta.itemLibrary`/profileset rows (which *do* carry real per-boss encounter ids) and merges it (union, never replace) into a persistent cache keyed by instance, TTL 30 days. Backed by `ENCOUNTER_ITEMS_KV` if bound, else the Cache API, else an in-memory map (so it's exercisable under plain `vitest`, which has neither).
+   - **Tier-item detection**: an item is treated as a tier item if its itemLibrary entry carries `itemSetId` — confirmed live (2026-09-08) that Raidbots inlines this directly on tier items (e.g. item 271483 carries `itemSetId: 2065`, matching static `item-sets.json` entry "Ophidian Oracle's Prophecy", which lists all 5 armor pieces for the set). This made a separate `item-sets.json` fetch unnecessary at request time. Fallback (not exercised by current season data): an item with more than one distinct source encounter in the report, one of which is the seed's curio encounter, is also treated as a tier item.
+   - Catalyst-conversion rows (profileset name has a non-empty trailing `catalystSourceId` segment) and trash rows are excluded from what's learned — only direct token drops are recorded.
+2. **Static seed** (`src/lookup/tierSeed.ts`) — a hand-maintained `(instanceId, tierSlot) -> encounterId[]` table, one entry per current raid tier. Doesn't hardcode item ids (they differ per class/armor type); joins on slot instead. Used when the learned cache has nothing yet for that item.
+
+If neither has anything, the row is dropped with the existing "no encounter mapping" warning.
+
+**Resolution order** (for a QE Live row, or a Raidbots row whose profileset entry itself points at an aggregate bucket — rare, not observed in live season data, but the code path is shared):
+1. `pickBestSource`/direct profileset encounter id, if positive.
+2. Else determine the item's slot from `encounter-items.json`'s `inventoryType` (`1`→head, `3`→shoulder, `5`/`20`→chest, `7`→legs, `10`→hands — `INVENTORY_TYPE_TO_SLOT` in `src/normalize/qelive.ts`). QE Live's own rows carry no slot info at all.
+3. Learned cache for that exact item id, if present.
+4. Else the static seed for that slot.
+5. Else drop with a warning.
+
+One `NormalizedItem` is emitted per `(itemId, encounterId)` the item resolves to — a tier item typically resolves to two rows (its direct slot boss, and the curio boss), both with `tierSlot` set and `viaCurio: true` only on the curio row.
+
+QE Live reports carry no instance id of their own, so when a row needs the tier fallback, the "current" instance is inferred as whichever instance the report's other (directly-resolved) rows most commonly belong to.
+
+### Seed table contents (`src/lookup/tierSeed.ts`)
+
+Verified 2026-09-08 against a live Raidbots report (`jk6WmLFEnBpEqWueDkyRqA`) and a live QE Live report (`wzfyzqxqjqej`):
+
+| Instance | Boss | Tier slot |
+|---|---|---|
+| The Venomous Abyss (1320) | Nek'zali the Soulcoiler (2888) | — |
+| | Entombed Sentinels (2874) | hands |
+| | The Lost Explorers (2894) | shoulder |
+| | Vashnik the Malignant (2882) | chest |
+| | Sszorak (2871) | legs |
+| | The Twin Fangs (2887) | head |
+| | The Coiled Altar (2883) | — |
+| | Ula'tek (2895) | all five (curio: "Slumbering Coil Curio") |
+| The Tidebound Grotto (1317) | Nymrissa Wavecaller (2849) | — (not yet open for bonus rolls) |
+
+**Contradicts the original task spec:** the spec that seeded this table said Tidebound Grotto was `instanceId 1322`, `encounterId 2878`. Live Raidbots static data shows `1322` is actually a *different*, unrelated zone ("Altar of Fangs", a 3-boss Mythic+ dungeon whose first boss happens to be `2878` "Rav'i"). The real Tidebound Grotto — a single-boss raid Lair — is `instanceId 1317`, boss `2849` ("Nymrissa Wavecaller"). The seed table uses the verified values (1317/2849); registering the spec's original numbers would have silently corrupted the unrelated Altar of Fangs dungeon's entry.
 
 ---
 

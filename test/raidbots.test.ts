@@ -167,6 +167,56 @@ describe('normalizeRaidbotsReport', () => {
     expect(result.warnings).toContain('1 items had no encounter mapping')
   })
 
+  it('resolves rows pointed at an aggregate/catalyst bucket (negative instanceId) via the seed tier fallback', () => {
+    const report = makeReport({
+      sim: {
+        players: [{ collected_data: { dps: { mean: BASELINE } } }],
+        profilesets: {
+          metric: 'Damage per Second',
+          results: [{ name: '-100/-100/raid-vault-heroic/271483/334/0/head////', mean: 110000 }],
+        },
+      },
+      simbot: {
+        ...makeReport().simbot,
+        meta: {
+          ...makeReport().simbot.meta,
+          rawFormData: { droptimizer: { instance: 1320, difficulty: 'raid-vault-heroic' } },
+          itemLibrary: [{ id: 271483, name: 'Serpent Crown of the Ophidian Oracle', itemSetId: 2065 }],
+          instanceLibrary: [
+            {
+              id: 1320,
+              name: 'The Venomous Abyss',
+              encounters: [
+                { id: 2887, name: 'The Twin Fangs' },
+                { id: 2895, name: "Ula'tek" },
+              ],
+            },
+          ],
+        },
+      },
+    })
+    const result = normalizeRaidbotsReport('abc', report)
+    expect(result.items.map((i) => i.encounterId).sort()).toEqual([2887, 2895])
+    expect(result.items.every((i) => i.itemId === 271483 && i.instanceId === 1320 && i.tierSlot === 'head')).toBe(true)
+    expect(result.items.find((i) => i.encounterId === 2895)?.viaCurio).toBe(true)
+    expect(result.items.find((i) => i.encounterId === 2887)?.viaCurio).toBe(false)
+  })
+
+  it('drops and warns when an aggregate-bucket row has no seed tier mapping', () => {
+    const report = makeReport({
+      sim: {
+        players: [{ collected_data: { dps: { mean: BASELINE } } }],
+        profilesets: {
+          metric: 'Damage per Second',
+          results: [{ name: '-100/-100/raid-vault-heroic/999999/334/0/waist////', mean: 110000 }],
+        },
+      },
+    })
+    const result = normalizeRaidbotsReport('abc', report)
+    expect(result.items).toHaveLength(0)
+    expect(result.warnings).toContain('1 items had no encounter mapping')
+  })
+
   it('derives role from spec, marking tank specs as tank and others as dps', () => {
     const dpsResult = normalizeRaidbotsReport('abc', makeReport())
     expect(dpsResult.role).toBe('dps')

@@ -21,5 +21,6 @@ Data layer for GallagioLoot (WoW bonus roll optimizer): a Cloudflare Worker that
 
 ## Behavior
 
-- Endpoints: `GET /raidbots/:id`, `GET /qelive/:id`, `GET /encounter-items` (debug), `GET /health`. See `README.md` for the full schema and upstream shape notes, including two mismatches found against the original spec (the Raidbots data-hash discovery location, and `encounter-names.json`/`instance-names.json` being flat objects rather than arrays).
+- Endpoints: `GET /raidbots/:id`, `GET /qelive/:id`, `GET /encounter-items` (debug), `GET /tier-map/:instanceId` (debug), `GET /health`. See `README.md` for the full schema and upstream shape notes, including mismatches found against the original spec (the Raidbots data-hash discovery location, `encounter-names.json`/`instance-names.json` being flat objects rather than arrays, and the Tidebound Grotto instance/encounter id in the tier seed table — see "Tier-token resolution" in README.md).
+- Tier-set armor items (head/shoulder/chest/hands/legs tokens) aren't joinable via `encounter-items.json` alone (Raidbots points them at an aggregate catalyst bucket). `src/lookup/tierSeed.ts` (static, hand-maintained) and `src/lookup/tierLearned.ts` (persistent cache learned from Raidbots reports) resolve them instead; see README.md for the full design and detection method.
 - CORS: `https://gallagioloot.icehunter.net` (configurable via `wrangler.toml [vars] ALLOWED_ORIGIN`) plus `http://localhost:*` for dev.

@@ -15,6 +15,10 @@ export type NormalizedItem = {
   pct: number
   catalystSourceId?: number
   offSpec?: boolean
+  /** True when encounterId is a class-neutral "curio" token source (e.g. Ula'tek's Slumbering Coil Curio) rather than a direct tier-slot boss. */
+  viaCurio?: boolean
+  /** The tier armor slot this row was resolved for (e.g. "head"), set only for tier-token rows resolved via the seed/learned tier lookup. */
+  tierSlot?: string
 }
 
 export type NormalizedReport = {

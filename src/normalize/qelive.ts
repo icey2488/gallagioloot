@@ -1,4 +1,6 @@
 import { pickBestSource } from '../lookup/encounterItems'
+import { resolveTierEncounters } from '../lookup/tierResolve'
+import type { LearnedTierData } from '../lookup/tierLearned'
 import type { ContentType, EncounterItemsLookup, NormalizedItem, NormalizedReport } from '../types'
 
 export type QELiveResult = {
@@ -43,7 +45,7 @@ const RAID_DIFFICULTY_NAMES: Record<number, string> = {
 }
 
 // Standard WoW inventoryType ids for the slots that can drop as loot.
-const INVENTORY_TYPE_TO_SLOT: Record<number, string> = {
+export const INVENTORY_TYPE_TO_SLOT: Record<number, string> = {
   1: 'head',
   2: 'neck',
   3: 'shoulder',
@@ -83,7 +85,8 @@ function median(values: number[]): number {
 export function normalizeQELiveReport(
   reportId: string,
   raw: QELiveRawReport,
-  lookup: EncounterItemsLookup
+  lookup: EncounterItemsLookup,
+  learnedByInstance?: Map<number, LearnedTierData>
 ): NormalizedReport {
   const warnings: string[] = []
   const contentType = mapContentType(raw.contentType)
@@ -116,10 +119,13 @@ export function normalizeQELiveReport(
   const charClass = classWords.join(' ') || undefined
 
   const items: NormalizedItem[] = []
+  const unresolved: QELiveResult[] = []
+  const resolvedInstanceCounts = new Map<number, number>()
+
   for (const row of kept) {
     const source = pickBestSource(lookup, row.item, contentType)
     if (!source) {
-      warnings.push(`Item ${row.item} had no encounter mapping`)
+      unresolved.push(row)
       continue
     }
 
@@ -137,6 +143,53 @@ export function normalizeQELiveReport(
       delta: row.rawDiff,
       pct: row.percDiff,
     })
+
+    resolvedInstanceCounts.set(source.instanceId, (resolvedInstanceCounts.get(source.instanceId) ?? 0) + 1)
+  }
+
+  // Items with no positive-instance source in encounter-items.json (tier tokens
+  // pointed at the aggregate catalyst bucket) fall back to the seed/learned tier
+  // lookup. QE Live rows don't carry an instance id of their own, so the current raid
+  // tier's instance is inferred from whichever instance the report's other rows
+  // resolved to most often.
+  let dominantInstanceId: number | undefined
+  let dominantCount = 0
+  for (const [id, count] of resolvedInstanceCounts) {
+    if (count > dominantCount) {
+      dominantInstanceId = id
+      dominantCount = count
+    }
+  }
+
+  for (const row of unresolved) {
+    const itemMeta = lookup.itemMeta.get(row.item)
+    const slot = itemMeta?.inventoryType !== undefined ? INVENTORY_TYPE_TO_SLOT[itemMeta.inventoryType] : undefined
+    const tierSources =
+      dominantInstanceId !== undefined
+        ? resolveTierEncounters(dominantInstanceId, row.item, slot, learnedByInstance?.get(dominantInstanceId))
+        : []
+
+    if (tierSources.length === 0) {
+      warnings.push(`Item ${row.item} had no encounter mapping`)
+      continue
+    }
+
+    for (const { encounterId, viaCurio } of tierSources) {
+      const encounterName = lookup.encounterNames.get(encounterId) ?? `Encounter ${encounterId}`
+      items.push({
+        itemId: row.item,
+        name: itemMeta?.name ?? `Item ${row.item}`,
+        slot,
+        encounterId,
+        encounterName,
+        instanceId: dominantInstanceId!,
+        ilvl: row.level,
+        delta: row.rawDiff,
+        pct: row.percDiff,
+        viaCurio,
+        tierSlot: slot,
+      })
+    }
   }
 
   return {

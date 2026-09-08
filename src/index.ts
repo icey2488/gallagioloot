@@ -1,4 +1,6 @@
 import { getEncounterItemsLookup, type LookupEnv } from './lookup/encounterItems'
+import { extractLearnedTierData, getAllLearnedTierData, getLearnedTierData, mergeLearnedTierData, saveLearnedTierData } from './lookup/tierLearned'
+import { getAllSeedInstanceIds, getCurioEncounterId, getSeedTierMap, isKnownSeedInstance } from './lookup/tierSeed'
 import { normalizeRaidbotsReport, UnsupportedReportError, type RaidbotsRawReport } from './normalize/raidbots'
 import { normalizeQELiveReport, parseQELiveResponseBody } from './normalize/qelive'
 import type { EncounterItemsLookup, NormalizedReport } from './types'
@@ -37,7 +39,12 @@ export default {
     try {
       if (path === '/' || path === '/health') {
         return jsonResponse(
-          { service: 'gallagioloot-proxy', version: VERSION, status: 'ok', endpoints: ['/raidbots/:id', '/qelive/:id', '/encounter-items'] },
+          {
+            service: 'gallagioloot-proxy',
+            version: VERSION,
+            status: 'ok',
+            endpoints: ['/raidbots/:id', '/qelive/:id', '/encounter-items', '/tier-map/:instanceId'],
+          },
           200,
           allowedOrigin
         )
@@ -54,6 +61,10 @@ export default {
       if (path === '/encounter-items') {
         const lookup = await getEncounterItemsLookup(env)
         return jsonResponse(serializeLookupForDebug(lookup), 200, allowedOrigin)
+      }
+
+      if (path.startsWith('/tier-map/')) {
+        return await handleTierMap(path.slice('/tier-map/'.length), env, allowedOrigin)
       }
 
       return jsonResponse({ error: 'Not found' }, 404, allowedOrigin)
@@ -113,6 +124,12 @@ async function handleRaidbots(
     throw e
   }
 
+  const instanceId = raw.simbot.meta.rawFormData.droptimizer.instance
+  const learnedUpdate = extractLearnedTierData(raw, instanceId)
+  if (Object.keys(learnedUpdate.byItem).length > 0) {
+    ctx.waitUntil(saveLearnedTierData(env, instanceId, learnedUpdate).then(() => undefined))
+  }
+
   return respondAndCache(normalized, cacheKey, ctx, allowedOrigin)
 }
 
@@ -152,9 +169,33 @@ async function handleQELive(
   }
 
   const lookup = await getEncounterItemsLookup(env)
-  const normalized = normalizeQELiveReport(id, raw, lookup)
+  const learnedByInstance = await getAllLearnedTierData(env, getAllSeedInstanceIds())
+  const normalized = normalizeQELiveReport(id, raw, lookup, learnedByInstance)
 
   return respondAndCache(normalized, cacheKey, ctx, allowedOrigin)
+}
+
+async function handleTierMap(instanceIdRaw: string, env: Env, allowedOrigin: string | null): Promise<Response> {
+  const instanceId = Number(instanceIdRaw)
+  if (!Number.isFinite(instanceId)) {
+    return jsonResponse({ error: 'invalid_instance_id' }, 400, allowedOrigin)
+  }
+
+  const seedBySlot = getSeedTierMap(instanceId)
+  const learned = await getLearnedTierData(env, instanceId)
+  const bySlot = mergeLearnedTierData({ byItem: {}, bySlot: seedBySlot }, { byItem: {}, bySlot: learned.bySlot }).bySlot
+
+  return jsonResponse(
+    {
+      instanceId,
+      known: isKnownSeedInstance(instanceId),
+      curioEncounterId: getCurioEncounterId(instanceId),
+      bySlot,
+      byItem: learned.byItem,
+    },
+    200,
+    allowedOrigin
+  )
 }
 
 // ============================================================

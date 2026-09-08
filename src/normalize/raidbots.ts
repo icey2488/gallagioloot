@@ -1,3 +1,4 @@
+import { resolveTierEncounters } from '../lookup/tierResolve'
 import type { EncounterItemsLookup, NormalizedItem, NormalizedReport, Role } from '../types'
 
 export class UnsupportedReportError extends Error {}
@@ -15,6 +16,9 @@ export type RaidbotsItemLibraryEntry = {
   inventoryType?: number
   offSpecItem?: boolean
   upgrade?: { fullName?: string }
+  /** Present on tier-set items (Raidbots' own "set information"); used to identify tier items for the learned tier cache. */
+  itemSetId?: number
+  sources?: Array<{ instanceId: number; encounterId: number }>
 }
 
 export type RaidbotsInstanceLibraryEntry = {
@@ -70,7 +74,7 @@ function contentTypeFromDifficulty(difficulty: string): 'raid' | 'dungeon' | 'ot
  * Parses a profileset row name: instanceId/encounterId/difficulty/itemId/ilvl/enchantId/slot////catalystSourceId
  * The trailing catalystSourceId segment is only present (non-empty) for catalyst conversion rows.
  */
-function parseProfilesetName(name: string): {
+export function parseProfilesetName(name: string): {
   instanceId: number
   encounterId: number
   difficulty: string
@@ -128,20 +132,54 @@ export function normalizeRaidbotsReport(
   for (const result of raw.sim.profilesets.results) {
     const parsed = parseProfilesetName(result.name)
 
-    if (parsed.encounterId < 0) {
+    // Real trash rows keep a positive instance id (e.g. "1320/-97/...") -- only the
+    // encounter id is the "Trash Drop" sentinel.
+    if (parsed.encounterId < 0 && parsed.instanceId > 0) {
       trashExcluded++
       continue
     }
 
     const libraryEntry = itemLibraryById.get(parsed.itemId)
+    const delta = result.mean - baseline
+
+    // Defensive fallback for rows pointed at an aggregate/catalyst bucket (negative
+    // instance id, e.g. -100) instead of a real boss -- mirrors the QE Live tier
+    // resolution. Not observed in live Sep 2026 season data (profileset rows there
+    // always carry a real boss encounter id, with catalyst conversions marked via the
+    // trailing catalystSourceId instead), but kept as a shared code path per spec.
+    if (parsed.instanceId < 0) {
+      const resolved = resolveTierEncounters(instanceId, parsed.itemId, parsed.slot || undefined, undefined)
+      if (resolved.length === 0) {
+        unmappedCount++
+        continue
+      }
+      for (const { encounterId, viaCurio } of resolved) {
+        const encounterName =
+          encounterNameById.get(encounterId) ?? fallbackLookup?.encounterNames.get(encounterId) ?? `Encounter ${encounterId}`
+        items.push({
+          itemId: parsed.itemId,
+          name: libraryEntry?.name ?? `Item ${parsed.itemId}`,
+          slot: parsed.slot || undefined,
+          encounterId,
+          encounterName,
+          instanceId,
+          ilvl: parsed.ilvl,
+          delta,
+          pct: (delta / baseline) * 100,
+          catalystSourceId: parsed.catalystSourceId,
+          offSpec: libraryEntry?.offSpecItem,
+          viaCurio,
+          tierSlot: parsed.slot || undefined,
+        })
+      }
+      continue
+    }
 
     let encounterName = encounterNameById.get(parsed.encounterId) ?? fallbackLookup?.encounterNames.get(parsed.encounterId)
     if (!encounterName) {
       unmappedCount++
       encounterName = `Encounter ${parsed.encounterId}`
     }
-
-    const delta = result.mean - baseline
 
     items.push({
       itemId: parsed.itemId,
