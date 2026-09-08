@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GallagioLoot -- Recommendation Card Preview</title>
+<style>
+:root {
+  --bg-base: #0b1530;
+  --bg-panel: #121f42;
+  --bg-panel-alt: #16264c;
+  --bg-hover: #1b2c56;
+  --border: #26355e;
+  --border-strong: #34467a;
+  --text: #f5f3ec;
+  --text-secondary: #b7bdda;
+  --text-muted: #7c86aa;
+  --gold: #d4af37;
+  --gold-strong: #e4c158;
+  --gold-text-on: #17110a;
+
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --radius: 8px;
+  --footer-height: 88px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-base);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: var(--text-secondary);
+}
+
+input,
+select {
+  font-family: inherit;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+input:focus,
+select:focus,
+button:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 1px;
+}
+
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--footer-height);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.app-header__brand {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+
+.app-main {
+  flex: 1;
+  padding: 20px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.panel + .panel {
+  margin-top: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.field label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: -4px 0 12px;
+}
+
+.btn {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn:hover {
+  background: var(--bg-hover);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-gold {
+  background: var(--gold);
+  border: 1px solid var(--gold);
+  color: var(--gold-text-on);
+  font-weight: 600;
+}
+
+.btn-gold:hover {
+  background: var(--gold-strong);
+  border-color: var(--gold-strong);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: underline;
+  font-size: 13px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+tr.excluded {
+  color: var(--text-muted);
+}
+
+tr.excluded td {
+  opacity: 0.7;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.badge-yes {
+  border-color: #3f6b4d;
+  color: #8fd6a4;
+}
+
+.badge-no {
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+.note-line {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* Recommendation card: the ONLY place gold is used, per the aesthetic brief. */
+.rec-card {
+  background: var(--bg-panel);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.rec-card__eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.rec-card__headline {
+  font-family: var(--font-display);
+  color: var(--gold);
+  font-size: clamp(22px, 6vw, 30px);
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.rec-card__pct {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(40px, 14vw, 64px);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+.rec-card__second {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.rec-card__compare {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 14px 0;
+}
+
+.rec-card__compare-option {
+  flex: 1;
+  max-width: 180px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.rec-card__compare-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.rec-card__compare-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-card__note {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 10px;
+}
+
+.rec-card__action {
+  margin-top: 18px;
+}
+
+.chip-stack {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.chip-stack__bar {
+  fill: var(--border-strong);
+}
+
+.chip-stack__bar--mid {
+  fill: var(--text-muted);
+}
+
+.chip-stack__bar--top {
+  fill: var(--text-secondary);
+}
+
+.chip-stack__count {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.app-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  padding: 8px 20px;
+  font-size: 11px;
+  color: var(--text-muted);
+  max-height: var(--footer-height);
+  overflow-y: auto;
+}
+
+.app-footer p {
+  margin: 4px 0;
+}
+
+.app-footer ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.warning-banner {
+  background: #3a2a12;
+  border: 1px solid #6b4e1e;
+  color: #e8c98a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+body { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 24px; }
+.rec-card { max-width: 380px; width: 100%; }
+</style>
+</head>
+<body>
+<section class="rec-card" aria-label="Bonus roll recommendation"><div class="rec-card__eyebrow">GallagioLoot recommends</div><h2 class="rec-card__headline">Roll The Lost Explorers</h2><div class="rec-card__pct num">2.30%</div><div class="rec-card__second">Next best: Ula&#x27;tek (~2.27%)</div></section>
+</body>
+</html>
