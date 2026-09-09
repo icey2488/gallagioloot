@@ -1,0 +1,50 @@
+# Deployment
+
+Two independent Cloudflare Workers, both in this repo, both deployed with the Wrangler CLI directly (no Git integration is wired up — this repo has no git remote). Account: `Theicehunter@proton.me's Account` (`0e326de3f6a9e1ed9b068f05948bd302`). Zone: `icehunter.net`.
+
+## Proxy — `gallagioloot-proxy.icehunter.net`
+
+Config: `wrangler.toml` (repo root).
+
+```bash
+npm install
+npm run typecheck && npm test
+npx wrangler deploy
+```
+
+- **KV namespace**: `ENCOUNTER_ITEMS_KV`, id `d50d2ff681c24da8b3360cca19c740c5`, declared under `[[kv_namespaces]]` in `wrangler.toml`. Backs the Raidbots encounter-items lookup and the learned tier-slot cache (see README.md). If it's ever lost, recreate with `npx wrangler kv namespace create ENCOUNTER_ITEMS_KV` and paste the new `id` into `wrangler.toml` — everything repopulates lazily from live traffic, nothing to restore.
+- **CORS origin**: `wrangler.toml [vars] ALLOWED_ORIGIN` (currently `https://gallagioloot.icehunter.net`). `http://localhost:<any port>` is always allowed in addition, hardcoded in `src/index.ts` (`resolveAllowedOrigin`) — not configurable via `wrangler.toml`.
+- **Route**: `routes = [{ pattern = "gallagioloot-proxy.icehunter.net", custom_domain = true }]` — must appear **before** the `[vars]`/`[observability]`/`[[kv_namespaces]]` table headers in `wrangler.toml`. TOML scopes bare keys to whichever table was most recently opened; a `routes = [...]` line placed after `[[kv_namespaces]]` silently becomes a bogus field on that KV binding instead of a top-level key (hit this exact bug during the first deploy — Wrangler warns `Unexpected fields found in kv_namespaces[0] field: "routes"` and the route is silently not applied).
+
+## Site — `gallagioloot.icehunter.net`
+
+Config: `web/wrangler.toml` (its own file — deliberately *not* sharing the root `wrangler.toml`, see pitfall below). Deployed as a Workers static-assets project (`[assets] directory = "./dist"`), not classic Cloudflare Pages — `wrangler pages project create` on Wrangler 4.130 now redirects to "the latest version of Cloudflare Pages, now part of Cloudflare Workers" and no longer creates an actual Pages project.
+
+```bash
+cd web
+npm install
+npm run typecheck && npm test
+npm run build              # reads web/.env.production -> VITE_PROXY_BASE_URL=https://gallagioloot-proxy.icehunter.net
+npx wrangler deploy        # uses web/wrangler.toml, uploads dist/
+```
+
+- **Proxy base URL**: `web/.env.production` (`VITE_PROXY_BASE_URL`), baked in at build time by Vite. `web/.env.development` points it at `http://localhost:8787` for local dev.
+- **Route**: `web/wrangler.toml` — `routes = [{ pattern = "gallagioloot.icehunter.net", custom_domain = true }]`.
+- **Pitfall — always run `wrangler deploy` from inside `web/`, with `web/wrangler.toml` present.** Wrangler resolves its config by walking up from the current directory. Before `web/wrangler.toml` existed, running a Pages/deploy command from `web/` climbed to the repo-root `wrangler.toml` (the proxy's config) and deployed the *proxy's worker script* under a new script name while reusing the root config's route — which briefly stole the `gallagioloot-proxy.icehunter.net` custom domain away from the real proxy worker. Fixed by giving `web/` its own `wrangler.toml` and by redeploying the proxy to reclaim the route. Custom domains are exclusive to one Worker script per hostname; if a hostname ever resolves to the wrong content, check which script owns it with:
+  ```bash
+  npx wrangler deployments list --name gallagioloot-proxy
+  npx wrangler deployments list --name gallagioloot
+  ```
+  and redeploy the correct one to reclaim it.
+
+## Smoke test
+
+```bash
+cd web
+npx playwright install chromium   # first time only
+npx tsx design/live-check.mts
+```
+
+Opens `https://gallagioloot.icehunter.net`, pastes a live Raidbots report URL, walks Paste → Rollable Bosses (asserts 8 rows) → recommendation card (asserts the headline and the toss-up kill-order line) → Loot Table for one boss (asserts rows render). Screenshots land in `web/design/live-*.png`.
+
+If `gallagioloot.icehunter.net` fails to resolve locally with `Could not resolve host`, it's very likely a stale local DNS cache (seen on this machine's router after first creating the record), not a real outage — check `nslookup gallagioloot.icehunter.net 1.1.1.1` against a public resolver before assuming the deploy is broken. `design/live-check.mts` launches Chromium with `--host-resolver-rules` pointing directly at the record's IP so the test isn't affected by this.
