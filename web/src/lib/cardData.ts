@@ -11,6 +11,16 @@ export type CardData = {
   tossUp: boolean
   tossUpNote?: string
   message?: string
+  /** Rolls this recommendation covers -- from recommendation.allocations.length, falling back to 1 for the fallback (no-allocation) case. Display-only (e.g. "1 Voidcore" / "2 Voidcores" in the card eyebrow row); never drives engine logic. */
+  rollsAvailable: number
+  /**
+   * Per-boss pct for each side of a toss-up headline ("Roll X or Y"), derived by matching
+   * recommendation.tossUp.bosses against bossEvals.evPct -- no new engine call, just a lookup
+   * over data buildCardData already receives. Undefined when there's no toss-up.
+   */
+  tossUpBosses?: [{ name: string; pct: number }, { name: string; pct: number }]
+  /** Single boss name for the non-toss-up "roll" verdict (top.encounterName) -- lets the card split "Roll" from the boss name without parsing `headline`. Undefined for toss-up/vault/tokens verdicts. */
+  bossName?: string
 }
 
 /**
@@ -33,11 +43,13 @@ export function buildCardData(params: {
       pct: 0,
       tossUp: false,
       message: recommendation.fallback.message,
+      rollsAvailable: 1,
     }
   }
 
   const top = recommendation.allocations[0]
   const secondAllocation = recommendation.allocations[1]
+  const rollsAvailable = recommendation.allocations.length || 1
   const deployableByEv = [...bossEvals].filter((b) => b.deployable && b.encounterId !== top.encounterId).sort((a, b) => b.evPct - a.evPct)
   const secondBest = secondAllocation
     ? { name: secondAllocation.encounterName, pct: secondAllocation.expectedGainPct }
@@ -50,6 +62,12 @@ export function buildCardData(params: {
   const rollTossUpNote = rollTossUp
     ? `Within ${rollTossUp.gapPct.toFixed(2)}%: let kill order decide; roll whichever you kill first.`
     : undefined
+  const tossUpBosses: CardData['tossUpBosses'] = rollTossUp
+    ? [
+        { name: rollTossUp.bosses[0], pct: top.expectedGainPct },
+        { name: rollTossUp.bosses[1], pct: bossEvals.find((b) => b.encounterName === rollTossUp.bosses[1])?.evPct ?? 0 },
+      ]
+    : undefined
 
   if (!vaultDecision) {
     return {
@@ -59,6 +77,9 @@ export function buildCardData(params: {
       secondBest,
       tossUp: !!rollTossUp,
       tossUpNote: rollTossUpNote,
+      rollsAvailable,
+      tossUpBosses,
+      bossName: rollTossUp ? undefined : top.encounterName,
     }
   }
 
@@ -76,6 +97,7 @@ export function buildCardData(params: {
       tossUp: false,
       vaultCompare,
       message: vaultDecision.explanation,
+      rollsAvailable,
     }
   }
 
@@ -92,6 +114,7 @@ export function buildCardData(params: {
       vaultCompare,
       tossUp,
       tossUpNote,
+      rollsAvailable,
     }
   }
 
@@ -103,5 +126,8 @@ export function buildCardData(params: {
     vaultCompare,
     tossUp: tossUp || !!rollTossUp,
     tossUpNote: tossUpNote ?? rollTossUpNote,
+    rollsAvailable,
+    tossUpBosses,
+    bossName: rollTossUp ? undefined : top.encounterName,
   }
 }

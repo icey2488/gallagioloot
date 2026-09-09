@@ -23,16 +23,21 @@ export function CharacterSwitcher(props: {
           ))}
         </select>
       )}
-      <label style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <label className="voidcore-pill" aria-label={`Voidcores held: ${voidcoreCount}`}>
         <ChipStack count={voidcoreCount} />
         <input
           type="number"
           min={0}
           value={voidcoreCount}
           onChange={(e) => onVoidcoreChange(Number(e.target.value) || 0)}
-          style={{ width: 48 }}
+          className="voidcore-pill__input num"
           aria-label="Voidcore count"
         />
+        <span className="voidcore-pill__label" aria-hidden="true">
+          Voidcores
+          <br />
+          held
+        </span>
       </label>
     </div>
   )

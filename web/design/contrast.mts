@@ -129,6 +129,14 @@ const PAIRS: Pair[] = [
   { name: 'Tooltip info icon on panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Tooltip bubble text on tooltip bubble background', fg: COLORS.text, bg: COLORS.bgPanelAlt, requirement: 'text' },
   { name: 'Tooltip bubble border on tooltip bubble background', fg: COLORS.borderStrong, bg: COLORS.bgPanelAlt, requirement: 'ui' },
+  // Design pass (2026-09-09) -- card/deployability redesign pulled from the Claude Design
+  // export. No new hex values were introduced (every design color mapped cleanly onto an
+  // existing token), but these are new element/background pairings, so audited explicitly.
+  { name: 'Deployable dot fill on panel', fg: COLORS.text, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Not-deployable dot ring on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Vault-compare winner border (gold) on compare-option fill', fg: COLORS.gold, bg: COLORS.bgPanelAlt, requirement: 'ui' },
+  { name: 'Vault-compare winner label (gold) on compare-option fill', fg: COLORS.gold, bg: COLORS.bgPanelAlt, requirement: 'text' },
+  { name: 'Rec-card verb/meta (secondary text) on panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather

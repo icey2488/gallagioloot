@@ -27,16 +27,17 @@ export function DeployabilityScreen(props: {
       </div>
 
       <div className="panel">
-        <table>
+        <table className="deploy-table">
           <thead>
             <tr>
+              <th className="deploy-table__rank">#</th>
               <th>Boss</th>
-              <th>Remaining</th>
-              <th>
+              <th className="num">Remaining</th>
+              <th className="num">
                 <Tooltip term="ev">EV %</Tooltip>
               </th>
               <th>Best case</th>
-              <th>
+              <th className="num">
                 <Tooltip term="rollsToTarget">Rolls to target</Tooltip>
               </th>
               <th>
@@ -46,13 +47,14 @@ export function DeployabilityScreen(props: {
             </tr>
           </thead>
           <tbody>
-            {bossEvals.map((b) => {
+            {bossEvals.map((b, i) => {
               const reason = exclusionReason(b, thresholdPct)
-              const notes = [...b.notes]
-              if (reason) notes.push(reason)
               return (
                 <tr key={b.encounterId} className={b.deployable ? undefined : 'excluded'}>
-                  <td>
+                  <td className="deploy-table__rank" data-label="#">
+                    {i + 1}
+                  </td>
+                  <td data-label="Boss">
                     {onSelectBoss ? (
                       <button type="button" className="btn-link" style={{ fontSize: 14, textDecoration: 'none' }} onClick={() => onSelectBoss(b.encounterId)}>
                         {b.encounterName}
@@ -61,28 +63,39 @@ export function DeployabilityScreen(props: {
                       b.encounterName
                     )}
                   </td>
-                  <td className="num">
+                  <td className="num" data-label="Remaining">
                     {b.remaining} / {b.pool.length}
                   </td>
-                  <td className="num">{b.evPct.toFixed(2)}%</td>
-                  <td>
+                  <td className="num deploy-table__ev" data-label="EV %">
+                    {b.evPct.toFixed(2)}%
+                  </td>
+                  <td data-label="Best case">
                     {b.bestCase ? (
                       <>
-                        {b.bestCase.name} <span className="num">({b.bestCase.pct.toFixed(2)}%)</span>
+                        {b.bestCase.name} <span className="num" style={{ fontWeight: 600 }}>
+                          ({b.bestCase.pct.toFixed(2)}%)
+                        </span>
                       </>
                     ) : (
                       '—'
                     )}
                   </td>
-                  <td className="num">
+                  <td className="num" data-label="Rolls to target">
                     {b.bestCase?.rollsToTargetExpected != null && b.bestCase?.rollsToTargetWorst != null
                       ? `~${b.bestCase.rollsToTargetExpected.toFixed(1)}, up to ${b.bestCase.rollsToTargetWorst}`
                       : '—'}
                   </td>
-                  <td>
-                    <span className={b.deployable ? 'badge badge-yes' : 'badge badge-no'}>{b.deployable ? 'Yes' : 'No'}</span>
+                  <td data-label="Deployable">
+                    <span className="deploy-indicator">
+                      <span className={b.deployable ? 'deploy-dot deploy-dot--yes' : 'deploy-dot deploy-dot--no'} aria-hidden="true" />
+                      {b.deployable ? 'Yes' : (
+                        <>
+                          No{reason ? <span className="deploy-indicator__reason"> — {reason}</span> : null}
+                        </>
+                      )}
+                    </span>
                   </td>
-                  <td>{notes.join('; ')}</td>
+                  <td data-label="Notes">{b.notes.join('; ')}</td>
                 </tr>
               )
             })}
