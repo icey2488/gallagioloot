@@ -25,6 +25,9 @@ function makeLookup(): EncounterItemsLookup {
     ]),
     instanceNames: new Map([[1320, 'The Venomous Abyss']]),
     instanceTypes: new Map([[1320, 'raid']]),
+    rawItems: new Map(),
+    encountersByInstance: new Map(),
+    weaponSpecs: new Map(),
   }
 }
 

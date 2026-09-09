@@ -1,0 +1,449 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GallagioLoot -- Loot table</title>
+<style>
+:root {
+  --bg-base: #0b1530;
+  --bg-panel: #121f42;
+  --bg-panel-alt: #16264c;
+  --bg-hover: #1b2c56;
+  /* Lightened from #26355e/#34467a: the originals measured ~1.2-2.0:1 against every
+     panel background in the app, well under the 3:1 WCAG 1.4.11 floor for borders
+     and focus rings. Same hue, raised lightness + a touch less saturation so they
+     read as a lighter steel-blue rather than a saturated accent. */
+  --border: #5870aa;
+  --border-strong: #647aad;
+  --text: #f5f3ec;
+  --text-secondary: #b7bdda;
+  /* Lightened from #7c86aa (4.13:1 against --bg-panel-alt, under the 4.5:1 text floor). */
+  --text-muted: #858fb0;
+  --gold: #d4af37;
+  --gold-strong: #e4c158;
+  --gold-text-on: #17110a;
+
+  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --radius: 8px;
+  --footer-height: 88px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-base);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  margin: 0;
+}
+
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+button {
+  font-family: inherit;
+}
+
+a {
+  color: var(--text-secondary);
+}
+
+input,
+select,
+textarea {
+  font-family: inherit;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+button:focus-visible,
+.app-footer:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 1px;
+}
+
+.app-shell {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: var(--footer-height);
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel);
+}
+
+.app-header__brand {
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.02em;
+}
+
+.app-main {
+  flex: 1;
+  padding: 20px;
+  max-width: 720px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.panel + .panel {
+  margin-top: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.field label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.field-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: -4px 0 12px;
+}
+
+.btn {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn:hover {
+  background: var(--bg-hover);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-gold {
+  background: var(--gold);
+  border: 1px solid var(--gold);
+  color: var(--gold-text-on);
+  font-weight: 600;
+}
+
+.btn-gold:hover {
+  background: var(--gold-strong);
+  border-color: var(--gold-strong);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px 0;
+  text-decoration: underline;
+  font-size: 13px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* De-emphasized via color (a muted shade that still clears 4.5:1) and style, never via
+   opacity -- opacity blends text toward the panel background and can drop well below
+   the readable-contrast floor (the previous 0.7 opacity here measured ~2.9:1). */
+tr.excluded {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.badge-yes {
+  /* #3f6b4d measured 2.63:1 against --bg-panel, under the 3:1 border floor. */
+  border-color: #467655;
+  color: #8fd6a4;
+}
+
+.badge-no {
+  border-color: var(--border-strong);
+  color: var(--text-muted);
+}
+
+.note-line {
+  color: var(--text-muted);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+/* Recommendation card: the ONLY place gold is used, per the aesthetic brief. */
+.rec-card {
+  background: var(--bg-panel);
+  border: 2px solid var(--gold);
+  border-radius: 12px;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.rec-card__eyebrow {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.rec-card__headline {
+  font-family: var(--font-display);
+  color: var(--gold);
+  font-size: clamp(22px, 6vw, 30px);
+  line-height: 1.2;
+  margin-bottom: 8px;
+}
+
+.rec-card__pct {
+  font-family: var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  font-size: clamp(40px, 14vw, 64px);
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1;
+  margin-bottom: 14px;
+}
+
+.rec-card__second {
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 14px;
+}
+
+.rec-card__compare {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin: 14px 0;
+}
+
+.rec-card__compare-option {
+  flex: 1;
+  max-width: 180px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.rec-card__compare-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
+.rec-card__compare-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-card__note {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+  margin-top: 10px;
+}
+
+.rec-card__action {
+  margin-top: 18px;
+}
+
+.chip-stack__bar {
+  fill: var(--border-strong);
+}
+
+.chip-stack__bar--mid {
+  fill: var(--text-muted);
+}
+
+.chip-stack__bar--top {
+  fill: var(--text-secondary);
+}
+
+.app-footer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--bg-panel);
+  border-top: 1px solid var(--border);
+  padding: 8px 20px;
+  /* Was 11px -- below the 13px floor for small disclaimer text even at a passing ratio. */
+  font-size: 13px;
+  color: var(--text-muted);
+  max-height: var(--footer-height);
+  overflow-y: auto;
+}
+
+.app-footer p {
+  margin: 4px 0;
+}
+
+.app-footer ul {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+
+.tooltip-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+
+.tooltip-icon {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.tooltip-bubble {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  top: calc(100% + 6px);
+  width: max-content;
+  max-width: 260px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: normal;
+  text-decoration: none;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.app-header__meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.loot-table-boss summary {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 16px;
+  padding: 4px 0;
+}
+
+.loot-table-boss + .loot-table-boss {
+  margin-top: 12px;
+}
+
+.warning-banner {
+  background: #3a2a12;
+  /* #6b4e1e measured 1.80:1 against this background, under the 3:1 border floor. */
+  border: 1px solid #996f2b;
+  color: #e8c98a;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  margin-bottom: 16px;
+}
+
+
+</style>
+</head>
+<body>
+<div class="app-shell">
+<header class="app-header"><span class="app-header__brand">GallagioLoot</span><div style="display:flex;align-items:center;gap:12px"><label style="display:flex;align-items:center;gap:6px"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" style="width:48px" aria-label="Voidcore count" value="2"/></label></div></header>
+<div class="app-header__meta" style="padding:6px 20px">Iceshaman · Elemental loot spec · Heroic</div>
+<main class="app-main">
+<div><div class="panel" style="display:flex;justify-content:space-between;align-items:center"><h3>Loot table -- The Venomous Abyss</h3><span class="note-line" style="margin-top:0">data hash 0f25a4ee…</span></div><details class="panel loot-table-boss" open=""><summary>Nek&#x27;zali the Soulcoiler</summary><table><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td>Hexing Spiritrender</td><td>—</td><td class="num">2.25%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Hexing Spiritrender"/></td></tr><tr><td>Strongblood&#x27;s Ceremonial Cleaver</td><td>—</td><td class="num">0.00%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Strongblood&#x27;s Ceremonial Cleaver"/></td></tr><tr><td>Cursed Reliquary Cincture</td><td>waist</td><td class="num">0.92%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Cursed Reliquary Cincture"/></td></tr><tr><td>Crown of the Eternal Fang</td><td>head</td><td class="num">0.00%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Crown of the Eternal Fang"/></td></tr><tr><td>Amani Summoning Shawl</td><td>back</td><td class="num">0.93%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Amani Summoning Shawl"/></td></tr><tr><td>Tomb-Creeper&#x27;s Claw</td><td>—</td><td class="num">0.00%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Tomb-Creeper&#x27;s Claw"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>Entombed Sentinels</summary><table><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td>Caustic Keeper-Crusher</td><td>—</td><td class="num">0.00%</td><td class="num">~2.5, up to 4</td><td><input type="checkbox" aria-label="Knock out Caustic Keeper-Crusher"/></td></tr><tr><td>Ancient Construct&#x27;s Venomshiv</td><td>—</td><td class="num">0.00%</td><td class="num">~2.5, up to 4</td><td><input type="checkbox" aria-label="Knock out Ancient Construct&#x27;s Venomshiv"/></td></tr><tr><td>Sentinel&#x27;s Vitriolic Chain</td><td>neck</td><td class="num">0.43%</td><td class="num">~2.5, up to 4</td><td><input type="checkbox" aria-label="Knock out Sentinel&#x27;s Vitriolic Chain"/></td></tr><tr><td>Hexing Grips of the Ophidian Oracle (Tier)</td><td>hands</td><td class="num">1.88%</td><td class="num">~2.5, up to 4</td><td><input type="checkbox" aria-label="Knock out Hexing Grips of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>The Lost Explorers</summary><table><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td>Venom-Slashed Scuteward</td><td>—</td><td class="num">0.00%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Venom-Slashed Scuteward"/></td></tr><tr><td>Malevolent Spiritcudgel</td><td>—</td><td class="num">2.26%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Malevolent Spiritcudgel"/></td></tr><tr><td>Boots of the Reckless Wayfarer</td><td>feet</td><td class="num">0.82%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Boots of the Reckless Wayfarer"/></td></tr><tr><td>Gebbo&#x27;s Bottomless Bag</td><td>trinket</td><td class="num">6.28%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Gebbo&#x27;s Bottomless Bag"/></td></tr><tr><td>Hissing Mantle of the Ophidian Oracle (Tier)</td><td>shoulder</td><td class="num">2.13%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Hissing Mantle of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>Vashnik the Malignant</summary><table><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td>Venomancer&#x27;s Winged Channeler</td><td>—</td><td class="num">1.59%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Venomancer&#x27;s Winged Channeler"/></td></tr><tr><td>Vile Alchemist&#x27;s Band</td><td>finger</td><td class="num">1.56%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Vile Alchemist&#x27;s Band"/></td></tr><tr><td>Serpentine Mixing Belt</td><td>waist</td><td class="num">1.29%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Serpentine Mixing Belt"/></td></tr><tr><td>Fang of Umbral Malignance <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td>trinket</td><td class="num">5.43%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Fang of Umbral Malignance"/></td></tr><tr><td>Fanged Raiment of the Ophidian Oracle (Tier)</td><td>chest</td><td class="num">1.03%</td><td class="num">~3.0, up to 5</td><td><input type="checkbox" aria-label="Knock out Fanged Raiment of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>Sszorak</summary><table><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td>Slithering Savage&#x27;s Gavel</td><td>—</td><td class="num">0.00%</td><td class="num">~2.5, up to 4</td><td><input type="checkbox" aria-label="Knock out Slithering Savage&#x27;s Gavel"/></td></tr><tr><td>Ferocious Scaleboots</td><td>feet</td><td class="num">0.88%</td><td class="num">~2.5, up to 4</td><td><input type="checkbox" aria-label="Knock out Ferocious Scaleboots"/></td></tr><tr><td>Apex Brute&#x27;s Claw Ring</td><td>finger</td><td class="num">1.19%</td><td class="num">~2.5, up to 4</td><td><input type="checkbox" aria-label="Knock out Apex Brute&#x27;s Claw Ring"/></td></tr><tr><td>Leggings of the Ophidian Oracle (Tier)</td><td>legs</td><td class="num">0.48%</td><td class="num">~2.5, up to 4</td><td><input type="checkbox" aria-label="Knock out Leggings of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>The Twin Fangs</summary><table><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td>Ophidian Fangmail</td><td>chest</td><td class="num">0.00%</td><td class="num">~3.5, up to 6</td><td><input type="checkbox" aria-label="Knock out Ophidian Fangmail"/></td></tr><tr><td>Amulet of the Twin Fangs</td><td>neck</td><td class="num">1.50%</td><td class="num">~3.5, up to 6</td><td><input type="checkbox" aria-label="Knock out Amulet of the Twin Fangs"/></td></tr><tr><td>Ravenous Feaster&#x27;s Fang</td><td>—</td><td class="num">0.00%</td><td class="num">~3.5, up to 6</td><td><input type="checkbox" aria-label="Knock out Ravenous Feaster&#x27;s Fang"/></td></tr><tr><td>Vexhul&#x27;s Everflowing Gland <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td>trinket</td><td class="num">6.30%</td><td class="num">~3.5, up to 6</td><td><input type="checkbox" aria-label="Knock out Vexhul&#x27;s Everflowing Gland"/></td></tr><tr><td>Serpent Crown of the Ophidian Oracle (Tier)</td><td>head</td><td class="num">1.86%</td><td class="num">~3.5, up to 6</td><td><input type="checkbox" aria-label="Knock out Serpent Crown of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>The Coiled Altar</summary><table><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td>Aman&#x27;muso, Warlord&#x27;s Vengeance</td><td>—</td><td class="num">0.00%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Aman&#x27;muso, Warlord&#x27;s Vengeance"/></td></tr><tr><td>Soulslither Spaulders</td><td>shoulder</td><td class="num">2.07%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Soulslither Spaulders"/></td></tr><tr><td>Cuisses of the Uncoiled Union</td><td>legs</td><td class="num">0.00%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Cuisses of the Uncoiled Union"/></td></tr><tr><td>Silken Voodoo Drape</td><td>back</td><td class="num">1.08%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Silken Voodoo Drape"/></td></tr><tr><td>Hex Lord&#x27;s Dooming Idol <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td>trinket</td><td class="num">1.42%</td><td class="num">~4.0, up to 7</td><td><input type="checkbox" aria-label="Knock out Hex Lord&#x27;s Dooming Idol"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>Ula&#x27;tek</summary><table><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td>Aqirbane Reliquary</td><td>neck</td><td class="num">2.00%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Aqirbane Reliquary"/></td></tr><tr><td>Font of Venomous Rage <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td>trinket</td><td class="num">6.26%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Font of Venomous Rage"/></td></tr><tr><td>Jan&#x27;thrazet, the Soul Fang</td><td>—</td><td class="num">3.22%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Jan&#x27;thrazet, the Soul Fang"/></td></tr><tr><td>Zatha&#x27;tek, Breath of Corruption</td><td>—</td><td class="num">0.00%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Zatha&#x27;tek, Breath of Corruption"/></td></tr><tr><td>Awoken Dreadfang Cuirass</td><td>chest</td><td class="num">0.00%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Awoken Dreadfang Cuirass"/></td></tr><tr><td>Fanged Raiment of the Ophidian Oracle (Curio)</td><td>chest</td><td class="num">2.71%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Fanged Raiment of the Ophidian Oracle"/></td></tr><tr><td>Hexing Grips of the Ophidian Oracle (Curio)</td><td>hands</td><td class="num">1.94%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Hexing Grips of the Ophidian Oracle"/></td></tr><tr><td>Serpent Crown of the Ophidian Oracle (Curio)</td><td>head</td><td class="num">1.81%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Serpent Crown of the Ophidian Oracle"/></td></tr><tr><td>Leggings of the Ophidian Oracle (Curio)</td><td>legs</td><td class="num">0.41%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Leggings of the Ophidian Oracle"/></td></tr><tr><td>Hissing Mantle of the Ophidian Oracle (Curio)</td><td>shoulder</td><td class="num">2.07%</td><td class="num">~6.0, up to 11</td><td><input type="checkbox" aria-label="Knock out Hissing Mantle of the Ophidian Oracle"/></td></tr></tbody></table></details></div>
+</main>
+<footer class="app-footer" tabindex="0"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></footer>
+</div>
+</body>
+</html>

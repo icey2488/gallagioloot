@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { buildBossPools } from '../src/core/pool'
 import type { KnockoutState, Settings } from '../src/core/types'
-import type { NormalizedItem, NormalizedReport } from '../src/types'
+import type { LootTableEncounter, LootTableItem, NormalizedItem, NormalizedReport } from '../src/types'
 
 const BASELINE = 100000
 
@@ -227,5 +227,101 @@ describe('buildBossPools', () => {
     const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
     expect(boss.pool.every((p) => p.errorPct === undefined)).toBe(true)
     expect(boss.evErrorPct).toBeUndefined()
+  })
+
+  it('defaults specSpecific to false on every entry when no loot table is supplied', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 })])
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
+    expect(boss.pool[0].specSpecific).toBe(false)
+  })
+})
+
+function lootItem(overrides: Partial<LootTableItem> = {}): LootTableItem {
+  return {
+    itemId: 999,
+    name: 'Loot Table Item',
+    specSpecific: false,
+    uniqueEquipped: false,
+    onUseTrinket: false,
+    isTier: false,
+    viaCurio: false,
+    ...overrides,
+  }
+}
+
+describe('buildBossPools with a loot table (full pool denominator)', () => {
+  it('adds a value-0 "not in sim report" entry for a loot-table item absent from the report, growing the pool denominator', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 })])
+    const lootTable: LootTableEncounter[] = [
+      { encounterId: 2888, encounterName: "Nek'zali the Soulcoiler", items: [lootItem({ itemId: 100, name: 'Test Item' }), lootItem({ itemId: 200, name: 'Unsimmed Item' })] },
+    ]
+
+    const withoutTable = buildBossPools(report, makeKnockout(), SETTINGS)
+    expect(withoutTable[0].pool).toHaveLength(1)
+    expect(withoutTable[0].remaining).toBe(1)
+
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS, lootTable)
+    expect(boss.pool).toHaveLength(2)
+    expect(boss.remaining).toBe(2) // denominator grows -- the Voidcore draws from the whole pool
+    const phantom = boss.pool.find((p) => p.itemIds[0] === 200)!
+    expect(phantom).toMatchObject({ value: 0, rawDelta: 0, notInSimReport: true, name: 'Unsimmed Item' })
+    // ev is now the mean over BOTH entries (1000 + 0) / 2, not just the simmed one.
+    expect(boss.ev).toBe(500)
+    expect(boss.notes.some((n) => n.includes('not in sim report'))).toBe(true)
+  })
+
+  it("keeps a report item absent from the boss's loot table, with a warning note", () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 })])
+    const lootTable: LootTableEncounter[] = [{ encounterId: 2888, encounterName: "Nek'zali the Soulcoiler", items: [] }]
+
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS, lootTable)
+    expect(boss.pool).toHaveLength(1)
+    expect(boss.pool[0].itemIds).toEqual([100])
+    expect(boss.notes.some((n) => n.includes("not in this boss's loot table"))).toBe(true)
+  })
+
+  it('derives PoolEntry.specSpecific true from a loot-table row that carries a spec restriction', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 })])
+    const lootTable: LootTableEncounter[] = [
+      { encounterId: 2888, encounterName: "Nek'zali the Soulcoiler", items: [lootItem({ itemId: 100, specSpecific: true })] },
+    ]
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS, lootTable)
+    expect(boss.pool[0].specSpecific).toBe(true)
+  })
+
+  it('applies a specSpecific (loot-table-derived) knockout only when the currently active lootSpecId matches the one it was recorded under', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 })])
+    const lootTable: LootTableEncounter[] = [
+      { encounterId: 2888, encounterName: "Nek'zali the Soulcoiler", items: [lootItem({ itemId: 100, specSpecific: true })] },
+    ]
+    const knockout = makeKnockout({
+      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', lootSpecId: 262 }],
+    })
+
+    const differentSpec = buildBossPools(report, knockout, { ...SETTINGS, lootSpecId: 264 }, lootTable)
+    expect(differentSpec[0].pool[0].knockedOut).toBe(false)
+
+    const matchingSpec = buildBossPools(report, knockout, { ...SETTINGS, lootSpecId: 262 }, lootTable)
+    expect(matchingSpec[0].pool[0].knockedOut).toBe(true)
+  })
+
+  it('lets a manual specSpecific override on the KnockoutEntry take precedence over the loot table (and legacy spec fallback still applies when lootSpecId is absent)', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 })])
+    // Loot table says this item is NOT spec-specific, but the player manually overrode it.
+    const lootTable: LootTableEncounter[] = [
+      { encounterId: 2888, encounterName: "Nek'zali the Soulcoiler", items: [lootItem({ itemId: 100, specSpecific: false })] },
+    ]
+    const knockout = makeKnockout({
+      entries: [
+        { itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'manual', specSpecific: true, spec: 'restoration' },
+      ],
+    })
+
+    const nonMatching = buildBossPools(report, knockout, SETTINGS, lootTable)
+    expect(nonMatching[0].pool[0].knockedOut).toBe(false) // report.spec is 'elemental' by default
+
+    const matchingReport = makeReport([item({ itemId: 100, delta: 1000 })], { spec: 'restoration' })
+    const matching = buildBossPools(matchingReport, knockout, SETTINGS, lootTable)
+    expect(matching[0].pool[0].knockedOut).toBe(true)
   })
 })

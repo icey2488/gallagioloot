@@ -1,4 +1,5 @@
 import type { BossEval } from '@engine/core/types'
+import { Tooltip } from './Tooltip'
 
 function exclusionReason(b: BossEval, thresholdPct: number): string | null {
   if (b.deployable) return null
@@ -8,8 +9,13 @@ function exclusionReason(b: BossEval, thresholdPct: number): string | null {
   return 'Excluded'
 }
 
-export function DeployabilityScreen(props: { bossEvals: BossEval[]; thresholdPct: number; onViewRecommendation: () => void }) {
-  const { bossEvals, thresholdPct, onViewRecommendation } = props
+export function DeployabilityScreen(props: {
+  bossEvals: BossEval[]
+  thresholdPct: number
+  onViewRecommendation: () => void
+  onSelectBoss?: (encounterId: number) => void
+}) {
+  const { bossEvals, thresholdPct, onViewRecommendation, onSelectBoss } = props
 
   return (
     <div>
@@ -26,10 +32,16 @@ export function DeployabilityScreen(props: { bossEvals: BossEval[]; thresholdPct
             <tr>
               <th>Boss</th>
               <th>Remaining</th>
-              <th>EV %</th>
+              <th>
+                <Tooltip term="ev">EV %</Tooltip>
+              </th>
               <th>Best case</th>
-              <th>Rolls to target</th>
-              <th>Deployable</th>
+              <th>
+                <Tooltip term="rollsToTarget">Rolls to target</Tooltip>
+              </th>
+              <th>
+                <Tooltip term="deployable">Deployable</Tooltip>
+              </th>
               <th>Notes</th>
             </tr>
           </thead>
@@ -40,7 +52,15 @@ export function DeployabilityScreen(props: { bossEvals: BossEval[]; thresholdPct
               if (reason) notes.push(reason)
               return (
                 <tr key={b.encounterId} className={b.deployable ? undefined : 'excluded'}>
-                  <td>{b.encounterName}</td>
+                  <td>
+                    {onSelectBoss ? (
+                      <button type="button" className="btn-link" style={{ fontSize: 14, textDecoration: 'none' }} onClick={() => onSelectBoss(b.encounterId)}>
+                        {b.encounterName}
+                      </button>
+                    ) : (
+                      b.encounterName
+                    )}
+                  </td>
                   <td className="num">
                     {b.remaining} / {b.pool.length}
                   </td>

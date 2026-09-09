@@ -355,6 +355,67 @@ tr.excluded {
   padding-left: 18px;
 }
 
+.tooltip-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+
+.tooltip-icon {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.tooltip-bubble {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  top: calc(100% + 6px);
+  width: max-content;
+  max-width: 260px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: normal;
+  text-decoration: none;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.app-header__meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.loot-table-boss summary {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 16px;
+  padding: 4px 0;
+}
+
+.loot-table-boss + .loot-table-boss {
+  margin-top: 12px;
+}
+
 .warning-banner {
   background: #3a2a12;
   /* #6b4e1e measured 1.80:1 against this background, under the 3:1 border floor. */

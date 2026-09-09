@@ -8,7 +8,14 @@ export type KnockoutEntry = {
   /** ISO timestamp. Always supplied by the caller -- core never reads the clock. */
   receivedAt: string
   spec?: string
+  /**
+   * Manual override of whether this entry is spec-specific. When unset, the automatic
+   * value comes from the matching PoolEntry.specSpecific (derived from the loot table)
+   * at evaluation time -- see buildBossPools.
+   */
   specSpecific?: boolean
+  /** The loot spec this item was received/recorded under. Recorded on every entry going forward. */
+  lootSpecId?: number
   source: 'roll' | 'manual'
 }
 
@@ -33,6 +40,12 @@ export type Settings = {
    * table can show them) but are marked non-deployable and excluded from allocation.
    */
   expectedKills?: number[]
+  /**
+   * The loot spec currently in effect (set in-game before rolling). Used to decide
+   * whether a spec-specific KnockoutEntry applies: only when its own `lootSpecId`
+   * matches this one. Undefined falls back to the legacy string-`spec` comparison.
+   */
+  lootSpecId?: number
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -52,6 +65,16 @@ export type PoolEntry = {
   pct: number
   kind: 'item' | 'tier-token' | 'curio'
   tierSlot?: string
+  /**
+   * True when this entry only drops for certain loot specs (the loot table's `specs`
+   * restriction), so a knockout for it applies only to the loot spec it was received
+   * under. Derived from the loot table when available; false when no loot table was
+   * supplied to buildBossPools (e.g. older callers, or an instance the loot-table
+   * endpoint hasn't been asked about).
+   */
+  specSpecific: boolean
+  /** True for a PoolEntry synthesized from the loot table with no matching report item -- see buildBossPools. */
+  notInSimReport?: boolean
   knockedOut: boolean
   /** Expected rolls to land this entry via uniform sampling without replacement: (n+1)/2 for a remaining pool of size n. Set only for non-knocked-out entries. */
   rollsToTargetExpected?: number

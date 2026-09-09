@@ -1,6 +1,6 @@
-export type Screen = 'paste' | 'deployability' | 'roll' | 'reconcile'
+export type Screen = 'paste' | 'deployability' | 'roll' | 'reconcile' | 'lootTable'
 
-const SCREENS: readonly Screen[] = ['paste', 'deployability', 'roll', 'reconcile']
+const SCREENS: readonly Screen[] = ['paste', 'deployability', 'roll', 'reconcile', 'lootTable']
 
 export function isScreen(value: unknown): value is Screen {
   return typeof value === 'string' && (SCREENS as readonly string[]).includes(value)

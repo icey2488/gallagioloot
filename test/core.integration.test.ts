@@ -6,8 +6,9 @@ import { buildBossPools } from '../src/core/pool'
 import { recommend } from '../src/core/rank'
 import { createState } from '../src/core/knockout'
 import { compareVault } from '../src/core/vault'
+import { buildLootTable } from '../src/lookup/lootTable'
 import type { BossEval, Settings } from '../src/core/types'
-import type { NormalizedReport, EncounterItemEntry, InstanceEntry } from '../src/types'
+import type { EncounterItemsLookup, NormalizedReport, EncounterItemEntry, InstanceEntry, WeaponSpecEntry } from '../src/types'
 
 // Hits the real Raidbots and QE Live APIs. Only runs when explicitly requested
 // (npm run test:live) so normal `npm test` stays hermetic and offline.
@@ -22,23 +23,43 @@ async function fetchLiveLookup() {
   const hash = extractGameDataVersion(html)
   if (!hash) throw new Error('Could not discover Raidbots gameDataVersion from live homepage')
 
-  const [items, instances, encounterNames, instanceNames] = await Promise.all([
+  const [items, instances, encounterNames, instanceNames, weaponSpecs] = await Promise.all([
     fetch(`https://www.raidbots.com/static/data/${hash}/encounter-items.json`).then((r) => r.json() as Promise<EncounterItemEntry[]>),
     fetch(`https://www.raidbots.com/static/data/${hash}/instances.json`).then((r) => r.json() as Promise<InstanceEntry[]>),
     fetch(`https://www.raidbots.com/static/data/${hash}/encounter-names.json`).then((r) => r.json() as Promise<Record<string, string>>),
     fetch(`https://www.raidbots.com/static/data/${hash}/instance-names.json`).then((r) => r.json() as Promise<Record<string, string>>),
+    fetch(`https://www.raidbots.com/static/data/${hash}/weapon-specs.json`).then((r) => r.json() as Promise<WeaponSpecEntry[]>),
   ])
 
-  return buildEncounterItemsLookup(items, instances, encounterNames, instanceNames)
+  return buildEncounterItemsLookup(items, instances, encounterNames, instanceNames, weaponSpecs)
 }
 
-function printReportTable(label: string, report: NormalizedReport, rollsAvailable: 1 | 2) {
-  const settings: Settings = { thresholdPct: 0.2, rollsAvailable, includeOffSpec: false }
+function printReportTable(label: string, report: NormalizedReport, rollsAvailable: 1 | 2, lookup: EncounterItemsLookup) {
+  const settings: Settings = { thresholdPct: 0.2, rollsAvailable, includeOffSpec: false, lootSpecId: report.lootSpecId }
   const knockout = createState(report.character, report.difficulty, report.realm, report.region)
-  const bossEvals = buildBossPools(report, knockout, settings)
+
+  const bossEvalsReportOnly = buildBossPools(report, knockout, settings)
+
+  const lootTableEncounters =
+    report.instanceId && report.lootSpecId ? buildLootTable(report.instanceId, report.lootSpecId, lookup) : undefined
+  const bossEvals = lootTableEncounters ? buildBossPools(report, knockout, settings, lootTableEncounters) : bossEvalsReportOnly
   const recommendation = recommend(bossEvals, settings, report)
 
-  console.log(`\n[${label}] rolls=${rollsAvailable} -- per-boss table`)
+  console.log(`\n[${label}] rolls=${rollsAvailable} -- own loot spec: ${report.lootSpecId} -- per-boss pool size before (report only) vs after (full loot table)`)
+  console.table(
+    bossEvalsReportOnly.map((b) => {
+      const after = bossEvals.find((a) => a.encounterId === b.encounterId)
+      return {
+        encounter: b.encounterName,
+        'pool size before': b.pool.length,
+        'pool size after': after?.pool.length ?? b.pool.length,
+        'ev% before': b.evPct.toFixed(3),
+        'ev% after': (after?.evPct ?? b.evPct).toFixed(3),
+      }
+    })
+  )
+
+  console.log(`\n[${label}] rolls=${rollsAvailable} -- per-boss table (full loot table applied)`)
   console.table(
     bossEvals.map((b) => ({
       encounter: b.encounterName,
@@ -78,8 +99,8 @@ describe.skipIf(!RUN_LIVE)('core decision engine (live)', () => {
     const lookup = await fetchLiveLookup()
     const report = normalizeRaidbotsReport(RAIDBOTS_REPORT_ID, raw, lookup)
 
-    const { bossEvals: bossEvals1, recommendation: rec1 } = printReportTable('raidbots', report, 1)
-    const { recommendation: rec2 } = printReportTable('raidbots', report, 2)
+    const { bossEvals: bossEvals1, recommendation: rec1 } = printReportTable('raidbots', report, 1, lookup)
+    const { recommendation: rec2 } = printReportTable('raidbots', report, 2, lookup)
 
     expect(bossEvals1.length).toBeGreaterThan(0)
     expect(rec1.assumptions.length).toBeGreaterThan(0)
@@ -94,8 +115,8 @@ describe.skipIf(!RUN_LIVE)('core decision engine (live)', () => {
     const lookup = await fetchLiveLookup()
     const report = normalizeQELiveReport(QELIVE_REPORT_ID, raw, lookup, new Map())
 
-    const { bossEvals: bossEvals1, recommendation: rec1 } = printReportTable('qelive', report, 1)
-    const { recommendation: rec2 } = printReportTable('qelive', report, 2)
+    const { bossEvals: bossEvals1, recommendation: rec1 } = printReportTable('qelive', report, 1, lookup)
+    const { recommendation: rec2 } = printReportTable('qelive', report, 2, lookup)
 
     expect(bossEvals1.length).toBeGreaterThan(0)
     expect(rec1.assumptions.length).toBeGreaterThan(0)

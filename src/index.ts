@@ -1,9 +1,10 @@
-import { getEncounterItemsLookup, type LookupEnv } from './lookup/encounterItems'
+import { getEncounterItemsLookup, getGameDataVersionWithAge, type LookupEnv } from './lookup/encounterItems'
 import { extractLearnedTierData, getAllLearnedTierData, getLearnedTierData, mergeLearnedTierData, saveLearnedTierData } from './lookup/tierLearned'
 import { getAllSeedInstanceIds, getCurioEncounterId, getSeedTierMap, isKnownSeedInstance } from './lookup/tierSeed'
+import { buildLootTable } from './lookup/lootTable'
 import { normalizeRaidbotsReport, UnsupportedReportError, type RaidbotsRawReport } from './normalize/raidbots'
 import { normalizeQELiveReport, parseQELiveResponseBody } from './normalize/qelive'
-import type { EncounterItemsLookup, NormalizedReport } from './types'
+import type { EncounterItemsLookup, LootTable, NormalizedReport } from './types'
 
 const VERSION = '0.1.0'
 
@@ -14,6 +15,7 @@ const RAIDBOTS_ID_RE = /(?<![A-Za-z0-9_-])[A-Za-z0-9_-]{22}(?![A-Za-z0-9_-])/
 const QE_ID_RE = /(?<![a-z])[a-z]{12}(?![a-z])/
 
 const REPORT_CACHE_TTL_SECONDS = 10 * 60
+const LOOT_TABLE_CACHE_TTL_SECONDS = 24 * 60 * 60
 const FETCH_TIMEOUT_MS = 15000
 
 export interface Env extends LookupEnv {
@@ -38,12 +40,16 @@ export default {
 
     try {
       if (path === '/' || path === '/health') {
+        const versionInfo = await getGameDataVersionWithAge(env)
         return jsonResponse(
           {
             service: 'gallagioloot-proxy',
             version: VERSION,
             status: 'ok',
-            endpoints: ['/raidbots/:id', '/qelive/:id', '/encounter-items', '/tier-map/:instanceId'],
+            endpoints: ['/raidbots/:id', '/qelive/:id', '/encounter-items', '/tier-map/:instanceId', '/loot-table/:instanceId'],
+            dataHash: versionInfo.version,
+            dataHashDiscoveredAt: new Date(versionInfo.discoveredAt).toISOString(),
+            dataHashAgeSeconds: Math.max(0, Math.floor((Date.now() - versionInfo.discoveredAt) / 1000)),
           },
           200,
           allowedOrigin
@@ -65,6 +71,10 @@ export default {
 
       if (path.startsWith('/tier-map/')) {
         return await handleTierMap(path.slice('/tier-map/'.length), env, allowedOrigin)
+      }
+
+      if (path.startsWith('/loot-table/')) {
+        return await handleLootTable(path.slice('/loot-table/'.length), url.searchParams, env, ctx, allowedOrigin)
       }
 
       return jsonResponse({ error: 'Not found' }, 404, allowedOrigin)
@@ -196,6 +206,47 @@ async function handleTierMap(instanceIdRaw: string, env: Env, allowedOrigin: str
     200,
     allowedOrigin
   )
+}
+
+async function handleLootTable(
+  instanceIdRaw: string,
+  params: URLSearchParams,
+  env: Env,
+  ctx: ExecutionContext,
+  allowedOrigin: string | null
+): Promise<Response> {
+  const instanceId = Number(instanceIdRaw)
+  if (!Number.isFinite(instanceId)) {
+    return jsonResponse({ error: 'invalid_instance_id' }, 400, allowedOrigin)
+  }
+
+  const lootSpecRaw = params.get('lootSpec')
+  const lootSpecId = Number(lootSpecRaw)
+  if (!lootSpecRaw || !Number.isFinite(lootSpecId)) {
+    return jsonResponse({ error: 'invalid_loot_spec', detail: 'lootSpec query param (a WoW spec id) is required' }, 400, allowedOrigin)
+  }
+
+  const versionInfo = await getGameDataVersionWithAge(env)
+  const cacheKey = new Request(`https://cache.gallagioloot.local/loot-table/${versionInfo.version}/${instanceId}/${lootSpecId}`)
+  const cached = await caches.default.match(cacheKey)
+  if (cached) return withCors(cached, allowedOrigin)
+
+  const lookup = await getEncounterItemsLookup(env)
+  const encounters = buildLootTable(instanceId, lootSpecId, lookup)
+
+  const body: LootTable = {
+    instanceId,
+    instanceName: lookup.instanceNames.get(instanceId),
+    lootSpecId,
+    sourceHash: versionInfo.version,
+    encounters,
+  }
+
+  const response = new Response(JSON.stringify(body), {
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${LOOT_TABLE_CACHE_TTL_SECONDS}` },
+  })
+  ctx.waitUntil(caches.default.put(cacheKey, response.clone()))
+  return withCors(response, allowedOrigin)
 }
 
 // ============================================================

@@ -14,6 +14,7 @@ function pool(values: number[]): PoolEntry[] {
     rawDelta: value,
     pct: (value / BASELINE) * 100,
     kind: 'item',
+    specSpecific: false,
     knockedOut: false,
   }))
 }

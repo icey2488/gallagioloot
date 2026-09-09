@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { deserialize, serialize } from '@engine/core/knockout'
 import type { BossEval, KnockoutState } from '@engine/core/types'
 import type { NormalizedReport } from '@engine/types'
+import { Tooltip } from './Tooltip'
 
 export function ReconcileScreen(props: {
   report: NormalizedReport
@@ -88,7 +89,7 @@ export function ReconcileScreen(props: {
         </div>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14, marginBottom: 12 }}>
           <input type="checkbox" checked={specOnly} onChange={(e) => setSpecOnly(e.target.checked)} disabled={!itemId} />
-          Spec-only drop
+          <Tooltip term="specSpecific">Spec-only drop</Tooltip>
         </label>
         <button type="button" className="btn" onClick={submitReconcile} disabled={bossId == null}>
           Confirm
@@ -96,7 +97,9 @@ export function ReconcileScreen(props: {
       </div>
 
       <div className="panel">
-        <h3>Knockout list — {report.character} ({report.difficulty})</h3>
+        <h3>
+          <Tooltip term="knockout">Knockout list</Tooltip> — {report.character} ({report.difficulty})
+        </h3>
         {knockoutState.entries.length === 0 && <p className="note-line">No items knocked out yet.</p>}
         {knockoutState.entries.length > 0 && (
           <table>

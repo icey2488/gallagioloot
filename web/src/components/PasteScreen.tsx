@@ -1,6 +1,7 @@
 import type { NormalizedReport } from '@engine/types'
 import type { ReportSource } from '../lib/urlDetect'
 import { SOURCE_LABELS } from '../lib/urlDetect'
+import { Tooltip } from './Tooltip'
 
 export type BossOption = { encounterId: number; encounterName: string }
 
@@ -143,7 +144,9 @@ export function PasteScreen(props: {
             <details style={{ marginTop: 14 }}>
               <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13 }}>Advanced</summary>
               <div className="field" style={{ marginTop: 10 }}>
-                <label htmlFor="threshold">Threshold %</label>
+                <label htmlFor="threshold">
+                  <Tooltip term="threshold">Threshold %</Tooltip>
+                </label>
                 <input
                   id="threshold"
                   type="number"

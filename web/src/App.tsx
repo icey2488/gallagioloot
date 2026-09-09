@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { NormalizedReport } from '@engine/types'
-import { createState, markSpecSpecific, reconcile, removeEntry, storageKey } from '@engine/core/knockout'
+import type { LootTable, LootTableItem, NormalizedReport } from '@engine/types'
+import { addEntry, createState, markSpecSpecific, reconcile, removeEntry, storageKey } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
 import { recommend } from '@engine/core/rank'
 import { compareVault } from '@engine/core/vault'
+import { getSpecById } from '@engine/lookup/specs'
 import type { KnockoutState, Settings, VaultItemInput } from '@engine/core/types'
 import { detectSource, type ReportSource } from './lib/urlDetect'
-import { fetchReport, ProxyRequestError } from './lib/proxyClient'
+import { fetchLootTable, fetchReport, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData } from './lib/cardData'
 import {
   LocalStorageAdapter,
@@ -22,10 +23,18 @@ import { PasteScreen, type BossOption } from './components/PasteScreen'
 import { DeployabilityScreen } from './components/DeployabilityScreen'
 import { RollScreen } from './components/RollScreen'
 import { ReconcileScreen } from './components/ReconcileScreen'
+import { LootTableScreen } from './components/LootTableScreen'
+import { LootSpecPicker } from './components/LootSpecPicker'
 import { CharacterSwitcher } from './components/CharacterSwitcher'
 import { Footer } from './components/Footer'
 
 const storageAdapter = new LocalStorageAdapter()
+
+/** "raid-vault-heroic" -> "Heroic" */
+function formatDifficulty(difficulty: string): string {
+  const last = difficulty.split('-').pop() ?? difficulty
+  return last.charAt(0).toUpperCase() + last.slice(1)
+}
 
 export default function App() {
   const { screen, go, replace } = useScreenHistory()
@@ -47,6 +56,12 @@ export default function App() {
   const [voidcoreCount, setVoidcoreCount] = useState(0)
   const [knockoutState, setKnockoutState] = useState<KnockoutState | null>(null)
   const [characterKeys, setCharacterKeys] = useState<string[]>([])
+
+  const [lootSpecId, setLootSpecId] = useState<number | null>(null)
+  const [lootTable, setLootTable] = useState<LootTable | null>(null)
+  const [lootTableStatus, setLootTableStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [lootTableError, setLootTableError] = useState<string | null>(null)
+  const [focusBossId, setFocusBossId] = useState<number | null>(null)
 
   const detectedSource: ReportSource | null = useMemo(() => detectSource(reportUrl), [reportUrl])
 
@@ -70,11 +85,15 @@ export default function App() {
       rollsAvailable,
       includeOffSpec: false,
       expectedKills: bossList.length ? [...expectedKillIds] : undefined,
+      lootSpecId: lootSpecId ?? undefined,
     }),
-    [thresholdPct, rollsAvailable, expectedKillIds, bossList]
+    [thresholdPct, rollsAvailable, expectedKillIds, bossList, lootSpecId]
   )
 
-  const bossEvals = useMemo(() => (report && knockoutState ? buildBossPools(report, knockoutState, settings) : []), [report, knockoutState, settings])
+  const bossEvals = useMemo(
+    () => (report && knockoutState ? buildBossPools(report, knockoutState, settings, lootTable?.encounters) : []),
+    [report, knockoutState, settings, lootTable]
+  )
 
   const recommendation = useMemo(() => (report && bossEvals.length ? recommend(bossEvals, settings, report) : null), [report, bossEvals, settings])
 
@@ -97,6 +116,33 @@ export default function App() {
   useEffect(() => {
     storageAdapter.list().then(setCharacterKeys)
   }, [knockoutState])
+
+  // Refetches the full per-boss loot table whenever the instance or the active loot
+  // spec changes. `cancelled` guards against a stale response landing after a newer
+  // request started (e.g. the user flips the loot spec picker twice quickly).
+  useEffect(() => {
+    if (!report?.instanceId || lootSpecId == null) {
+      setLootTable(null)
+      return
+    }
+    let cancelled = false
+    setLootTableStatus('loading')
+    setLootTableError(null)
+    fetchLootTable(report.instanceId, lootSpecId)
+      .then((table) => {
+        if (cancelled) return
+        setLootTable(table)
+        setLootTableStatus('idle')
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setLootTableError(e instanceof ProxyRequestError ? e.message : (e as Error).message)
+        setLootTableStatus('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [report?.instanceId, lootSpecId])
 
   // A reload (or a history entry restored from a previous session) can put us on
   // deployability/roll/reconcile with no report in memory -- the report itself
@@ -139,6 +185,7 @@ export default function App() {
 
       setReport(rpt)
       setKnockoutState(stored ?? createState(rpt.character, rpt.difficulty, rpt.realm, rpt.region))
+      setLootSpecId(rpt.lootSpecId ?? null)
 
       const storedSettings = loadSettings(key)
       setThresholdPct(storedSettings.thresholdPct)
@@ -195,8 +242,8 @@ export default function App() {
       go('deployability')
       return
     }
-    const { state } = reconcile(knockoutState, report, { encounterId, receivedItemId, receivedAt: new Date().toISOString() }, settings)
-    const finalState = specSpecific ? markSpecSpecific(state, receivedItemId, report.spec) : state
+    const { state } = reconcile(knockoutState, report, { encounterId, receivedItemId, receivedAt: new Date().toISOString() }, settings, lootTable?.encounters)
+    const finalState = specSpecific ? markSpecSpecific(state, receivedItemId, report.spec, lootSpecId ?? undefined) : state
     setKnockoutState(finalState)
     go('deployability')
   }
@@ -210,18 +257,64 @@ export default function App() {
     setKnockoutState(state)
   }
 
+  function handleToggleKnockout(item: LootTableItem, encounterId: number, _encounterName: string, checked: boolean) {
+    if (!knockoutState) return
+    if (checked) {
+      setKnockoutState(
+        addEntry(knockoutState, {
+          itemId: item.itemId,
+          itemName: item.name,
+          encounterId,
+          receivedAt: new Date().toISOString(),
+          lootSpecId: lootSpecId ?? undefined,
+          source: 'manual',
+        })
+      )
+    } else {
+      setKnockoutState(removeEntry(knockoutState, item.itemId))
+    }
+  }
+
+  function handleSelectBoss(encounterId: number) {
+    setFocusBossId(encounterId)
+    go('lootTable')
+  }
+
+  const lootSpecName = lootSpecId != null ? getSpecById(lootSpecId)?.specName : undefined
+
   return (
     <div className="app-shell">
       <header className="app-header">
         <span className="app-header__brand">GallagioLoot</span>
-        <CharacterSwitcher
-          keys={characterKeys}
-          currentKey={currentKey}
-          onSwitch={(key) => void switchCharacter(key)}
-          voidcoreCount={voidcoreCount}
-          onVoidcoreChange={setVoidcoreCount}
-        />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <LootSpecPicker lootSpecId={lootSpecId} onChange={setLootSpecId} />
+          {report && (
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => {
+                setFocusBossId(null)
+                go('lootTable')
+              }}
+            >
+              Loot table
+            </button>
+          )}
+          <CharacterSwitcher
+            keys={characterKeys}
+            currentKey={currentKey}
+            onSwitch={(key) => void switchCharacter(key)}
+            voidcoreCount={voidcoreCount}
+            onVoidcoreChange={setVoidcoreCount}
+          />
+        </div>
       </header>
+
+      {report && (
+        <div className="app-header__meta" style={{ padding: '6px 20px' }}>
+          {report.character} · {lootSpecName ?? 'unknown'} loot spec · {formatDifficulty(report.difficulty)}
+        </div>
+      )}
 
       <main className="app-main">
         {screen === 'paste' && (
@@ -251,7 +344,9 @@ export default function App() {
           />
         )}
 
-        {screen === 'deployability' && <DeployabilityScreen bossEvals={bossEvals} thresholdPct={thresholdPct} onViewRecommendation={() => go('roll')} />}
+        {screen === 'deployability' && (
+          <DeployabilityScreen bossEvals={bossEvals} thresholdPct={thresholdPct} onViewRecommendation={() => go('roll')} onSelectBoss={handleSelectBoss} />
+        )}
 
         {screen === 'roll' && <RollScreen card={cardData} onMarkRolled={() => go('reconcile')} onBackToTable={() => go('deployability')} />}
 
@@ -264,6 +359,17 @@ export default function App() {
             onReconcile={handleReconcileOutcome}
             onRemoveEntry={handleRemoveEntry}
             onImportState={handleImportState}
+          />
+        )}
+
+        {screen === 'lootTable' && (
+          <LootTableScreen
+            lootTable={lootTable}
+            lootTableStatus={lootTableStatus}
+            lootTableError={lootTableError}
+            bossEvals={bossEvals}
+            focusBossId={focusBossId}
+            onToggleKnockout={handleToggleKnockout}
           />
         )}
       </main>

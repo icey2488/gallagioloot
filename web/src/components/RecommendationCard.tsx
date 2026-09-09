@@ -1,4 +1,5 @@
 import type { CardData } from '../lib/cardData'
+import { Tooltip } from './Tooltip'
 
 export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; onPrimaryAction?: () => void }) {
   const actionLabel = card.verdict === 'roll' ? 'Mark as rolled' : card.verdict === 'vault' ? 'Take vault item' : 'Take the tokens'
@@ -28,7 +29,11 @@ export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; 
         </div>
       )}
 
-      {card.tossUp && card.tossUpNote && <div className="rec-card__note">{card.tossUpNote}</div>}
+      {card.tossUp && card.tossUpNote && (
+        <div className="rec-card__note">
+          <Tooltip term="tossUp">Toss-up</Tooltip>: {card.tossUpNote}
+        </div>
+      )}
 
       {card.message && <div className="rec-card__note">{card.message}</div>}
 

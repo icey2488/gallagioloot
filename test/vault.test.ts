@@ -14,6 +14,7 @@ function makeEntry(key: string, value: number, overrides: Partial<PoolEntry> = {
     rawDelta: value,
     pct: (value / BASELINE) * 100,
     kind: 'item',
+    specSpecific: false,
     knockedOut: false,
     ...overrides,
   }

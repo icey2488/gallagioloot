@@ -40,13 +40,32 @@ export type NormalizedReport = {
   instanceName?: string
   items: NormalizedItem[]
   warnings: string[]
+  /**
+   * The WoW spec id the game uses to decide what this character can receive.
+   * Raidbots: `rawFormData.droptimizer.lootSpecId` directly. QE Live: derived from
+   * the report's `spec` string via `src/lookup/specs.ts` (QE Live carries no numeric
+   * spec id of its own). Undefined only if neither source could resolve it.
+   */
+  lootSpecId?: number
 }
 
 /** Encounter-items.json entry (Raidbots static data). Trimmed to the fields we use. */
 export type EncounterItemEntry = {
   id: number
   name: string
+  icon?: string
   inventoryType?: number
+  itemClass?: number
+  itemSubClass?: number
+  itemSetId?: number
+  uniqueEquipped?: boolean
+  onUseTrinket?: boolean
+  /** WoW spec ids that can receive/use this item, when the item is spec-restricted (trinkets, cantrip weapons, Maze-roa). */
+  specs?: number[]
+  /** WoW class ids that can use this item, when class-restricted (tokens). */
+  allowableClasses?: number[]
+  /** Per-class/per-slot item ids this token resolves to (tier tokens, class-neutral curios). */
+  contains?: number[]
   sources: Array<{ instanceId: number; encounterId: number; veryRare?: boolean }>
 }
 
@@ -56,6 +75,14 @@ export type InstanceEntry = {
   name: string
   type?: string
   encounters: Array<{ id: number; name: string; trash?: boolean }>
+}
+
+/** weapon-specs.json entry (Raidbots static data): which specs can use/receive a given (itemClass, itemSubClass) weapon type. */
+export type WeaponSpecEntry = {
+  itemClass: number
+  itemSubClass: number
+  specsCanDrop: number[]
+  specsCanUse: number[]
 }
 
 export type EncounterItemsLookup = {
@@ -69,4 +96,41 @@ export type EncounterItemsLookup = {
   instanceNames: Map<number, string>
   /** instanceId -> instance type, e.g. "raid" | "dungeon" */
   instanceTypes: Map<number, string>
+  /** itemId -> the full encounter-items.json entry, for the loot-table endpoint (needs specs/allowableClasses/contains/etc). */
+  rawItems: Map<number, EncounterItemEntry>
+  /** instanceId -> ordered encounter list (including trash), for the loot-table endpoint. */
+  encountersByInstance: Map<number, Array<{ id: number; name: string; trash?: boolean }>>
+  /** "{itemClass}:{itemSubClass}" -> {specsCanDrop, specsCanUse}, from weapon-specs.json. */
+  weaponSpecs: Map<string, { specsCanDrop: number[]; specsCanUse: number[] }>
+}
+
+export type LootTableItem = {
+  itemId: number
+  name: string
+  icon?: string
+  slot?: string
+  itemClass?: number
+  itemSubClass?: number
+  /** True when the item carries a `specs` restriction (trinkets, cantrip weapons) -- see LootTableItemRow.specSpecific. */
+  specSpecific: boolean
+  uniqueEquipped: boolean
+  onUseTrinket: boolean
+  isTier: boolean
+  viaCurio: boolean
+  tierSlot?: string
+}
+
+export type LootTableEncounter = {
+  encounterId: number
+  encounterName: string
+  items: LootTableItem[]
+}
+
+export type LootTable = {
+  instanceId: number
+  instanceName?: string
+  lootSpecId: number
+  /** Raidbots static-data hash this table was built from, so the UI can show data freshness. */
+  sourceHash: string
+  encounters: LootTableEncounter[]
 }

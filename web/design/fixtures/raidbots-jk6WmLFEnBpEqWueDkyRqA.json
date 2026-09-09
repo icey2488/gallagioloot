@@ -22,7 +22,8 @@
       "ilvl": 334,
       "delta": 3134.8969045445265,
       "pct": 1.9447950322949177,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 82.03216575122678
     },
     {
       "itemId": 268233,
@@ -34,7 +35,8 @@
       "ilvl": 334,
       "delta": 1419.9285571810906,
       "pct": 0.880880644022548,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 80.99316904370835
     },
     {
       "itemId": 268254,
@@ -46,7 +48,8 @@
       "ilvl": 334,
       "delta": 2078.582517497096,
       "pct": 1.2894895996047897,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.40883430361501
     },
     {
       "itemId": 268216,
@@ -58,7 +61,8 @@
       "ilvl": 334,
       "delta": 1478.1839635264478,
       "pct": 0.9170205326104418,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.19504979028873
     },
     {
       "itemId": 271481,
@@ -70,7 +74,8 @@
       "ilvl": 334,
       "delta": 3434.145428956952,
       "pct": 2.1304397477097057,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 82.19564692306838
     },
     {
       "itemId": 271482,
@@ -82,7 +87,8 @@
       "ilvl": 334,
       "delta": 770.3081223699555,
       "pct": 0.4778758138903374,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 80.80725499981878
     },
     {
       "itemId": 268230,
@@ -94,7 +100,8 @@
       "ilvl": 334,
       "delta": -11545.247319682414,
       "pct": -7.16232154281859,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 878.1194976161099
     },
     {
       "itemId": 271483,
@@ -107,7 +114,8 @@
       "delta": 3098.726054498402,
       "pct": 1.922355733132763,
       "catalystSourceId": 268230,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.96995224631749
     },
     {
       "itemId": 271484,
@@ -119,7 +127,8 @@
       "ilvl": 334,
       "delta": 3023.703292838938,
       "pct": 1.8758138854653452,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.94395204987471
     },
     {
       "itemId": 271483,
@@ -131,7 +140,8 @@
       "ilvl": 334,
       "delta": 2913.2571094782907,
       "pct": 1.8072964205291486,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.83943443520377
     },
     {
       "itemId": 271482,
@@ -144,7 +154,8 @@
       "delta": 1448.5706153748906,
       "pct": 0.8986493088897257,
       "catalystSourceId": 268237,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.06933716546173
     },
     {
       "itemId": 268265,
@@ -156,7 +167,8 @@
       "ilvl": 334,
       "delta": 3223.2947475651745,
       "pct": 1.9996343750889096,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.96008514771188
     },
     {
       "itemId": 271483,
@@ -168,7 +180,8 @@
       "ilvl": 334,
       "delta": 2997.2309470113833,
       "pct": 1.8593912443941225,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.92211323932636
     },
     {
       "itemId": 271481,
@@ -180,7 +193,8 @@
       "ilvl": 334,
       "delta": 3340.4737966869143,
       "pct": 2.0723287058946984,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 82.00817139770137
     },
     {
       "itemId": 268249,
@@ -192,7 +206,8 @@
       "ilvl": 334,
       "delta": 2034.9411609903327,
       "pct": 1.2624158246382422,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.42711669629766
     },
     {
       "itemId": 268223,
@@ -204,7 +219,8 @@
       "ilvl": 334,
       "delta": -13044.77445336961,
       "pct": -8.092582731363162,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 977.6609565993042
     },
     {
       "itemId": 268250,
@@ -216,7 +232,8 @@
       "ilvl": 334,
       "delta": 689.8513977570401,
       "pct": 0.42796290029018436,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 80.81736134235383
     },
     {
       "itemId": 271876,
@@ -228,7 +245,8 @@
       "ilvl": 334,
       "delta": -10088.65516233584,
       "pct": -6.258695912393293,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 1033.7853519585917
     },
     {
       "itemId": 271482,
@@ -240,7 +258,8 @@
       "ilvl": 334,
       "delta": 662.4697734701913,
       "pct": 0.4109761704197275,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 80.7255744975062
     },
     {
       "itemId": 268251,
@@ -252,7 +271,8 @@
       "ilvl": 334,
       "delta": 2422.818514108687,
       "pct": 1.5030431793658376,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.66191291257672
     },
     {
       "itemId": 268258,
@@ -264,7 +284,8 @@
       "ilvl": 334,
       "delta": 1329.689743533323,
       "pct": 0.824899218844592,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.03725749640917
     },
     {
       "itemId": 268231,
@@ -276,7 +297,8 @@
       "ilvl": 334,
       "delta": 3333.169168911176,
       "pct": 2.06779713619924,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 82.10073482675874
     },
     {
       "itemId": 268237,
@@ -288,7 +310,8 @@
       "ilvl": 334,
       "delta": -12294.01615217881,
       "pct": -7.62683503404864,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 1080.8634476058771
     },
     {
       "itemId": 271481,
@@ -301,7 +324,8 @@
       "delta": 3387.4576517880196,
       "pct": 2.1014760656902416,
       "catalystSourceId": 268231,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 82.11220494230845
     },
     {
       "itemId": 271486,
@@ -313,7 +337,8 @@
       "ilvl": 334,
       "delta": 1657.1110465968377,
       "pct": 1.0280214723204106,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.23966626234596
     },
     {
       "itemId": 271486,
@@ -326,7 +351,8 @@
       "delta": 4366.995355541585,
       "pct": 2.709151570885933,
       "catalystSourceId": 271876,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 82.67279961694109
     },
     {
       "itemId": 271486,
@@ -339,7 +365,8 @@
       "delta": 1716.9531680670334,
       "pct": 1.0651457108842095,
       "catalystSourceId": 268223,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.28709856405891
     },
     {
       "itemId": 271486,
@@ -351,7 +378,8 @@
       "ilvl": 334,
       "delta": 1674.84964319953,
       "pct": 1.039025960060594,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.34691221184035
     },
     {
       "itemId": 268205,
@@ -363,7 +391,8 @@
       "ilvl": 334,
       "delta": 2559.243523343117,
       "pct": 1.5876771205507254,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.57164105469649
     },
     {
       "itemId": 268253,
@@ -375,7 +404,8 @@
       "ilvl": 334,
       "delta": 1744.4801496275468,
       "pct": 1.0822226160019994,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.23256599461116
     },
     {
       "itemId": 268196,
@@ -387,7 +417,8 @@
       "ilvl": 334,
       "delta": -1376.4432516804955,
       "pct": -0.8539036783708909,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 308.3096953474797
     },
     {
       "itemId": 268203,
@@ -399,7 +430,8 @@
       "ilvl": 334,
       "delta": 3623.607169947005,
       "pct": 2.247976069925998,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 82.1172727150459
     },
     {
       "itemId": 270170,
@@ -411,7 +443,8 @@
       "ilvl": 334,
       "delta": 10161.817153281765,
       "pct": 6.304083394303202,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 85.47460878359726
     },
     {
       "itemId": 270170,
@@ -423,7 +456,8 @@
       "ilvl": 334,
       "delta": 10047.15214982495,
       "pct": 6.232948701236383,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 85.30925426822813
     },
     {
       "itemId": 268249,
@@ -435,7 +469,8 @@
       "ilvl": 334,
       "delta": 2508.4630358167924,
       "pct": 1.5561744450606494,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.63262794625135
     },
     {
       "itemId": 271092,
@@ -447,7 +482,8 @@
       "ilvl": 334,
       "delta": 5182.497822601552,
       "pct": 3.2150645865463003,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 83.00781137348365
     },
     {
       "itemId": 268252,
@@ -459,7 +495,8 @@
       "ilvl": 334,
       "delta": 899.842987737793,
       "pct": 0.5582353186355065,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 80.8342722575525
     },
     {
       "itemId": 268248,
@@ -471,7 +508,8 @@
       "ilvl": 334,
       "delta": 1505.1822353197786,
       "pct": 0.9337694422119354,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.15015872575661
     },
     {
       "itemId": 268210,
@@ -483,7 +521,8 @@
       "ilvl": 334,
       "delta": 3643.6436182558828,
       "pct": 2.2604060752251995,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 82.17674130162398
     },
     {
       "itemId": 268252,
@@ -495,7 +534,8 @@
       "ilvl": 334,
       "delta": 1926.1617530082003,
       "pct": 1.1949323766329976,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.41719366730582
     },
     {
       "itemId": 270169,
@@ -507,7 +547,8 @@
       "ilvl": 334,
       "delta": -3046.142553384154,
       "pct": -1.8897345226555011,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 303.63262017359585
     },
     {
       "itemId": 270170,
@@ -519,7 +560,8 @@
       "ilvl": 334,
       "delta": -486.9969281555095,
       "pct": -0.30211813512805985,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 80.21031083594578
     },
     {
       "itemId": 270161,
@@ -531,7 +573,8 @@
       "ilvl": 334,
       "delta": -2292.697299613821,
       "pct": -1.4223199213923625,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 310.5078654222722
     },
     {
       "itemId": 270161,
@@ -543,7 +586,8 @@
       "ilvl": 334,
       "delta": 8758.09517749428,
       "pct": 5.4332568222149105,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 84.80651527639186
     },
     {
       "itemId": 270164,
@@ -555,7 +599,8 @@
       "ilvl": 334,
       "delta": -1053.7944377765234,
       "pct": -0.6537421325329232,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 308.34500672212494
     },
     {
       "itemId": 270169,
@@ -567,7 +612,8 @@
       "ilvl": 334,
       "delta": 2289.677832885558,
       "pct": 1.4204467357431652,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.65307744987264
     },
     {
       "itemId": 270168,
@@ -579,7 +625,8 @@
       "ilvl": 334,
       "delta": 10039.318725198478,
       "pct": 6.228089082000634,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 85.4450796017141
     },
     {
       "itemId": 270164,
@@ -591,7 +638,8 @@
       "ilvl": 334,
       "delta": 10118.035828949389,
       "pct": 6.276922787539557,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 85.5200590991414
     },
     {
       "itemId": 270169,
@@ -603,7 +651,8 @@
       "ilvl": 334,
       "delta": 2278.4916745442897,
       "pct": 1.4135071821198784,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 81.58635604705894
     },
     {
       "itemId": 270168,
@@ -615,7 +664,8 @@
       "ilvl": 334,
       "delta": 383.8679340612143,
       "pct": 0.23814003265540534,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 80.64489351705203
     },
     {
       "itemId": 270168,
@@ -627,10 +677,12 @@
       "ilvl": 334,
       "delta": 10094.940075681312,
       "pct": 6.2625948821600375,
-      "offSpec": false
+      "offSpec": false,
+      "meanError": 85.56076296505363
     }
   ],
   "warnings": [
     "Trash Drop entries removed (4)"
-  ]
+  ],
+  "lootSpecId": 262
 }

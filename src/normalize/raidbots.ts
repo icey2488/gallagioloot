@@ -52,6 +52,7 @@ export type RaidbotsRawReport = {
         droptimizer: {
           instance: number
           difficulty: string
+          lootSpecId?: number
         }
       }
       itemLibrary: RaidbotsItemLibraryEntry[]
@@ -222,5 +223,6 @@ export function normalizeRaidbotsReport(
     instanceName,
     items,
     warnings,
+    lootSpecId: raw.simbot.meta.rawFormData.droptimizer.lootSpecId,
   }
 }

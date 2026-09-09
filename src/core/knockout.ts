@@ -1,4 +1,4 @@
-import type { NormalizedReport } from '../types'
+import type { LootTableEncounter, NormalizedReport } from '../types'
 import { buildBossPools } from './pool'
 import { recommend } from './rank'
 import { DEFAULT_SETTINGS } from './types'
@@ -17,10 +17,10 @@ export function removeEntry(state: KnockoutState, itemId: number): KnockoutState
   return { ...state, entries: state.entries.filter((e) => e.itemId !== itemId) }
 }
 
-export function markSpecSpecific(state: KnockoutState, itemId: number, spec: string): KnockoutState {
+export function markSpecSpecific(state: KnockoutState, itemId: number, spec: string, lootSpecId?: number): KnockoutState {
   return {
     ...state,
-    entries: state.entries.map((e) => (e.itemId === itemId ? { ...e, specSpecific: true, spec } : e)),
+    entries: state.entries.map((e) => (e.itemId === itemId ? { ...e, specSpecific: true, spec, lootSpecId: lootSpecId ?? e.lootSpecId } : e)),
   }
 }
 
@@ -44,6 +44,7 @@ export function deserialize(raw: string): KnockoutState {
           receivedAt: typeof e.receivedAt === 'string' ? e.receivedAt : '',
           spec: typeof e.spec === 'string' ? e.spec : undefined,
           specSpecific: typeof e.specSpecific === 'boolean' ? e.specSpecific : undefined,
+          lootSpecId: typeof e.lootSpecId === 'number' ? e.lootSpecId : undefined,
           source: e.source === 'manual' ? 'manual' : 'roll',
         }))
     : []
@@ -94,7 +95,8 @@ export function reconcile(
   state: KnockoutState,
   report: NormalizedReport,
   outcome: { encounterId: number; receivedItemId: number; receivedAt: string },
-  settings: Settings = DEFAULT_SETTINGS
+  settings: Settings = DEFAULT_SETTINGS,
+  lootTable?: LootTableEncounter[]
 ): { state: KnockoutState; bossEvals: BossEval[]; recommendation: Recommendation } {
   const item = report.items.find((i) => i.itemId === outcome.receivedItemId && i.encounterId === outcome.encounterId)
 
@@ -103,11 +105,12 @@ export function reconcile(
     itemName: item?.name ?? `Item ${outcome.receivedItemId}`,
     encounterId: outcome.encounterId,
     receivedAt: outcome.receivedAt,
+    lootSpecId: settings.lootSpecId,
     source: 'roll',
   }
 
   const nextState = addEntry(state, entry)
-  const bossEvals = buildBossPools(report, nextState, settings)
+  const bossEvals = buildBossPools(report, nextState, settings, lootTable)
   const recommendation = recommend(bossEvals, settings, report)
 
   return { state: nextState, bossEvals, recommendation }

@@ -361,6 +361,67 @@ tr.excluded {
   padding-left: 18px;
 }
 
+.tooltip-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+
+.tooltip-icon {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.tooltip-bubble {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  top: calc(100% + 6px);
+  width: max-content;
+  max-width: 260px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: normal;
+  text-decoration: none;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.app-header__meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.loot-table-boss summary {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 16px;
+  padding: 4px 0;
+}
+
+.loot-table-boss + .loot-table-boss {
+  margin-top: 12px;
+}
+
 .warning-banner {
   background: #3a2a12;
   /* #6b4e1e measured 1.80:1 against this background, under the 3:1 border floor. */
@@ -378,8 +439,9 @@ tr.excluded {
 <body>
 <div class="app-shell">
 <header class="app-header"><span class="app-header__brand">GallagioLoot</span><div style="display:flex;align-items:center;gap:12px"><label style="display:flex;align-items:center;gap:6px"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" style="width:48px" aria-label="Voidcore count" value="2"/></label></div></header>
+<div class="app-header__meta" style="padding:6px 20px">Iceshaman · Elemental loot spec · Heroic</div>
 <main class="app-main">
-<div><div class="panel" style="display:flex;justify-content:space-between;align-items:center"><h3>Deployability</h3><button type="button" class="btn">Roll this boss</button></div><div class="panel"><table><thead><tr><th>Boss</th><th>Remaining</th><th>EV %</th><th>Best case</th><th>Rolls to target</th><th>Deployable</th><th>Notes</th></tr></thead><tbody><tr><td>Ula&#x27;tek</td><td class="num">9 / 9</td><td class="num">2.27%</td><td>Font of Venomous Rage <span class="num">(6.26%)</span></td><td class="num">~5.0, up to 9</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Sszorak</td><td class="num">3 / 3</td><td class="num">0.85%</td><td>Apex Brute&#x27;s Claw Ring <span class="num">(1.19%)</span></td><td class="num">~2.0, up to 3</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Vashnik the Malignant</td><td class="num">5 / 5</td><td class="num">2.18%</td><td>Fang of Umbral Malignance <span class="num">(5.43%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Nek&#x27;zali the Soulcoiler</td><td class="num">5 / 5</td><td class="num">1.20%</td><td>Hexing Spiritrender <span class="num">(2.25%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>The Lost Explorers</td><td class="num">5 / 5</td><td class="num">2.30%</td><td>Gebbo&#x27;s Bottomless Bag <span class="num">(6.28%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Entombed Sentinels</td><td class="num">2 / 2</td><td class="num">1.15%</td><td>Hexing Grips of the Ophidian Oracle <span class="num">(1.88%)</span></td><td class="num">~1.5, up to 2</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>The Coiled Altar</td><td class="num">6 / 6</td><td class="num">1.26%</td><td>Hissing Mantle of the Ophidian Oracle <span class="num">(2.10%)</span></td><td class="num">~3.5, up to 6</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>The Twin Fangs</td><td class="num">5 / 5</td><td class="num">2.15%</td><td>Vexhul&#x27;s Everflowing Gland <span class="num">(6.30%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr></tbody></table><p class="note-line">Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div>
+<div><div class="panel" style="display:flex;justify-content:space-between;align-items:center"><h3>Deployability</h3><button type="button" class="btn">Roll this boss</button></div><div class="panel"><table><thead><tr><th>Boss</th><th>Remaining</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">EV %<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Best case</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Deployable<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Notes</th></tr></thead><tbody><tr><td>Ula&#x27;tek</td><td class="num">11 / 11</td><td class="num">1.86%</td><td>Font of Venomous Rage <span class="num">(6.26%)</span></td><td class="num">~6.0, up to 11</td><td><span class="badge badge-yes">Yes</span></td><td>Curio counts as one item; value assumes you pick your best missing tier slot; 2 items in the loot table but not in sim report (valued 0); 5 items in sim report but not in this boss&#x27;s loot table</td></tr><tr><td>Sszorak</td><td class="num">4 / 4</td><td class="num">0.64%</td><td>Apex Brute&#x27;s Claw Ring <span class="num">(1.19%)</span></td><td class="num">~2.5, up to 4</td><td><span class="badge badge-yes">Yes</span></td><td>1 item in the loot table but not in sim report (valued 0)</td></tr><tr><td>Vashnik the Malignant</td><td class="num">5 / 5</td><td class="num">2.18%</td><td>Fang of Umbral Malignance <span class="num">(5.43%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Nek&#x27;zali the Soulcoiler</td><td class="num">7 / 7</td><td class="num">0.86%</td><td>Hexing Spiritrender <span class="num">(2.25%)</span></td><td class="num">~4.0, up to 7</td><td><span class="badge badge-yes">Yes</span></td><td>2 items in the loot table but not in sim report (valued 0); 1 item in sim report but not in this boss&#x27;s loot table</td></tr><tr><td>The Lost Explorers</td><td class="num">5 / 5</td><td class="num">2.30%</td><td>Gebbo&#x27;s Bottomless Bag <span class="num">(6.28%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Entombed Sentinels</td><td class="num">4 / 4</td><td class="num">0.58%</td><td>Hexing Grips of the Ophidian Oracle <span class="num">(1.88%)</span></td><td class="num">~2.5, up to 4</td><td><span class="badge badge-yes">Yes</span></td><td>2 items in the loot table but not in sim report (valued 0)</td></tr><tr><td>The Coiled Altar</td><td class="num">7 / 7</td><td class="num">1.08%</td><td>Hissing Mantle of the Ophidian Oracle <span class="num">(2.10%)</span></td><td class="num">~4.0, up to 7</td><td><span class="badge badge-yes">Yes</span></td><td>1 item in the loot table but not in sim report (valued 0); 2 items in sim report but not in this boss&#x27;s loot table</td></tr><tr><td>The Twin Fangs</td><td class="num">6 / 6</td><td class="num">1.79%</td><td>Vexhul&#x27;s Everflowing Gland <span class="num">(6.30%)</span></td><td class="num">~3.5, up to 6</td><td><span class="badge badge-yes">Yes</span></td><td>1 item in the loot table but not in sim report (valued 0); 1 item in sim report but not in this boss&#x27;s loot table</td></tr></tbody></table><p class="note-line">Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div>
 </main>
 <footer class="app-footer" tabindex="0"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></footer>
 </div>

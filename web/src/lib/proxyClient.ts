@@ -1,4 +1,4 @@
-import type { NormalizedReport } from '@engine/types'
+import type { LootTable, NormalizedReport } from '@engine/types'
 import type { ReportSource } from './urlDetect'
 
 /** Falls back to a localhost `wrangler dev` default so the app works out of the box in local dev. */
@@ -27,4 +27,15 @@ export async function fetchReport(source: ReportSource, urlOrId: string, baseUrl
   }
 
   return (await res.json()) as NormalizedReport
+}
+
+export async function fetchLootTable(instanceId: number, lootSpecId: number, baseUrl = getProxyBaseUrl()): Promise<LootTable> {
+  const res = await fetch(`${baseUrl}/loot-table/${instanceId}?lootSpec=${lootSpecId}`)
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}) as { error?: string; detail?: string })
+    throw new ProxyRequestError(body.detail || body.error || `Loot table fetch failed: HTTP ${res.status}`, res.status)
+  }
+
+  return (await res.json()) as LootTable
 }

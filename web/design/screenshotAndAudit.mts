@@ -11,6 +11,7 @@ const PAGES: Array<{ name: string; screenshot?: string; fullPage?: boolean }> = 
   { name: 'deployability', screenshot: 'deployability.png', fullPage: true },
   { name: 'roll', screenshot: 'recommendation-card.png', fullPage: false },
   { name: 'reconcile', screenshot: 'reconcile.png', fullPage: true },
+  { name: 'loot-table', screenshot: 'loot-table.png', fullPage: true },
 ]
 
 async function main() {

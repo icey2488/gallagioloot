@@ -42,13 +42,66 @@ Returns the merged seed + learned tier-slot mapping for a raid instance, for deb
 }
 ```
 
+### `GET /loot-table/:instanceId?lootSpec=:specId`
+
+Returns every item a given loot spec (a WoW spec id, e.g. `262` for Elemental Shaman) can receive from an instance, grouped by boss in encounter order (trash excluded):
+
+```ts
+type LootTable = {
+  instanceId: number
+  instanceName?: string
+  lootSpecId: number
+  sourceHash: string          // the Raidbots static-data hash this table was built from -- for freshness display
+  encounters: Array<{
+    encounterId: number
+    encounterName: string
+    items: Array<{
+      itemId: number
+      name: string
+      icon?: string
+      slot?: string
+      itemClass?: number
+      itemSubClass?: number
+      specSpecific: boolean    // true when the item carries a `specs` restriction (trinkets, cantrip weapons)
+      uniqueEquipped: boolean
+      onUseTrinket: boolean
+      isTier: boolean          // a tier-slot token, resolved to this class's specific variant (see below)
+      viaCurio: boolean        // true for the curio boss's rows (e.g. Ula'tek) -- same tier items as isTier, exchangeable for any slot
+      tierSlot?: string
+    }>
+  }>
+}
+```
+
+Cached per `(hash, instanceId, lootSpecId)` for 24h via the Cache API.
+
+**Eligibility rules** (`src/lookup/lootEligibility.ts`), verified against live Raidbots static data 2026-09-08:
+
+1. `item.specs`, when present, is authoritative (trinkets, cantrip weapons, Maze-roa).
+2. `item.allowableClasses`, when present, is authoritative (tier tokens).
+3. Weapons (`itemClass 2`): looked up in `weapon-specs.json` by `itemSubClass`.
+4. Armor (`itemClass 4`): neck/ring/trinket/cloak inventory types (`2`, `11`, `12`, `16`) are always universal; `itemSubClass` `1`-`4` (cloth/leather/mail/plate) match the class's fixed armor type; anything else (misc off-hand implements, subclass `0`; shields, subclass `6`) falls back to `weapon-specs.json` if it has an entry for that `(itemClass, itemSubClass)` pair, else is treated as unrestricted.
+5. Anything else (curio tokens, relics/idols without `specs`/`allowableClasses`) is unrestricted.
+
+Steps 3 and the shield/off-hand half of step 4 are a judgment call beyond what the task's explicit armor-type table covers — `weapon-specs.json` isn't scoped to "weapons" only (it also carries an `itemClass 4` entry for shields and one for a caster-only off-hand implement), and it wasn't obvious whether that entry was meant to be read for armor at all. Applying it seemed clearly more correct than leaving shields/off-hands unrestricted (a Fury Warrior would otherwise see every shield drop), but this is **not verified against an authoritative source** the way the cloth/leather/mail/plate table is — flagged here as the one open uncertainty in the eligibility rules.
+
+**`weapon-specs.json`** (Raidbots static data, fetched alongside the other four files): an array of `{ itemClass, itemSubClass, specsCanDrop, specsCanUse }`. `specsCanUse` is what eligibility filtering reads; `specsCanDrop` is unused (a narrower Raidbots-internal set of specs the *droptimizer sim itself* would offer the item to, not the same thing as "can the spec use it").
+
+**Tier-token resolution for the loot table** (no item ids hardcoded, purely data-driven): the curio boss's own encounter-items.json entry carries a `contains` array listing every class's variant of every tier slot (e.g. 65 entries = 13 classes × 5 slots for The Venomous Abyss's "Slumbering Coil Curio"). `buildLootTable` finds that curio item by its `contains` field, filters `contains` down to the requesting class via each candidate's `allowableClasses`, and groups by slot via `inventoryType` — giving a `(slot -> item)` map for that class with zero hardcoded item ids. The slot's direct boss gets that one item (`isTier: true, viaCurio: false`); the curio boss gets all five (`isTier: true, viaCurio: true`).
+
 ### `GET /` or `GET /health`
 
-Health check.
+Health check. Also reports the current Raidbots static-data hash and how long ago it was discovered/cached:
+
+```ts
+{ service, version, status, endpoints, dataHash: string, dataHashDiscoveredAt: string /* ISO */, dataHashAgeSeconds: number }
+```
+
+If a cached hash's static-data files start 404ing (Raidbots rotated the hash since it was cached), `getEncounterItemsLookup` re-discovers a fresh hash from the homepage once and retries automatically — see `src/lookup/encounterItems.ts` and its regression test in `test/encounterItems.test.ts`.
 
 ### Caching
 
-Normalized reports are cached in the Cloudflare Cache API for ~10 minutes, keyed by `source + id`. The Raidbots static-data lookup (see below) is cached separately for 24 hours, keyed by the data hash — in Workers KV if an `ENCOUNTER_ITEMS_KV` binding is configured, otherwise via the Cache API so everything still works under `wrangler dev` with no KV setup.
+Normalized reports are cached in the Cloudflare Cache API for ~10 minutes, keyed by `source + id`. The Raidbots static-data lookup and the loot table (see below) are cached separately for 24 hours, keyed by the data hash — in Workers KV if an `ENCOUNTER_ITEMS_KV` binding is configured, otherwise via the Cache API so everything still works under `wrangler dev` with no KV setup.
 
 ---
 
@@ -170,6 +223,14 @@ Verified 2026-09-08 against a live Raidbots report (`jk6WmLFEnBpEqWueDkyRqA`) an
 
 ---
 
+## Loot specs (`src/lookup/specs.ts`)
+
+A hand-maintained, static table of all 40 current WoW specs (`{ specId, specName, classId, className, role }`), verified 2026-09-08 against Raidbots' own static `talents.json` (which lists exactly 40 spec entries with these fields — a cleaner source than hand-transcribing class/spec ids). Also carries the fixed per-class armor type (cloth/leather/mail/plate) used by the loot-table eligibility rules above.
+
+**Uncertain:** Demon Hunter's third spec, **"Devourer"** (spec id `1480`), is new and not documented in-game anywhere available to this job — Demon Hunter's two known specs are Havoc (dps) and Vengeance (tank). It's classified `role: 'dps'` here as the best inference (a "devouring" theme reads as damage, and `1480` shows up in `weapon-specs.json`'s melee-weapon subclass lists alongside other physical dps specs) — not a confirmed value.
+
+---
+
 ## Decision engine
 
 `src/core/` decides where to spend a Nebulous Voidcore bonus roll, given a `NormalizedReport` and a per-character knockout state. It's pure TypeScript with zero Worker/runtime dependencies (no `fetch`, no Cache API/KV, no `Date.now()` except via caller-supplied timestamps) so a future frontend can import it directly instead of going through this Worker.
@@ -183,6 +244,8 @@ A Voidcore is spent on a specific boss **on its first kill per difficulty per we
 ### The model
 
 - **Pool** (`buildBossPools` in `src/core/pool.ts`): groups a report's items by boss (encounter), excluding trash (negative encounter ids) and off-spec items (unless `includeOffSpec`). Duplicate rows for the same item within a boss (catalyst variants, multiple slots) collapse into one `PoolEntry`, taking the max delta across them. A downgrade (`delta < 0`) floors to `value: 0` — the player just won't equip it, so it's not a loss, only a wasted roll. Applying a knockout state whose `difficulty` doesn't match the report's difficulty is refused (with a note on every affected boss) rather than silently misapplied.
+  - **Full-table pool denominator**: `buildBossPools` takes an optional 4th argument, the per-instance `LootTable` (see `/loot-table` above) at the report's loot spec. When supplied, each boss's pool is built from the *full* loot table, not just what the report happened to sim — items in the loot table absent from the report are added at `value: 0` (`PoolEntry.notInSimReport: true`, boss note "not in sim report") so the denominator a Voidcore actually draws from is correct; items the report has that the loot table doesn't (an off-spec/off-instance leak, or a stale loot table) are kept with a boss-level warning note instead of dropped. Omitting the loot table preserves the exact old report-only behavior — every existing caller/test is unaffected.
+  - **`PoolEntry.specSpecific`**: derived from the loot table's `specSpecific` flag on a match (`false` when no loot table was supplied). Combined with `Settings.lootSpecId` and `KnockoutEntry.lootSpecId`, this makes the "spec-specific knockouts only apply to their own loot spec" rule automatic instead of requiring the manual `specSpecific` toggle on every entry — the manual toggle still exists as an override (e.g. for a spec restriction the loot table hasn't caught up to yet), and every new `KnockoutEntry` records the `lootSpecId` it was received under.
 - **Curio**: a class-neutral token (e.g. Ula'tek's "Slumbering Coil Curio") is exchangeable for *any* missing tier slot, so all `viaCurio` rows for that boss collapse into a single `PoolEntry` of kind `'curio'` — one item in the pool, knocked out as one item, valued at the best of the slots it could fill.
 - **EV**: `ev` is the uniform-draw mean over the boss's remaining (non-knocked-out) pool; `evPct = ev / baseline * 100`. A boss is `deployable` when it has a remaining pool, `evPct >= thresholdPct` (default `0.2`, i.e. 0.2% of baseline — low by design, since with an empty knockout state almost every boss clears it; the threshold mostly bites once a character has knocked out most of a boss's upgrades), and — if `settings.expectedKills` is set — its encounter id is in that list.
 - **Expected kills** (`settings.expectedKills?: number[]`): optional list of encounter ids the player expects to kill this week. Undefined (the default) means every boss in the report is in play. When set, a boss whose encounter id isn't listed is still evaluated — it still shows up in the per-boss table with its real `ev`/`evPct` — but is forced `deployable: false` with a note (`"not in expected kills this week"`) and excluded from allocation. This is the intended way to scope a report down to one raid instance's bosses, or to a subset of a week's planned clears; see the "Ninth boss" note below for why a QE Live report can otherwise span more bosses than one instance actually has.

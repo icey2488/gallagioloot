@@ -361,6 +361,67 @@ tr.excluded {
   padding-left: 18px;
 }
 
+.tooltip-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--border-strong);
+  text-underline-offset: 2px;
+}
+
+.tooltip-icon {
+  font-size: 0.85em;
+  color: var(--text-secondary);
+}
+
+.tooltip-bubble {
+  position: absolute;
+  z-index: 10;
+  left: 0;
+  top: calc(100% + 6px);
+  width: max-content;
+  max-width: 260px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-strong);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-weight: normal;
+  text-decoration: none;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.app-header__meta {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.loot-table-boss summary {
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: 16px;
+  padding: 4px 0;
+}
+
+.loot-table-boss + .loot-table-boss {
+  margin-top: 12px;
+}
+
 .warning-banner {
   background: #3a2a12;
   /* #6b4e1e measured 1.80:1 against this background, under the 3:1 border floor. */
@@ -378,8 +439,9 @@ tr.excluded {
 <body>
 <div class="app-shell">
 <header class="app-header"><span class="app-header__brand">GallagioLoot</span><div style="display:flex;align-items:center;gap:12px"><label style="display:flex;align-items:center;gap:6px"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" style="width:48px" aria-label="Voidcore count" value="2"/></label></div></header>
+<div class="app-header__meta" style="padding:6px 20px">Iceshaman · Elemental loot spec · Heroic</div>
 <main class="app-main">
-<div><div class="panel"><p class="field-hint" style="margin-top:0">Take the Voidcore from the vault, then run this.</p><div class="field"><label for="report-url">Report URL</label><input id="report-url" type="text" placeholder="https://www.raidbots.com/reports/... or https://questionablyepic.com/..." value="https://www.raidbots.com/reports/jk6WmLFEnBpEqWueDkyRqA"/><div class="field-hint" style="margin-bottom:0">Detected: Raidbots</div></div><button type="button" class="btn">Fetch report</button></div><div class="panel"><h3 style="margin-bottom:10px">Report</h3><p style="margin:4px 0"><strong>Iceshaman</strong></p><p style="margin:4px 0;color:var(--text-secondary)">shaman — elemental (dps)</p><p style="margin:4px 0;color:var(--text-secondary)">The Venomous Abyss — raid-vault-heroic</p></div><div class="panel"><div class="field"><label for="rolls-available">Rolls available</label><select id="rolls-available"><option value="1" selected="">1</option><option value="2">2</option></select></div><div class="field"><label>Expected kills this week</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Ula&#x27;tek</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Sszorak</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Vashnik the Malignant</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Nek&#x27;zali the Soulcoiler</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>The Lost Explorers</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Entombed Sentinels</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>The Coiled Altar</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>The Twin Fangs</label></div><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Great Vault item (optional)</summary><div class="field" style="margin-top:10px"><label for="vault-item-name">Vault item name</label><input id="vault-item-name" type="text" value=""/></div><div class="field"><label for="vault-item-gain">Best vault item gain %</label><input id="vault-item-gain" type="number" step="0.01" value=""/></div><div class="field"><label for="vault-boss">Boss (optional)</label><select id="vault-boss"><option value="" selected="">Not specified</option><option value="2895">Ula&#x27;tek</option><option value="2871">Sszorak</option><option value="2882">Vashnik the Malignant</option><option value="2888">Nek&#x27;zali the Soulcoiler</option><option value="2894">The Lost Explorers</option><option value="2874">Entombed Sentinels</option><option value="2883">The Coiled Altar</option><option value="2887">The Twin Fangs</option></select></div></details><details style="margin-top:14px"><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Advanced</summary><div class="field" style="margin-top:10px"><label for="threshold">Threshold %</label><input id="threshold" type="number" step="0.01" value="0.2"/></div></details><button type="button" class="btn" style="margin-top:16px">View recommendations</button></div></div>
+<div><div class="panel"><p class="field-hint" style="margin-top:0">Take the Voidcore from the vault, then run this.</p><div class="field"><label for="report-url">Report URL</label><input id="report-url" type="text" placeholder="https://www.raidbots.com/reports/... or https://questionablyepic.com/..." value="https://www.raidbots.com/reports/jk6WmLFEnBpEqWueDkyRqA"/><div class="field-hint" style="margin-bottom:0">Detected: Raidbots</div></div><button type="button" class="btn">Fetch report</button></div><div class="panel"><h3 style="margin-bottom:10px">Report</h3><p style="margin:4px 0"><strong>Iceshaman</strong></p><p style="margin:4px 0;color:var(--text-secondary)">shaman — elemental (dps)</p><p style="margin:4px 0;color:var(--text-secondary)">The Venomous Abyss — raid-vault-heroic</p></div><div class="panel"><div class="field"><label for="rolls-available">Rolls available</label><select id="rolls-available"><option value="1" selected="">1</option><option value="2">2</option></select></div><div class="field"><label>Expected kills this week</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Ula&#x27;tek</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Sszorak</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Vashnik the Malignant</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Nek&#x27;zali the Soulcoiler</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>The Lost Explorers</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>Entombed Sentinels</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>The Coiled Altar</label><label style="display:flex;gap:8px;align-items:center;font-size:14px;margin-top:4px"><input type="checkbox" checked=""/>The Twin Fangs</label></div><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Great Vault item (optional)</summary><div class="field" style="margin-top:10px"><label for="vault-item-name">Vault item name</label><input id="vault-item-name" type="text" value=""/></div><div class="field"><label for="vault-item-gain">Best vault item gain %</label><input id="vault-item-gain" type="number" step="0.01" value=""/></div><div class="field"><label for="vault-boss">Boss (optional)</label><select id="vault-boss"><option value="" selected="">Not specified</option><option value="2895">Ula&#x27;tek</option><option value="2871">Sszorak</option><option value="2882">Vashnik the Malignant</option><option value="2888">Nek&#x27;zali the Soulcoiler</option><option value="2894">The Lost Explorers</option><option value="2874">Entombed Sentinels</option><option value="2883">The Coiled Altar</option><option value="2887">The Twin Fangs</option></select></div></details><details style="margin-top:14px"><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Advanced</summary><div class="field" style="margin-top:10px"><label for="threshold"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Threshold %<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></label><input id="threshold" type="number" step="0.01" value="0.2"/></div></details><button type="button" class="btn" style="margin-top:16px">View recommendations</button></div></div>
 </main>
 <footer class="app-footer" tabindex="0"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></footer>
 </div>

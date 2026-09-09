@@ -417,5 +417,6 @@
   ],
   "warnings": [
     "5 items excluded: belong to a different raid instance than The Venomous Abyss"
-  ]
+  ],
+  "lootSpecId": 264
 }

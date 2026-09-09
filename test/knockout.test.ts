@@ -104,7 +104,25 @@ describe('serialize / deserialize', () => {
   it('is tolerant of unknown/missing fields', () => {
     const state = deserialize(JSON.stringify({ character: 'Iceshaman', difficulty: 'raid-vault-heroic', futureField: 'x', entries: [{ itemId: 5, extra: true }] }))
     expect(state.version).toBe(1)
-    expect(state.entries).toEqual([{ itemId: 5, itemName: 'Item 5', encounterId: -1, receivedAt: '', spec: undefined, specSpecific: undefined, source: 'roll' }])
+    expect(state.entries).toEqual([
+      { itemId: 5, itemName: 'Item 5', encounterId: -1, receivedAt: '', spec: undefined, specSpecific: undefined, lootSpecId: undefined, source: 'roll' },
+    ])
+  })
+
+  it('round-trips a manual entry with specSpecific override and lootSpecId', () => {
+    const state = addEntry(createState('Iceshaman', 'raid-vault-heroic'), {
+      itemId: 300,
+      itemName: 'Manually Tracked Ring',
+      encounterId: 2874,
+      receivedAt: '2026-09-08T00:00:00Z',
+      specSpecific: true,
+      spec: 'elemental',
+      lootSpecId: 262,
+      source: 'manual',
+    })
+    const roundTripped = deserialize(serialize(state))
+    expect(roundTripped).toEqual(state)
+    expect(roundTripped.entries[0]).toMatchObject({ source: 'manual', specSpecific: true, lootSpecId: 262 })
   })
 })
 
@@ -154,5 +172,15 @@ describe('reconcile', () => {
 
     expect(result.recommendation.allocations).toEqual([])
     expect(result.recommendation.fallback?.reason).toBe('no-pool')
+  })
+
+  it('records the currently active lootSpecId (from settings) on every new knockout entry', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 })])
+    const state = createState('Iceshaman', 'raid-vault-heroic')
+    const settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false, lootSpecId: 262 }
+
+    const result = reconcile(state, report, { encounterId: 2888, receivedItemId: 100, receivedAt: '2026-09-08T00:00:00Z' }, settings)
+
+    expect(result.state.entries[0]).toMatchObject({ itemId: 100, lootSpecId: 262 })
   })
 })

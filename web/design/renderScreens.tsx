@@ -9,12 +9,13 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createState } from '../../src/core/knockout'
 import { buildBossPools } from '../../src/core/pool'
 import { recommend } from '../../src/core/rank'
-import type { NormalizedReport } from '../../src/types'
+import type { LootTable, NormalizedReport } from '../../src/types'
 import type { Settings } from '../../src/core/types'
 import { buildCardData } from '../src/lib/cardData'
 import { RecommendationCard } from '../src/components/RecommendationCard'
 import { DeployabilityScreen } from '../src/components/DeployabilityScreen'
 import { ReconcileScreen } from '../src/components/ReconcileScreen'
+import { LootTableScreen } from '../src/components/LootTableScreen'
 import { PasteScreen } from '../src/components/PasteScreen'
 import { CharacterSwitcher } from '../src/components/CharacterSwitcher'
 import { Footer } from '../src/components/Footer'
@@ -23,9 +24,11 @@ const report = JSON.parse(
   readFileSync(new URL('./fixtures/raidbots-jk6WmLFEnBpEqWueDkyRqA.json', import.meta.url), 'utf-8')
 ) as NormalizedReport
 
-const settings: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+const lootTable = JSON.parse(readFileSync(new URL('./fixtures/loot-table-1320-262.json', import.meta.url), 'utf-8')) as LootTable
+
+const settings: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false, lootSpecId: lootTable.lootSpecId }
 const knockout = createState(report.character, report.difficulty, report.realm, report.region)
-const bossEvals = buildBossPools(report, knockout, settings)
+const bossEvals = buildBossPools(report, knockout, settings, lootTable.encounters)
 const recommendation = recommend(bossEvals, settings, report)
 const card = buildCardData({ recommendation, bossEvals, vaultDecision: null })
 
@@ -42,6 +45,9 @@ function shellHtml(title: string, mainHtml: string, opts: { narrow?: boolean } =
       createElement(CharacterSwitcher, { keys: [], currentKey: null, onSwitch: noop, voidcoreCount: 2, onVoidcoreChange: noop })
     )
   )
+  const metaLine = renderToStaticMarkup(
+    createElement('div', { className: 'app-header__meta', style: { padding: '6px 20px' } }, `${report.character} · Elemental loot spec · Heroic`)
+  )
   const footer = renderToStaticMarkup(createElement(Footer))
 
   return `<!doctype html>
@@ -57,6 +63,7 @@ ${opts.narrow ? '.app-main { max-width: 380px; }' : ''}
 <body>
 <div class="app-shell">
 ${header}
+${metaLine}
 <main class="app-main">
 ${mainHtml}
 </main>
@@ -129,6 +136,22 @@ const pages: Array<{ name: string; html: string }> = [
           onReconcile: noop,
           onRemoveEntry: noop,
           onImportState: noop,
+        })
+      )
+    ),
+  },
+  {
+    name: 'loot-table',
+    html: shellHtml(
+      'Loot table',
+      renderToStaticMarkup(
+        createElement(LootTableScreen, {
+          lootTable,
+          lootTableStatus: 'idle',
+          lootTableError: null,
+          bossEvals,
+          focusBossId: null,
+          onToggleKnockout: noop,
         })
       )
     ),

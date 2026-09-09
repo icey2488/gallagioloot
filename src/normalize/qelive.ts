@@ -1,5 +1,6 @@
 import { pickBestSource } from '../lookup/encounterItems'
 import { resolveTierEncounters } from '../lookup/tierResolve'
+import { getSpecByName } from '../lookup/specs'
 import type { LearnedTierData } from '../lookup/tierLearned'
 import type { ContentType, EncounterItemsLookup, NormalizedItem, NormalizedReport } from '../types'
 
@@ -229,5 +230,8 @@ export function normalizeQELiveReport(
     instanceName: dominantInstanceId !== undefined ? lookup.instanceNames.get(dominantInstanceId) : undefined,
     items,
     warnings,
+    // QE Live carries no numeric spec id of its own -- derive it from the "spec"
+    // string (e.g. "Restoration Shaman") via the static specs table.
+    lootSpecId: getSpecByName(specWord ?? raw.spec, charClass)?.specId,
   }
 }
