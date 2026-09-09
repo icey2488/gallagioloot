@@ -35,6 +35,15 @@ async function shotDeployability(browser: import('playwright').Browser, width: n
   console.log(`Wrote design/deployability${suffix}.png (${width}px)`)
 }
 
+async function shotScreen(browser: import('playwright').Browser, name: string, outName: string, width: number, suffix: string) {
+  const context = await browser.newContext({ viewport: { width, height: 900 } })
+  const page = await context.newPage()
+  await page.goto(`file://${fileURLToPath(new URL(`./${name}-screen.html`, import.meta.url))}`)
+  await page.screenshot({ path: `design/${outName}${suffix}.png`, fullPage: true })
+  await context.close()
+  console.log(`Wrote design/${outName}${suffix}.png (${width}px)`)
+}
+
 async function shotStates(browser: import('playwright').Browser) {
   const context = await browser.newContext({ viewport: { width: WIDTHS.phone, height: 1400 } })
   const page = await context.newPage()
@@ -58,6 +67,14 @@ async function main() {
   await shotDeployability(browser, WIDTHS.phone, '-phone')
   await shotDeployability(browser, WIDTHS.desktop, '-desktop')
   await shotStates(browser)
+  for (const [name, outName] of [
+    ['paste', 'paste'],
+    ['reconcile', 'reconcile'],
+    ['loot-table', 'loot-table'],
+  ] as const) {
+    await shotScreen(browser, name, outName, WIDTHS.phone, '-phone')
+    await shotScreen(browser, name, outName, WIDTHS.desktop, '-desktop')
+  }
   await browser.close()
 }
 

@@ -107,6 +107,7 @@ export function ReconcileScreen(props: {
               <tr>
                 <th>Item</th>
                 <th>Boss</th>
+                <th>Scope</th>
                 <th>Received</th>
                 <th></th>
               </tr>
@@ -114,11 +115,14 @@ export function ReconcileScreen(props: {
             <tbody>
               {knockoutState.entries.map((entry) => (
                 <tr key={entry.itemId}>
-                  <td>
-                    {entry.itemName}
-                    {entry.specSpecific ? ' (spec-only)' : ''}
-                  </td>
+                  <td>{entry.itemName}</td>
                   <td>{bossEvals.find((b) => b.encounterId === entry.encounterId)?.encounterName ?? entry.encounterId}</td>
+                  <td>
+                    <span className="deploy-indicator">
+                      <span className={entry.specSpecific ? 'deploy-dot deploy-dot--no' : 'deploy-dot deploy-dot--yes'} aria-hidden="true" />
+                      {entry.specSpecific ? 'Spec-only' : 'All specs'}
+                    </span>
+                  </td>
                   <td>{entry.receivedAt.slice(0, 10)}</td>
                   <td>
                     <button type="button" className="btn-link" onClick={() => onRemoveEntry(entry.itemId)}>
@@ -134,14 +138,14 @@ export function ReconcileScreen(props: {
 
       <div className="panel">
         <h3>Export / import state</h3>
-        <button type="button" className="btn" onClick={handleExport}>
+        <button type="button" className="btn btn-secondary" onClick={handleExport}>
           Export JSON
         </button>
         <div className="field" style={{ marginTop: 12 }}>
           <label htmlFor="import-json">Import JSON</label>
           <textarea id="import-json" rows={4} value={importText} onChange={(e) => setImportText(e.target.value)} />
         </div>
-        <button type="button" className="btn" onClick={handleImport} disabled={!importText.trim()}>
+        <button type="button" className="btn btn-secondary" onClick={handleImport} disabled={!importText.trim()}>
           Import
         </button>
         {importError && <div className="warning-banner" style={{ marginTop: 12 }}>{importError}</div>}

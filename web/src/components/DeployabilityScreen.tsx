@@ -19,15 +19,20 @@ export function DeployabilityScreen(props: {
 
   return (
     <div>
-      <div className="panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Rollable Bosses</h3>
-        <button type="button" className="btn" onClick={onViewRecommendation}>
-          Roll this boss
-        </button>
+      <div className="panel">
+        <div className="screen-header">
+          <div className="screen-header__title-group">
+            <h3>Rollable Bosses</h3>
+            <span className="screen-header__meta">Bosses in kill order · threshold {thresholdPct.toFixed(2)}%</span>
+          </div>
+          <button type="button" className="btn" onClick={onViewRecommendation}>
+            Roll this boss
+          </button>
+        </div>
       </div>
 
       <div className="panel">
-        <table className="deploy-table">
+        <table className="deploy-table fold-table">
           <thead>
             <tr>
               <th className="deploy-table__rank">#</th>
@@ -101,7 +106,6 @@ export function DeployabilityScreen(props: {
             })}
           </tbody>
         </table>
-        <p className="note-line">Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p>
       </div>
     </div>
   )

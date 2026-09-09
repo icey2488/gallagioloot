@@ -42,11 +42,16 @@ export function LootTableScreen(props: {
 
   return (
     <div>
-      <div className="panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Loot table -- {lootTable.instanceName ?? `Instance ${lootTable.instanceId}`}</h3>
-        <span className="note-line" style={{ marginTop: 0 }}>
-          data hash {lootTable.sourceHash.slice(0, 8)}…
-        </span>
+      <div className="panel">
+        <div className="screen-header">
+          <div className="screen-header__title-group">
+            <h3>Loot table -- {lootTable.instanceName ?? `Instance ${lootTable.instanceId}`}</h3>
+            <span className="screen-header__meta">{specName} loot spec</span>
+          </div>
+          <span className="note-line" style={{ marginTop: 0 }}>
+            data hash {lootTable.sourceHash.slice(0, 8)}…
+          </span>
+        </div>
       </div>
 
       {lootTable.encounters.map((enc) => {
@@ -56,7 +61,7 @@ export function LootTableScreen(props: {
         return (
           <details key={enc.encounterId} className="panel loot-table-boss" open={isOpen}>
             <summary>{enc.encounterName}</summary>
-            <table>
+            <table className="loot-item-table fold-table">
               <thead>
                 <tr>
                   <th>Item</th>
@@ -76,10 +81,10 @@ export function LootTableScreen(props: {
                   const checked = entry?.knockedOut ?? false
                   return (
                     <tr key={item.itemId}>
-                      <td>
+                      <td data-label="Item">
                         {item.name}
-                        {item.isTier && !item.viaCurio && ' (Tier)'}
-                        {item.viaCurio && ' (Curio)'}
+                        {item.isTier && !item.viaCurio && <span className="item-tag">Tier</span>}
+                        {item.viaCurio && <span className="item-tag">Curio</span>}
                         {item.specSpecific && (
                           <>
                             {' '}
@@ -92,14 +97,18 @@ export function LootTableScreen(props: {
                           </>
                         )}
                       </td>
-                      <td>{item.slot ?? '—'}</td>
-                      <td className="num">{entry ? `${entry.pct.toFixed(2)}%` : 'not simmed'}</td>
-                      <td className="num">
+                      <td className="num" data-label="Slot">
+                        {item.slot ?? '—'}
+                      </td>
+                      <td className="num" data-label="Sim gain">
+                        {entry ? `${entry.pct.toFixed(2)}%` : 'not simmed'}
+                      </td>
+                      <td className="num" data-label="Rolls to target">
                         {entry?.rollsToTargetExpected != null && entry?.rollsToTargetWorst != null
                           ? `~${entry.rollsToTargetExpected.toFixed(1)}, up to ${entry.rollsToTargetWorst}`
                           : '—'}
                       </td>
-                      <td>
+                      <td data-label="Knockout">
                         <input
                           type="checkbox"
                           aria-label={`Knock out ${item.name}`}

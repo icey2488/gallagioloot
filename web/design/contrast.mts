@@ -127,8 +127,8 @@ const PAIRS: Pair[] = [
   // are traceable in this audit rather than only inferred from the rows above.
   { name: 'Tooltip trigger underline on panel', fg: COLORS.borderStrong, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Tooltip info icon on panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
-  { name: 'Tooltip bubble text on tooltip bubble background', fg: COLORS.text, bg: COLORS.bgPanelAlt, requirement: 'text' },
-  { name: 'Tooltip bubble border on tooltip bubble background', fg: COLORS.borderStrong, bg: COLORS.bgPanelAlt, requirement: 'ui' },
+  { name: 'Tooltip bubble text on tooltip bubble background', fg: COLORS.text, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Tooltip bubble border on tooltip bubble background', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
   // Design pass (2026-09-09) -- card/deployability redesign pulled from the Claude Design
   // export. No new hex values were introduced (every design color mapped cleanly onto an
   // existing token), but these are new element/background pairings, so audited explicitly.
@@ -137,6 +137,17 @@ const PAIRS: Pair[] = [
   { name: 'Vault-compare winner border (gold) on compare-option fill', fg: COLORS.gold, bg: COLORS.bgPanelAlt, requirement: 'ui' },
   { name: 'Vault-compare winner label (gold) on compare-option fill', fg: COLORS.gold, bg: COLORS.bgPanelAlt, requirement: 'text' },
   { name: 'Rec-card verb/meta (secondary text) on panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
+  // Design pass (2026-09-09, full-app parity) -- IBM Plex Sans + the panel/table/meta
+  // language extended to every screen. No new hex values introduced here either; every
+  // new element reuses an existing token, but each is a new UI location so audited
+  // explicitly, same rationale as the tooltip block above.
+  { name: 'Screen-header meta (Rollable Bosses/Loot Table threshold+spec line) on panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Footer aside column (Delves/Prey Hunts note) text on footer background', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Reconcile knockout-list Scope dot fill (all-specs) on panel', fg: COLORS.text, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Reconcile knockout-list Scope dot ring (spec-only) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Item-tag (Tier/Curio small-caps meta) text on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'btn-secondary label text on panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'btn-secondary border on panel', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather

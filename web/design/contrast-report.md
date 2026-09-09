@@ -1,6 +1,6 @@
 # Contrast audit
 
-Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 40/41 pairs pass; 1 fail.
+Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 47/48 pairs pass; 1 fail.
 
 ## Changes made
 
@@ -54,13 +54,20 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Chip-stack glyph (top bar) on header panel | `#b7bdda` | `#121f42` | 8.69:1 | 3:1 (UI component) | ✅ |
 | Tooltip trigger underline on panel | `#647aad` | `#121f42` | 3.79:1 | 3:1 (UI component) | ✅ |
 | Tooltip info icon on panel | `#b7bdda` | `#121f42` | 8.69:1 | 4.5:1 (text) | ✅ |
-| Tooltip bubble text on tooltip bubble background | `#f5f3ec` | `#16264c` | 13.36:1 | 4.5:1 (text) | ✅ |
-| Tooltip bubble border on tooltip bubble background | `#647aad` | `#16264c` | 3.48:1 | 3:1 (UI component) | ✅ |
+| Tooltip bubble text on tooltip bubble background | `#f5f3ec` | `#121f42` | 14.54:1 | 4.5:1 (text) | ✅ |
+| Tooltip bubble border on tooltip bubble background | `#5870aa` | `#121f42` | 3.32:1 | 3:1 (UI component) | ✅ |
 | Deployable dot fill on panel | `#f5f3ec` | `#121f42` | 14.54:1 | 3:1 (UI component) | ✅ |
 | Not-deployable dot ring on panel | `#858fb0` | `#121f42` | 5.04:1 | 3:1 (UI component) | ✅ |
 | Vault-compare winner border (gold) on compare-option fill | `#d4af37` | `#16264c` | 7.05:1 | 3:1 (UI component) | ✅ |
 | Vault-compare winner label (gold) on compare-option fill | `#d4af37` | `#16264c` | 7.05:1 | 4.5:1 (text) | ✅ |
 | Rec-card verb/meta (secondary text) on panel | `#b7bdda` | `#121f42` | 8.69:1 | 4.5:1 (text) | ✅ |
+| Screen-header meta (Rollable Bosses/Loot Table threshold+spec line) on panel | `#b7bdda` | `#121f42` | 8.69:1 | 4.5:1 (text) | ✅ |
+| Footer aside column (Delves/Prey Hunts note) text on footer background | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
+| Reconcile knockout-list Scope dot fill (all-specs) on panel | `#f5f3ec` | `#121f42` | 14.54:1 | 3:1 (UI component) | ✅ |
+| Reconcile knockout-list Scope dot ring (spec-only) on panel | `#858fb0` | `#121f42` | 5.04:1 | 3:1 (UI component) | ✅ |
+| Item-tag (Tier/Curio small-caps meta) text on panel | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
+| btn-secondary label text on panel | `#b7bdda` | `#121f42` | 8.69:1 | 4.5:1 (text) | ✅ |
+| btn-secondary border on panel | `#5870aa` | `#121f42` | 3.32:1 | 3:1 (UI component) | ✅ |
 
 ## Failing pairs
 

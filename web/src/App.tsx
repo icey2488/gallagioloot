@@ -286,7 +286,12 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <span className="app-header__brand">GallagioLoot</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {report && (
+          <div className="app-header__meta">
+            {report.character} · {lootSpecName ?? 'unknown'} loot spec · {formatDifficulty(report.difficulty)}
+          </div>
+        )}
+        <div className="app-header__controls">
           <LootSpecPicker lootSpecId={lootSpecId} onChange={setLootSpecId} />
           {report && (
             <button
@@ -309,12 +314,6 @@ export default function App() {
           />
         </div>
       </header>
-
-      {report && (
-        <div className="app-header__meta" style={{ padding: '6px 20px' }}>
-          {report.character} · {lootSpecName ?? 'unknown'} loot spec · {formatDifficulty(report.difficulty)}
-        </div>
-      )}
 
       <main className="app-main">
         {screen === 'paste' && (

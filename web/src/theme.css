@@ -17,12 +17,46 @@
   --gold-strong: #e4c158;
   --gold-text-on: #17110a;
 
-  --font-display: Georgia, 'Iowan Old Style', 'Palatino Linotype', 'Book Antiqua', serif;
   --font-sans:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+    sans-serif;
 
-  --radius: 8px;
-  --footer-height: 88px;
+  /* Spacing scale, distinct stops pulled from the Claude Design export
+     (GallagioLoot Redesign.dc.html / RecoCard.dc.html), smallest to largest. */
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 6px;
+  --space-4: 8px;
+  --space-5: 10px;
+  --space-6: 12px;
+  --space-7: 14px;
+  --space-8: 16px;
+  --space-9: 18px;
+  --space-10: 20px;
+  --space-11: 22px;
+  --space-12: 24px;
+  --space-13: 26px;
+  --space-14: 32px;
+  --space-15: 40px;
+  --space-16: 48px;
+
+  /* Type scale, named by role rather than size so components read as a system. */
+  --text-eyebrow: 12px;
+  --text-meta: 13px;
+  --text-body: 14px;
+  --text-control-label: 15px;
+  --text-section-title: 18px;
+  --text-wordmark-phone: 20px;
+  --text-wordmark-desktop: 22px;
+  --text-headline: clamp(22px, 6vw, 30px);
+  --text-stat-large: clamp(40px, 14vw, 64px);
+  --text-stat-compare: clamp(28px, 13cqi, 48px);
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 4px;
+  --footer-height: 108px;
 }
 
 * {
@@ -70,8 +104,9 @@ textarea {
   background: var(--bg-panel-alt);
   border: 1px solid var(--border);
   color: var(--text);
-  border-radius: 4px;
-  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--text-body);
 }
 
 input:focus,
@@ -90,20 +125,54 @@ button:focus-visible,
   padding-bottom: var(--footer-height);
 }
 
+/* Wordmark + meta stack under one another on phone (identity is order:1, meta is
+   order:3 and forced full-width); at desktop width meta moves inline next to the
+   wordmark (order:2, auto width) and controls (loot spec picker, loot table link,
+   character switcher/Voidcores pill) stay pinned right via margin-left: auto. */
 .app-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 12px 20px;
+  gap: var(--space-4) var(--space-8);
+  padding: var(--space-8) var(--space-10);
   border-bottom: 1px solid var(--border);
   background: var(--bg-panel);
 }
 
 .app-header__brand {
+  order: 1;
   font-family: var(--font-display);
-  font-size: 20px;
-  letter-spacing: 0.02em;
+  font-weight: 700;
+  font-size: var(--text-wordmark-phone);
+  letter-spacing: -0.01em;
+}
+
+.app-header__meta {
+  order: 3;
+  flex-basis: 100%;
+}
+
+.app-header__controls {
+  order: 2;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+@media (min-width: 700px) {
+  .app-header__brand {
+    font-size: var(--text-wordmark-desktop);
+  }
+
+  .app-header__meta {
+    order: 2;
+    flex-basis: auto;
+  }
+
+  .app-header__controls {
+    order: 3;
+  }
 }
 
 .app-main {
@@ -114,15 +183,17 @@ button:focus-visible,
   margin: 0 auto;
 }
 
+/* Same treatment as .rec-card (bg, radius, padding) minus the gold border --
+   gold stays reserved for the recommendation card alone. */
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px;
+  padding: var(--space-11) var(--space-10) var(--space-10);
 }
 
 .panel + .panel {
-  margin-top: 16px;
+  margin-top: var(--space-8);
 }
 
 .field {
@@ -138,19 +209,36 @@ button:focus-visible,
 }
 
 .field-hint {
-  font-size: 12px;
+  font-size: var(--text-eyebrow);
   color: var(--text-muted);
   margin: -4px 0 12px;
+}
+
+/* Compact list -- expected-kills checkboxes, tighter row spacing than a form .field. */
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.checklist__item {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  font-size: var(--text-body);
 }
 
 .btn {
   background: var(--bg-panel-alt);
   border: 1px solid var(--border-strong);
   color: var(--text);
-  border-radius: 6px;
-  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-6) var(--space-9);
   cursor: pointer;
-  font-size: 14px;
+  font-size: var(--text-body);
+  font-weight: 600;
+  min-height: 44px;
 }
 
 .btn:hover {
@@ -174,14 +262,28 @@ button:focus-visible,
   border-color: var(--gold-strong);
 }
 
+/* Secondary action (export/import, never the primary flow on a screen) -- same
+   footprint as .btn but visually recessed: no fill, muted border/text. */
+.btn-secondary {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-panel-alt);
+  color: var(--text);
+}
+
 .btn-link {
   background: none;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  padding: 4px 0;
+  padding: var(--space-2) 0;
   text-decoration: underline;
-  font-size: 13px;
+  font-size: var(--text-meta);
 }
 
 table {
@@ -260,26 +362,28 @@ tr.excluded .deploy-table__ev {
 }
 
 /* Phone-width: fold the table into a card list per row, keeping every column's data
-   (via data-label) rather than dropping any -- same DOM, same columns, different layout. */
+   (via data-label) rather than dropping any -- same DOM, same columns, different layout.
+   .fold-table is the shared hook (Rollable Bosses' .deploy-table and the Loot Table's
+   .loot-item-table both carry it) so both tables fold identically. */
 @media (max-width: 640px) {
-  .deploy-table thead {
+  .fold-table thead {
     display: none;
   }
 
-  .deploy-table,
-  .deploy-table tbody,
-  .deploy-table tr,
-  .deploy-table td {
+  .fold-table,
+  .fold-table tbody,
+  .fold-table tr,
+  .fold-table td {
     display: block;
     width: 100%;
   }
 
-  .deploy-table tr {
+  .fold-table tr {
     padding: 12px 0;
     border-bottom: 1px solid var(--border);
   }
 
-  .deploy-table td {
+  .fold-table td {
     border-bottom: none;
     padding: 3px 0;
     display: flex;
@@ -287,7 +391,7 @@ tr.excluded .deploy-table__ev {
     gap: 12px;
   }
 
-  .deploy-table td[data-label]::before {
+  .fold-table td[data-label]::before {
     content: attr(data-label);
     color: var(--text-muted);
     font-size: 12px;
@@ -300,14 +404,43 @@ tr.excluded .deploy-table__ev {
     display: none !important;
   }
 
-  .deploy-table td[data-label='Boss'] {
+  .fold-table td[data-label='Boss'],
+  .fold-table td[data-label='Item'] {
     font-size: 16px;
     font-weight: 600;
   }
 
-  .deploy-table td[data-label='Boss']::before {
+  .fold-table td[data-label='Boss']::before,
+  .fold-table td[data-label='Item']::before {
     content: none;
   }
+}
+
+/* Fixed-width checkbox column so knockout controls line up in a column instead of
+   drifting with item-name length. */
+.loot-item-table th:last-child,
+.loot-item-table td:last-child {
+  width: 72px;
+  text-align: center;
+}
+
+@media (max-width: 640px) {
+  .loot-item-table td:last-child {
+    justify-content: flex-end;
+    text-align: right;
+  }
+}
+
+/* Small-caps meta label for inline item tags (Tier / Curio) -- same visual language
+   as the header eyebrow/kicker text, distinct from the spec-specific .badge pill. */
+.item-tag {
+  display: inline-block;
+  margin-left: var(--space-3);
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
 }
 
 .badge {
@@ -315,6 +448,9 @@ tr.excluded .deploy-table__ev {
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   border: 1px solid var(--border-strong);
   color: var(--text-secondary);
 }
@@ -343,12 +479,12 @@ tr.excluded .deploy-table__ev {
 .rec-card {
   background: var(--bg-panel);
   border: 2px solid var(--gold);
-  border-radius: 12px;
-  padding: 22px 20px 20px;
+  border-radius: var(--radius);
+  padding: var(--space-11) var(--space-10) var(--space-10);
   text-align: left;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-2);
   container-type: inline-size;
 }
 
@@ -356,28 +492,28 @@ tr.excluded .deploy-table__ev {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  gap: 12px;
-  margin-bottom: 10px;
+  gap: var(--space-6);
+  margin-bottom: var(--space-5);
 }
 
 .rec-card__eyebrow {
-  font-size: 12px;
+  font-size: var(--text-eyebrow);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-muted);
 }
 
 .rec-card__meta {
-  font-size: 12px;
+  font-size: var(--text-eyebrow);
   color: var(--text-muted);
   white-space: nowrap;
 }
 
 .rec-card__headline {
   font-family: var(--font-display);
-  font-size: clamp(22px, 6vw, 30px);
+  font-size: var(--text-headline);
   line-height: 1.2;
-  margin-bottom: 6px;
+  margin-bottom: var(--space-3);
 }
 
 .rec-card__verb {
@@ -406,7 +542,7 @@ tr.excluded .deploy-table__ev {
 
 .rec-card__pct {
   font-family: var(--font-sans);
-  font-size: clamp(40px, 14vw, 64px);
+  font-size: var(--text-stat-large);
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -434,7 +570,7 @@ tr.excluded .deploy-table__ev {
 
 .rec-card__tossup-pct {
   font-family: var(--font-sans);
-  font-size: clamp(28px, 13cqi, 48px);
+  font-size: var(--text-stat-compare);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1;
@@ -467,7 +603,7 @@ tr.excluded .deploy-table__ev {
 .rec-card__compare-option {
   background: var(--bg-panel-alt);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   display: flex;
   flex-direction: column;
@@ -576,21 +712,44 @@ tr.excluded .deploy-table__ev {
   bottom: 0;
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
-  padding: 8px 20px;
+  padding: var(--space-4) var(--space-10) var(--space-6);
   /* Was 11px -- below the 13px floor for small disclaimer text even at a passing ratio. */
-  font-size: 13px;
+  font-size: var(--text-meta);
   color: var(--text-muted);
   max-height: var(--footer-height);
   overflow-y: auto;
 }
 
 .app-footer p {
-  margin: 4px 0;
+  margin: var(--space-2) 0;
 }
 
 .app-footer ul {
-  margin: 4px 0;
+  margin: var(--space-2) 0;
   padding-left: 18px;
+}
+
+/* Two columns on desktop (disclaimer left, Delves/Prey Hunts note right, per the
+   design export's footer) -- single column, stacked, on phone. */
+.app-footer__columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+@media (min-width: 700px) {
+  .app-footer__columns {
+    flex-direction: row;
+    gap: var(--space-14);
+  }
+
+  .app-footer__col--main {
+    flex: 1;
+  }
+
+  .app-footer__col--aside {
+    flex: 0 0 360px;
+  }
 }
 
 .tooltip-wrap {
@@ -619,6 +778,8 @@ tr.excluded .deploy-table__ev {
   color: var(--text-secondary);
 }
 
+/* Panel treatment (same bg/border as .panel and .rec-card) rather than the input-fill
+   color -- the tooltip is a floating panel, not a form control. */
 .tooltip-bubble {
   position: absolute;
   z-index: 10;
@@ -626,11 +787,11 @@ tr.excluded .deploy-table__ev {
   top: calc(100% + 6px);
   width: max-content;
   max-width: 260px;
-  background: var(--bg-panel-alt);
-  border: 1px solid var(--border-strong);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
   color: var(--text);
-  border-radius: 6px;
-  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-5);
   font-size: 12px;
   font-weight: normal;
   text-decoration: none;
@@ -638,14 +799,37 @@ tr.excluded .deploy-table__ev {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 
-.app-header__meta {
+.app-header__meta,
+.screen-header__meta {
   color: var(--text-secondary);
-  font-size: 13px;
+  font-size: var(--text-meta);
+}
+
+/* Shared section-header row: title + meta baseline-aligned on the left, an optional
+   action on the right -- used by Rollable Bosses, Loot Table, Reconcile panels. */
+.screen-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4) var(--space-8);
+}
+
+.screen-header__title-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3) var(--space-8);
+}
+
+.screen-header__title-group h3 {
+  font-size: var(--text-section-title);
 }
 
 .loot-table-boss summary {
   cursor: pointer;
   font-family: var(--font-display);
+  font-weight: 600;
   font-size: 16px;
   padding: 4px 0;
 }
@@ -659,7 +843,7 @@ tr.excluded .deploy-table__ev {
   /* #6b4e1e measured 1.80:1 against this background, under the 3:1 border floor. */
   border: 1px solid #996f2b;
   color: #e8c98a;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   padding: 10px 12px;
   font-size: 13px;
   margin-bottom: 16px;

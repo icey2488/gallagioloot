@@ -117,12 +117,14 @@ export function PasteScreen(props: {
 
             <div className="field">
               <label>Expected kills this week</label>
-              {bossList.map((b) => (
-                <label key={b.encounterId} style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 14, marginTop: 4 }}>
-                  <input type="checkbox" checked={expectedKillIds.has(b.encounterId)} onChange={() => onToggleExpectedKill(b.encounterId)} />
-                  {b.encounterName}
-                </label>
-              ))}
+              <div className="checklist">
+                {bossList.map((b) => (
+                  <label key={b.encounterId} className="checklist__item">
+                    <input type="checkbox" checked={expectedKillIds.has(b.encounterId)} onChange={() => onToggleExpectedKill(b.encounterId)} />
+                    {b.encounterName}
+                  </label>
+                ))}
+              </div>
             </div>
 
             <details>

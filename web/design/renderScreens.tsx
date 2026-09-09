@@ -42,11 +42,13 @@ function shellHtml(title: string, mainHtml: string, opts: { narrow?: boolean } =
       'header',
       { className: 'app-header' },
       createElement('span', { className: 'app-header__brand' }, 'GallagioLoot'),
-      createElement(CharacterSwitcher, { keys: [], currentKey: null, onSwitch: noop, voidcoreCount: 2, onVoidcoreChange: noop })
+      createElement('div', { className: 'app-header__meta' }, `${report.character} · Elemental loot spec · Heroic`),
+      createElement(
+        'div',
+        { className: 'app-header__controls' },
+        createElement(CharacterSwitcher, { keys: [], currentKey: null, onSwitch: noop, voidcoreCount: 2, onVoidcoreChange: noop })
+      )
     )
-  )
-  const metaLine = renderToStaticMarkup(
-    createElement('div', { className: 'app-header__meta', style: { padding: '6px 20px' } }, `${report.character} · Elemental loot spec · Heroic`)
   )
   const footer = renderToStaticMarkup(createElement(Footer))
 
@@ -63,7 +65,6 @@ ${opts.narrow ? '.app-main { max-width: 380px; }' : ''}
 <body>
 <div class="app-shell">
 ${header}
-${metaLine}
 <main class="app-main">
 ${mainHtml}
 </main>
