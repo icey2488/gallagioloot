@@ -58,7 +58,7 @@ export function PasteScreen(props: {
     <div>
       <div className="panel">
         <p className="field-hint" style={{ marginTop: 0 }}>
-          Take the Voidcore from the vault, then run this.
+          Run this before you open the vault. If a vault item looks good, sim it and enter its gain below; GallagioLoot prices it against the Voidcore.
         </p>
         <div className="field">
           <label htmlFor="report-url">Report URL</label>
@@ -71,6 +71,13 @@ export function PasteScreen(props: {
           />
           <div className="field-hint" style={{ marginBottom: 0 }}>
             {detectedSource ? `Detected: ${SOURCE_LABELS[detectedSource]}` : reportUrl ? 'Unrecognized report URL' : 'Paste a Raidbots or QE Live report URL'}
+          </div>
+        </div>
+        <div className="field">
+          <label htmlFor="vault-item-gain">Best vault item gain % (optional)</label>
+          <input id="vault-item-gain" type="number" step="0.01" value={vaultItemGainPct} onChange={(e) => onVaultItemGainPctChange(e.target.value)} />
+          <div className="field-hint" style={{ marginBottom: 0 }}>
+            From a Top Gear sim of the vault item. Leave blank if nothing in the vault is tempting.
           </div>
         </div>
         <button type="button" className="btn" disabled={!detectedSource || loadStatus === 'loading'} onClick={onFetch}>
@@ -123,10 +130,6 @@ export function PasteScreen(props: {
               <div className="field" style={{ marginTop: 10 }}>
                 <label htmlFor="vault-item-name">Vault item name</label>
                 <input id="vault-item-name" type="text" value={vaultItemName} onChange={(e) => onVaultItemNameChange(e.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="vault-item-gain">Best vault item gain %</label>
-                <input id="vault-item-gain" type="number" step="0.01" value={vaultItemGainPct} onChange={(e) => onVaultItemGainPctChange(e.target.value)} />
               </div>
               <div className="field">
                 <label htmlFor="vault-boss">Boss (optional)</label>
