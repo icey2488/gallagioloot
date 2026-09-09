@@ -19,6 +19,8 @@ export type NormalizedItem = {
   viaCurio?: boolean
   /** The tier armor slot this row was resolved for (e.g. "head"), set only for tier-token rows resolved via the seed/learned tier lookup. */
   tierSlot?: string
+  /** Raidbots profileset row's `mean_error`, same absolute units as `delta`. Raidbots-only; QE Live never sets this. */
+  meanError?: number
 }
 
 export type NormalizedReport = {

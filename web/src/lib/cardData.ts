@@ -45,13 +45,20 @@ export function buildCardData(params: {
       ? { name: deployableByEv[0].encounterName, pct: deployableByEv[0].evPct }
       : undefined
 
+  const rollTossUp = recommendation.tossUp
+  const rollHeadline = rollTossUp ? `Roll ${rollTossUp.bosses[0]} or ${rollTossUp.bosses[1]}` : `Roll ${top.encounterName}`
+  const rollTossUpNote = rollTossUp
+    ? `Within ${rollTossUp.gapPct.toFixed(2)}%: let kill order decide; roll whichever you kill first.`
+    : undefined
+
   if (!vaultDecision) {
     return {
       verdict: 'roll',
-      headline: `Roll ${top.encounterName}`,
+      headline: rollHeadline,
       pct: top.expectedGainPct,
       secondBest,
-      tossUp: false,
+      tossUp: !!rollTossUp,
+      tossUpNote: rollTossUpNote,
     }
   }
 
@@ -90,11 +97,11 @@ export function buildCardData(params: {
 
   return {
     verdict: 'roll',
-    headline: `Roll ${top.encounterName}`,
+    headline: rollHeadline,
     pct: vaultDecision.voidcoreGainPct,
     secondBest,
     vaultCompare,
-    tossUp,
-    tossUpNote,
+    tossUp: tossUp || !!rollTossUp,
+    tossUpNote: tossUpNote ?? rollTossUpNote,
   }
 }

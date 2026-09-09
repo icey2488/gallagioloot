@@ -217,6 +217,25 @@ describe('normalizeRaidbotsReport', () => {
     expect(result.warnings).toContain('1 items had no encounter mapping')
   })
 
+  it('propagates a profileset row mean_error to the item as meanError, when present', () => {
+    const report = makeReport({
+      sim: {
+        players: [{ collected_data: { dps: { mean: BASELINE } } }],
+        profilesets: {
+          metric: 'Damage per Second',
+          results: [{ name: '1320/2895/raid-vault-heroic/271484/334/0/hands////', mean: 110000, mean_error: 344.99 }],
+        },
+      },
+    })
+    const result = normalizeRaidbotsReport('abc', report)
+    expect(result.items[0].meanError).toBe(344.99)
+  })
+
+  it('leaves meanError undefined when the profileset row has no mean_error', () => {
+    const result = normalizeRaidbotsReport('abc', makeReport())
+    expect(result.items[0].meanError).toBeUndefined()
+  })
+
   it('derives role from spec, marking tank specs as tank and others as dps', () => {
     const dpsResult = normalizeRaidbotsReport('abc', makeReport())
     expect(dpsResult.role).toBe('dps')

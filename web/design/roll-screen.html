@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GallagioLoot -- Roll recommendation</title>
+<style>
 :root {
   --bg-base: #0b1530;
   --bg-panel: #121f42;
@@ -365,3 +371,17 @@ tr.excluded {
   font-size: 13px;
   margin-bottom: 16px;
 }
+
+.app-main { max-width: 380px; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+<header class="app-header"><span class="app-header__brand">GallagioLoot</span><div style="display:flex;align-items:center;gap:12px"><label style="display:flex;align-items:center;gap:6px"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" style="width:48px" aria-label="Voidcore count" value="2"/></label></div></header>
+<main class="app-main">
+<section class="rec-card" aria-label="Bonus roll recommendation"><div class="rec-card__eyebrow">GallagioLoot recommends</div><h2 class="rec-card__headline">Roll The Lost Explorers or Ula&#x27;tek</h2><div class="rec-card__pct num">2.30%</div><div class="rec-card__second">Next best: Ula&#x27;tek (~2.27%)</div><div class="rec-card__note">Within 0.03%: let kill order decide; roll whichever you kill first.</div><div class="rec-card__action"><button type="button" class="btn btn-gold">Mark as rolled</button></div></section>
+</main>
+<footer class="app-footer" tabindex="0"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></footer>
+</div>
+</body>
+</html>

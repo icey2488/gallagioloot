@@ -9,11 +9,16 @@
   --bg-panel: #121f42;
   --bg-panel-alt: #16264c;
   --bg-hover: #1b2c56;
-  --border: #26355e;
-  --border-strong: #34467a;
+  /* Lightened from #26355e/#34467a: the originals measured ~1.2-2.0:1 against every
+     panel background in the app, well under the 3:1 WCAG 1.4.11 floor for borders
+     and focus rings. Same hue, raised lightness + a touch less saturation so they
+     read as a lighter steel-blue rather than a saturated accent. */
+  --border: #5870aa;
+  --border-strong: #647aad;
   --text: #f5f3ec;
   --text-secondary: #b7bdda;
-  --text-muted: #7c86aa;
+  /* Lightened from #7c86aa (4.13:1 against --bg-panel-alt, under the 4.5:1 text floor). */
+  --text-muted: #858fb0;
   --gold: #d4af37;
   --gold-strong: #e4c158;
   --gold-text-on: #17110a;
@@ -65,7 +70,8 @@ a {
 }
 
 input,
-select {
+select,
+textarea {
   font-family: inherit;
   background: var(--bg-panel-alt);
   border: 1px solid var(--border);
@@ -76,7 +82,9 @@ select {
 
 input:focus,
 select:focus,
-button:focus-visible {
+textarea:focus,
+button:focus-visible,
+.app-footer:focus-visible {
   outline: 2px solid var(--border-strong);
   outline-offset: 1px;
 }
@@ -203,12 +211,12 @@ th {
   letter-spacing: 0.04em;
 }
 
+/* De-emphasized via color (a muted shade that still clears 4.5:1) and style, never via
+   opacity -- opacity blends text toward the panel background and can drop well below
+   the readable-contrast floor (the previous 0.7 opacity here measured ~2.9:1). */
 tr.excluded {
   color: var(--text-muted);
-}
-
-tr.excluded td {
-  opacity: 0.7;
+  font-style: italic;
 }
 
 .badge {
@@ -221,7 +229,8 @@ tr.excluded td {
 }
 
 .badge-yes {
-  border-color: #3f6b4d;
+  /* #3f6b4d measured 2.63:1 against --bg-panel, under the 3:1 border floor. */
+  border-color: #467655;
   color: #8fd6a4;
 }
 
@@ -316,12 +325,6 @@ tr.excluded td {
   margin-top: 18px;
 }
 
-.chip-stack {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
 .chip-stack__bar {
   fill: var(--border-strong);
 }
@@ -334,12 +337,6 @@ tr.excluded td {
   fill: var(--text-secondary);
 }
 
-.chip-stack__count {
-  font-variant-numeric: tabular-nums;
-  font-size: 14px;
-  color: var(--text);
-}
-
 .app-footer {
   position: fixed;
   left: 0;
@@ -348,7 +345,8 @@ tr.excluded td {
   background: var(--bg-panel);
   border-top: 1px solid var(--border);
   padding: 8px 20px;
-  font-size: 11px;
+  /* Was 11px -- below the 13px floor for small disclaimer text even at a passing ratio. */
+  font-size: 13px;
   color: var(--text-muted);
   max-height: var(--footer-height);
   overflow-y: auto;
@@ -365,7 +363,8 @@ tr.excluded td {
 
 .warning-banner {
   background: #3a2a12;
-  border: 1px solid #6b4e1e;
+  /* #6b4e1e measured 1.80:1 against this background, under the 3:1 border floor. */
+  border: 1px solid #996f2b;
   color: #e8c98a;
   border-radius: 6px;
   padding: 10px 12px;
@@ -378,6 +377,6 @@ body { display: flex; align-items: center; justify-content: center; min-height: 
 </style>
 </head>
 <body>
-<section class="rec-card" aria-label="Bonus roll recommendation"><div class="rec-card__eyebrow">GallagioLoot recommends</div><h2 class="rec-card__headline">Roll The Lost Explorers</h2><div class="rec-card__pct num">2.30%</div><div class="rec-card__second">Next best: Ula&#x27;tek (~2.27%)</div></section>
+<section class="rec-card" aria-label="Bonus roll recommendation"><div class="rec-card__eyebrow">GallagioLoot recommends</div><h2 class="rec-card__headline">Roll The Lost Explorers or Ula&#x27;tek</h2><div class="rec-card__pct num">2.30%</div><div class="rec-card__second">Next best: Ula&#x27;tek (~2.27%)</div><div class="rec-card__note">Within 0.03%: let kill order decide; roll whichever you kill first.</div></section>
 </body>
 </html>

@@ -30,6 +30,8 @@ export type RaidbotsInstanceLibraryEntry = {
 export type RaidbotsProfilesetResult = {
   name: string
   mean: number
+  /** Simc's reported standard error for `mean`, when present -- absolute, same units as `mean`. */
+  mean_error?: number
 }
 
 export type RaidbotsRawReport = {
@@ -170,6 +172,7 @@ export function normalizeRaidbotsReport(
           offSpec: libraryEntry?.offSpecItem,
           viaCurio,
           tierSlot: parsed.slot || undefined,
+          meanError: result.mean_error,
         })
       }
       continue
@@ -193,6 +196,7 @@ export function normalizeRaidbotsReport(
       pct: (delta / baseline) * 100,
       catalystSourceId: parsed.catalystSourceId,
       offSpec: libraryEntry?.offSpecItem,
+      meanError: result.mean_error,
     })
   }
 

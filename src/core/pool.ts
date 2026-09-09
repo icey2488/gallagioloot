@@ -21,7 +21,15 @@ function toEntry(key: string, itemIds: number[], best: NormalizedItem, kind: Poo
     kind,
     tierSlot: best.tierSlot,
     knockedOut: false,
+    errorPct: best.meanError !== undefined && baseline > 0 ? (best.meanError / baseline) * 100 : undefined,
   }
+}
+
+/** Mean of the remaining pool's `errorPct` values, or undefined if none carry one (e.g. QE Live). */
+function meanErrorPct(entries: PoolEntry[]): number | undefined {
+  const known = entries.map((e) => e.errorPct).filter((e): e is number => e !== undefined)
+  if (known.length === 0) return undefined
+  return known.reduce((a, b) => a + b, 0) / known.length
 }
 
 function isKnockedOut(itemIds: number[], entries: KnockoutState['entries'], reportSpec: string): boolean {
@@ -118,6 +126,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       bestCase,
       deployable: inExpectedKills && remaining > 0 && evPct >= settings.thresholdPct,
       notes,
+      evErrorPct: meanErrorPct(remainingEntries),
     })
   }
 

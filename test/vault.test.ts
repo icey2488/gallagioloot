@@ -137,6 +137,7 @@ function makeRecommendation(totalExpectedGainPct: number): Recommendation {
     fallback: null,
     assumptions: [],
     warnings: [],
+    tossUp: null,
   }
 }
 

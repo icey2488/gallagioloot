@@ -1,3 +1,9 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>GallagioLoot -- Deployability</title>
+<style>
 :root {
   --bg-base: #0b1530;
   --bg-panel: #121f42;
@@ -365,3 +371,17 @@ tr.excluded {
   font-size: 13px;
   margin-bottom: 16px;
 }
+
+
+</style>
+</head>
+<body>
+<div class="app-shell">
+<header class="app-header"><span class="app-header__brand">GallagioLoot</span><div style="display:flex;align-items:center;gap:12px"><label style="display:flex;align-items:center;gap:6px"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" style="width:48px" aria-label="Voidcore count" value="2"/></label></div></header>
+<main class="app-main">
+<div><div class="panel" style="display:flex;justify-content:space-between;align-items:center"><h3>Deployability</h3><button type="button" class="btn">Roll this boss</button></div><div class="panel"><table><thead><tr><th>Boss</th><th>Remaining</th><th>EV %</th><th>Best case</th><th>Rolls to target</th><th>Deployable</th><th>Notes</th></tr></thead><tbody><tr><td>Ula&#x27;tek</td><td class="num">9 / 9</td><td class="num">2.27%</td><td>Font of Venomous Rage <span class="num">(6.26%)</span></td><td class="num">~5.0, up to 9</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Sszorak</td><td class="num">3 / 3</td><td class="num">0.85%</td><td>Apex Brute&#x27;s Claw Ring <span class="num">(1.19%)</span></td><td class="num">~2.0, up to 3</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Vashnik the Malignant</td><td class="num">5 / 5</td><td class="num">2.18%</td><td>Fang of Umbral Malignance <span class="num">(5.43%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Nek&#x27;zali the Soulcoiler</td><td class="num">5 / 5</td><td class="num">1.20%</td><td>Hexing Spiritrender <span class="num">(2.25%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>The Lost Explorers</td><td class="num">5 / 5</td><td class="num">2.30%</td><td>Gebbo&#x27;s Bottomless Bag <span class="num">(6.28%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>Entombed Sentinels</td><td class="num">2 / 2</td><td class="num">1.15%</td><td>Hexing Grips of the Ophidian Oracle <span class="num">(1.88%)</span></td><td class="num">~1.5, up to 2</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>The Coiled Altar</td><td class="num">6 / 6</td><td class="num">1.26%</td><td>Hissing Mantle of the Ophidian Oracle <span class="num">(2.10%)</span></td><td class="num">~3.5, up to 6</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr><tr><td>The Twin Fangs</td><td class="num">5 / 5</td><td class="num">2.15%</td><td>Vexhul&#x27;s Everflowing Gland <span class="num">(6.30%)</span></td><td class="num">~3.0, up to 5</td><td><span class="badge badge-yes">Yes</span></td><td></td></tr></tbody></table><p class="note-line">Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div>
+</main>
+<footer class="app-footer" tabindex="0"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></footer>
+</div>
+</body>
+</html>

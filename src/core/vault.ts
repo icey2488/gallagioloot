@@ -1,5 +1,6 @@
 import type { NormalizedReport } from '../types'
 import type { BossEval, PoolEntry, Recommendation, RollsToTarget, Settings, VaultDecision, VaultItemInput } from './types'
+import { isTossUpGap } from './tossup'
 
 function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length
@@ -138,8 +139,7 @@ export function compareVault(input: {
     explanation = `Neither the Voidcore path (~${voidcoreGainPct.toFixed(2)}%) nor "${vaultItem?.name ?? 'the vault item'}" (~${vaultItemGainPct.toFixed(2)}%) clears the ${settings.thresholdPct}% threshold this week; take the Great Vault's Thalassian Tokens of Merit instead.`
   } else {
     const diff = Math.abs(voidcoreGainPct - vaultItemGainPct)
-    const tossUpBand = Math.max(0.1, 0.1 * Math.max(voidcoreGainPct, vaultItemGainPct))
-    if (diff < tossUpBand) {
+    if (isTossUpGap(diff, Math.max(voidcoreGainPct, vaultItemGainPct), { pctOfReference: 0.1 })) {
       verdict = 'toss-up'
       explanation = `Voidcore (~${voidcoreGainPct.toFixed(2)}%) and "${vaultItem?.name ?? 'the vault item'}" (~${vaultItemGainPct.toFixed(2)}%) are close enough to call a toss-up.`
       notes.push("When it's close, prefer the vault item if it removes a dungeon from your weekly farm.")

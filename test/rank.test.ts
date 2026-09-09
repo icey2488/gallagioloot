@@ -111,6 +111,59 @@ describe('recommend', () => {
     expect(rec.fallback?.reason).toBe('no-pool')
   })
 
+  describe('tossUp', () => {
+    it('flags a toss-up when the gap is inside the fixed band (max(0.1, 5% of top evPct))', () => {
+      // top evPct 2.3, runner-up 2.27 -- gap 0.03, band max(0.1, 0.115) = 0.115
+      const bossA = makeBoss(2894, 'The Lost Explorers', [2300], 0.2)
+      const bossB = makeBoss(2895, "Ula'tek", [2270], 0.2)
+      const rec = recommend([bossA, bossB], SETTINGS_1_ROLL, makeReport())
+      expect(rec.tossUp).not.toBeNull()
+      expect(rec.tossUp?.bosses).toEqual(['The Lost Explorers', "Ula'tek"])
+      expect(rec.tossUp?.gapPct).toBeCloseTo(0.03, 10)
+    })
+
+    it('does not flag a toss-up when the gap exceeds the fixed band', () => {
+      // top evPct 5, runner-up 3 -- gap 2, band max(0.1, 0.25) = 0.25
+      const bossA = makeBoss(2888, 'Boss A', [5000], 0.2)
+      const bossB = makeBoss(2887, 'Boss B', [3000], 0.2)
+      const rec = recommend([bossA, bossB], SETTINGS_1_ROLL, makeReport())
+      expect(rec.tossUp).toBeNull()
+    })
+
+    it('falls back to the fixed band when no boss carries evErrorPct (e.g. QE Live)', () => {
+      const bossA = makeBoss(2888, 'Boss A', [5000], 0.2)
+      const bossB = makeBoss(2887, 'Boss B', [3000], 0.2)
+      expect(bossA.evErrorPct).toBeUndefined()
+      const rec = recommend([bossA, bossB], SETTINGS_1_ROLL, makeReport())
+      expect(rec.tossUp).toBeNull()
+    })
+
+    it('flags a toss-up via combined evErrorPct even when the gap exceeds the fixed band', () => {
+      // top evPct 5, runner-up 4.5 -- gap 0.5, fixed band max(0.1, 0.25) = 0.25 (would not toss-up alone)
+      // but combined evErrorPct (0.3 + 0.3 = 0.6) exceeds the gap, so it tosses up on sim error
+      const bossA: BossEval = { ...makeBoss(2888, 'Boss A', [5000], 0.2), evErrorPct: 0.3 }
+      const bossB: BossEval = { ...makeBoss(2887, 'Boss B', [4500], 0.2), evErrorPct: 0.3 }
+      const rec = recommend([bossA, bossB], SETTINGS_1_ROLL, makeReport())
+      expect(rec.tossUp).not.toBeNull()
+      expect(rec.tossUp?.bosses).toEqual(['Boss A', 'Boss B'])
+      expect(rec.tossUp?.gapPct).toBeCloseTo(0.5, 10)
+    })
+
+    it('with 2 rolls, reports a toss-up between ranks 2 and 3, not ranks 1 and 2', () => {
+      // rank 1 (10) vs rank 2 (5): gap 5, way outside the band -- not a toss-up
+      // rank 2 (5) vs rank 3 (4.97): gap 0.03, inside max(0.1, 0.25) -- toss-up
+      const bossA = makeBoss(2888, 'Boss A', [10000], 0.2)
+      const bossB = makeBoss(2887, 'Boss B', [5000], 0.2)
+      const bossC = makeBoss(2871, 'Boss C', [4970], 0.2)
+      const settings: Settings = { ...SETTINGS_1_ROLL, rollsAvailable: 2 }
+      const rec = recommend([bossA, bossB, bossC], settings, makeReport())
+      expect(rec.allocations.map((a) => a.encounterId).sort()).toEqual([2887, 2888])
+      expect(rec.tossUp).not.toBeNull()
+      expect(rec.tossUp?.bosses).toEqual(['Boss B', 'Boss C'])
+      expect(rec.tossUp?.gapPct).toBeCloseTo(0.03, 10)
+    })
+  })
+
   it('always includes the fixed assumptions list, deployable or not', () => {
     const bossA = makeBoss(2888, 'Boss A', [1000], 0.2)
     const deployableRec = recommend([bossA], SETTINGS_1_ROLL, makeReport())

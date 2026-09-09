@@ -59,6 +59,8 @@ export type PoolEntry = {
   rollsToTargetWorst?: number
   /** Expected rolls actually spent hunting this entry, given the player abandons the pool once its remaining mean value falls below threshold after a miss. Set only for non-knocked-out entries. */
   rollsToTargetTruncated?: number
+  /** Sim error for this entry's value, as a percentage of baseline (mirrors `pct`). Set only when the source report carries a per-row error (Raidbots' `mean_error`; QE Live never does). */
+  errorPct?: number
 }
 
 export type BossEval = {
@@ -72,6 +74,8 @@ export type BossEval = {
   bestCase: PoolEntry | null
   deployable: boolean
   notes: string[]
+  /** Mean of the remaining pool's `errorPct` values, where known -- the boss-level sim error used for toss-up detection. Undefined when no remaining entry carries an error (e.g. QE Live). */
+  evErrorPct?: number
 }
 
 export type Allocation = {
@@ -88,6 +92,15 @@ export type Recommendation = {
   fallback: null | { reason: string; message: string }
   assumptions: string[]
   warnings: string[]
+  /**
+   * Set when the boss decided by the last allocated roll and the next-best deployable
+   * boss are close enough to call sim noise rather than a real ranking (see `isTossUpGap`
+   * in tossup.ts). `bosses` is [the allocated boss's name, the runner-up's name] --
+   * for `rollsAvailable` 1 this is rank 1 vs rank 2; for 2 it's rank 2 vs rank 3, since
+   * the first two rolls are both allocated regardless. The allocation itself is
+   * unaffected -- this only annotates the recommendation for display.
+   */
+  tossUp: { bosses: [string, string]; gapPct: number } | null
 }
 
 export type RollsToTarget = {

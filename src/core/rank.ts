@@ -1,5 +1,9 @@
 import type { NormalizedReport } from '../types'
 import type { Allocation, BossEval, Recommendation, Settings } from './types'
+import { isTossUpGap } from './tossup'
+
+/** Percentage of the leading boss's evPct used as the toss-up band, absent a sim error. */
+const TOSS_UP_PCT_OF_TOP = 0.05
 
 export const ASSUMPTIONS: string[] = [
   'Uniform draw over the remaining pool for each boss.',
@@ -33,6 +37,26 @@ function rankDeployable(deployable: BossEval[]): BossEval[] {
     .map((r) => r.boss)
 }
 
+/**
+ * Compares the last allocated boss (by rank) against the next-best deployable boss --
+ * rank 1 vs 2 for a single roll, rank 2 vs 3 for two rolls, since both of the first two
+ * rolls are allocated regardless of how close they are to each other. Uses the combined
+ * `evErrorPct` of both bosses as the band when both report one (Raidbots), else falls
+ * back to a fixed percentage of the leading boss's evPct (always the case for QE Live).
+ */
+function computeTossUp(ranked: BossEval[], allocatedCount: number): Recommendation['tossUp'] {
+  const boundary = ranked[allocatedCount - 1]
+  const nextUp = ranked[allocatedCount]
+  if (!boundary || !nextUp) return null
+
+  const gapPct = boundary.evPct - nextUp.evPct
+  const errorBand =
+    boundary.evErrorPct !== undefined && nextUp.evErrorPct !== undefined ? boundary.evErrorPct + nextUp.evErrorPct : undefined
+
+  if (!isTossUpGap(gapPct, boundary.evPct, { pctOfReference: TOSS_UP_PCT_OF_TOP, errorBand })) return null
+  return { bosses: [boundary.encounterName, nextUp.encounterName], gapPct }
+}
+
 export function recommend(bossEvals: BossEval[], settings: Settings, report: NormalizedReport): Recommendation {
   const deployable = bossEvals.filter((b) => b.deployable)
   const baseline = report.baseline
@@ -50,15 +74,24 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
       fallback: { reason, message: fallbackMessage(settings.thresholdPct) },
       assumptions: ASSUMPTIONS,
       warnings,
+      tossUp: null,
     }
   }
 
   if (settings.rollsAvailable <= 1) {
-    const best = rankDeployable(deployable)[0]
+    const ranked = rankDeployable(deployable)
+    const best = ranked[0]
     const allocations: Allocation[] = [
       { encounterId: best.encounterId, encounterName: best.encounterName, rolls: 1, expectedGain: best.ev, expectedGainPct: best.evPct },
     ]
-    return { allocations, totalExpectedGainPct: best.evPct, fallback: null, assumptions: ASSUMPTIONS, warnings }
+    return {
+      allocations,
+      totalExpectedGainPct: best.evPct,
+      fallback: null,
+      assumptions: ASSUMPTIONS,
+      warnings,
+      tossUp: computeTossUp(ranked, 1),
+    }
   }
 
   // rollsAvailable >= 2: a boss only offers a bonus roll on its first kill per
@@ -81,5 +114,6 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
     fallback: null,
     assumptions: ASSUMPTIONS,
     warnings,
+    tossUp: computeTossUp(ranked, chosen.length),
   }
 }

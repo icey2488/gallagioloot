@@ -210,4 +210,22 @@ describe('buildBossPools', () => {
     expect(remainingEntry.rollsToTargetWorst).toBe(2)
     expect(remainingEntry.rollsToTargetTruncated).toBeGreaterThan(0)
   })
+
+  it('converts an entry meanError to errorPct, and evErrorPct to the mean errorPct of the remaining pool', () => {
+    const report = makeReport([
+      item({ itemId: 100, delta: 1000, meanError: 200 }), // errorPct 0.2
+      item({ itemId: 200, delta: 2000, meanError: 400 }), // errorPct 0.4
+    ])
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
+    expect(boss.pool.find((p) => p.itemIds[0] === 100)?.errorPct).toBeCloseTo(0.2, 10)
+    expect(boss.pool.find((p) => p.itemIds[0] === 200)?.errorPct).toBeCloseTo(0.4, 10)
+    expect(boss.evErrorPct).toBeCloseTo(0.3, 10)
+  })
+
+  it('leaves evErrorPct undefined when no remaining entry carries a meanError (e.g. QE Live)', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 }), item({ itemId: 200, delta: 2000 })])
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
+    expect(boss.pool.every((p) => p.errorPct === undefined)).toBe(true)
+    expect(boss.evErrorPct).toBeUndefined()
+  })
 })
