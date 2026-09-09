@@ -52,14 +52,40 @@ Fangs 1322, Murder Row 1304, Den of Nalorakk 1311, The Blinding Vale 1309, Voids
   larger remaining pool (worse odds elsewhere, so locking it in is more valuable).
 - Delves and the world loot row are not modeled. Crafted items are excluded.
 
+## Catalyst and tier (Season 2)
+
+The Catalyst converts any eligible item into a tier piece while keeping the *original* item's
+stat allocation — so getting the set bonus is easy (catalyze any decent piece for the slot),
+but the perfect BIS for a tier slot is a specific item with the right secondaries, catalyzed.
+For Arcane that's the Venomcursed cowl from Ula'tek (head, keeps its cantrip on catalyzing), a
+Twin Fangs cloth shoulder, the Altar of Fangs dungeon chest, Coiled Altar gloves, and Nek'zali
+legs. Anything labeled Venomcursed carries a cantrip.
+
+Consequence for the model: the Curio is **not** a BIS hit — it yields a default-stat token, not
+the catalyzed-original-item stats — so it's set to a plain non-BIS pool entry (no `curio` flag)
+rather than a wildcard BIS substitute. `tier_bis` is no longer used for Arcane: tier tokens
+under slot bosses still count toward `pool_size` (they're still draws that knock out), but
+they're not tracked as a separate substitutable category.
+
 ## Reference results
 
-Arcane Mage, Season 2, 14 BIS total (11 from Abyss + Wavecaller ring + 2 M+), 50,000 runs each:
+Arcane Mage, Season 2, 14 BIS total (11 raid incl. Wavecaller ring + 3 M+), 50,000 runs each:
 
-- All BIS: vault-first 17.1 weeks mean (p10 13, p90 22) vs roll-first 22.3 weeks (p10 18, p90 27)
-- Raid BIS done: vault-first 13.5 weeks vs roll-first 16.4 weeks
-- M+ BIS done: vault-first 16.3 weeks vs roll-first 22.3 weeks
-- Delta (roll − vault): 5.2 weeks; vault-first faster in 85% of seasons; tie in 4.5%
+- All BIS: vault-first 18.9 weeks mean (p10 15, p90 23) vs roll-first 24.8 weeks (p10 20, p90 29)
+- Raid BIS done: vault-first 13.6 weeks vs roll-first 16.0 weeks
+- M+ BIS done: vault-first 18.6 weeks vs roll-first 24.8 weeks
+- Delta (roll − vault): 5.9 weeks; vault-first faster in 87% of seasons; tie in 4%
+
+Interpretation: roll-first players are unlikely to finish a full-clear BIS chase within a
+season; vault BIS whenever offered plus Voidcore by hit chance on the other weeks is the
+strategy that does.
+
+**Superseded** — an earlier "token-model" run (kept for reference in
+`tools/pools/arcane-mage-s2-token-model.json`) treated the Curio as a BIS-hitting wildcard that
+could substitute for any outstanding tier piece, and found: vault-first 17.1 weeks vs
+roll-first 22.3 weeks (+5.2 weeks, vault-first faster in 85% of seasons). That's wrong per the
+catalyst mechanics above — the Curio yields default stats, not a catalyzed-original-item token
+— so it undercounted weeks-to-BIS by treating a non-BIS drop as a BIS hit.
 
 For context, an earlier M+-only variant (2 M+ BIS items, single 80-item vault pool, 50,000
 runs each) found a smaller edge: vault-first 8.4 weeks vs roll-first 10.0 weeks (+1.6 weeks,
