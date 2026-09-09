@@ -95,6 +95,7 @@ export type BossEval = {
   ev: number
   evPct: number
   bestCase: PoolEntry | null
+  /** UI vocabulary is "rollable"; the field name is kept for stability. */
   deployable: boolean
   notes: string[]
   /** Mean of the remaining pool's `errorPct` values, where known -- the boss-level sim error used for toss-up detection. Undefined when no remaining entry carries an error (e.g. QE Live). */

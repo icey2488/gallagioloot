@@ -20,7 +20,7 @@ export function DeployabilityScreen(props: {
   return (
     <div>
       <div className="panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <h3>Deployability</h3>
+        <h3>Rollable Bosses</h3>
         <button type="button" className="btn" onClick={onViewRecommendation}>
           Roll this boss
         </button>
@@ -41,7 +41,7 @@ export function DeployabilityScreen(props: {
                 <Tooltip term="rollsToTarget">Rolls to target</Tooltip>
               </th>
               <th>
-                <Tooltip term="deployable">Deployable</Tooltip>
+                <Tooltip term="deployable">Rollable</Tooltip>
               </th>
               <th>Notes</th>
             </tr>
@@ -85,7 +85,7 @@ export function DeployabilityScreen(props: {
                       ? `~${b.bestCase.rollsToTargetExpected.toFixed(1)}, up to ${b.bestCase.rollsToTargetWorst}`
                       : '—'}
                   </td>
-                  <td data-label="Deployable">
+                  <td data-label="Rollable">
                     <span className="deploy-indicator">
                       <span className={b.deployable ? 'deploy-dot deploy-dot--yes' : 'deploy-dot deploy-dot--no'} aria-hidden="true" />
                       {b.deployable ? 'Yes' : (

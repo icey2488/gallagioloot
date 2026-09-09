@@ -113,7 +113,7 @@ const pages: Array<{ name: string; html: string }> = [
   {
     name: 'deployability',
     html: shellHtml(
-      'Deployability',
+      'Rollable Bosses',
       renderToStaticMarkup(createElement(DeployabilityScreen, { bossEvals, thresholdPct: settings.thresholdPct, onViewRecommendation: noop }))
     ),
   },

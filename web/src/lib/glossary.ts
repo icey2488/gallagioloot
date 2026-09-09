@@ -21,8 +21,8 @@ export const GLOSSARY: Record<GlossaryTerm, { label: string; copy: string }> = {
     copy: 'These bosses are within sim noise of each other. Roll whichever you kill first.',
   },
   deployable: {
-    label: 'Deployable',
-    copy: 'A boss you expect to kill this week whose EV clears the threshold.',
+    label: 'Rollable',
+    copy: 'A boss you expect to kill this week whose expected gain clears your threshold. Worth a Voidcore.',
   },
   knockout: {
     label: 'Knockout',
