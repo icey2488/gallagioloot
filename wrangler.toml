@@ -2,6 +2,9 @@ name = "gallagioloot-proxy"
 main = "src/index.ts"
 compatibility_date = "2025-05-01"
 
+# Production route.
+routes = [{ pattern = "gallagioloot-proxy.icehunter.net", custom_domain = true }]
+
 # Variables you can override per-deployment.
 # Restrict CORS to the GallagioLoot site origin. Localhost is always allowed for dev
 # regardless of this value (see src/index.ts corsHeaders()).
@@ -16,6 +19,3 @@ enabled = true
 [[kv_namespaces]]
 binding = "ENCOUNTER_ITEMS_KV"
 id = "d50d2ff681c24da8b3360cca19c740c5"
-
-# Production route.
-routes = [{ pattern = "gallagioloot-proxy.icehunter.net", custom_domain = true }]
