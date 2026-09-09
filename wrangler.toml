@@ -12,9 +12,10 @@ ALLOWED_ORIGIN = "https://gallagioloot.icehunter.net"
 [observability]
 enabled = true
 
-# Production route (not deployed by this job — config only):
-#   gallagioloot-proxy.icehunter.net -> this worker
-# Uncomment and fill in a zone_id when ready to deploy:
-# [[routes]]
-# pattern = "gallagioloot-proxy.icehunter.net/*"
-# zone_name = "icehunter.net"
+# Persistent cache for the Raidbots encounter-items lookup and the learned tier-slot cache.
+[[kv_namespaces]]
+binding = "ENCOUNTER_ITEMS_KV"
+id = "d50d2ff681c24da8b3360cca19c740c5"
+
+# Production route.
+routes = [{ pattern = "gallagioloot-proxy.icehunter.net", custom_domain = true }]
