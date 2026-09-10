@@ -26,9 +26,20 @@ async function main() {
   const bg = await fetchBtn.evaluate((el) => getComputedStyle(el).backgroundColor)
   assert.match(bg, /rgb\(2[34][0-9], 2[34][0-9], 2[34][0-9]\)/, `expected an off-white fill, got ${bg}`)
 
+  // v3 mockup ("3a" pre-report Paste) addition: a dashed-border empty-state card telling
+  // the user what fills in once they paste a report, replacing the old single-sentence
+  // placeholder. This is the most distinctive new element on the pre-fetch Paste screen.
+  const emptyState = page.locator('.paste-empty-state')
+  await emptyState.waitFor({ state: 'visible' })
+  const emptyStateTitle = await emptyState.locator('.paste-empty-state__title').innerText()
+  assert.equal(emptyStateTitle, 'Paste a report to begin', `expected the empty-state headline, got ${JSON.stringify(emptyStateTitle)}`)
+  const borderStyle = await emptyState.evaluate((el) => getComputedStyle(el).borderStyle)
+  assert.equal(borderStyle, 'dashed', `expected a dashed border on the empty state, got ${borderStyle}`)
+
   console.log(`Run settings panel: x=${runSettingsBox!.x.toFixed(0)} (right of report URL field, x=${reportUrlBox!.x.toFixed(0)})`)
   console.log(`Fetch report button background: ${bg}`)
-  console.log('PASS: pre-fetch Paste screen at 1200px shows two columns and the light "Fetch report" button.')
+  console.log(`Empty-state card: title=${JSON.stringify(emptyStateTitle)}, border-style=${borderStyle}`)
+  console.log('PASS: pre-fetch Paste screen at 1200px shows two columns, the light "Fetch report" button, and the v3 dashed empty-state card.')
 
   await browser.close()
 }

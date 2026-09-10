@@ -125,7 +125,12 @@ export function PasteScreen(props: {
               )}
             </div>
           ) : (
-            <div className="stats-line stats-line--empty">Paste a report to begin.</div>
+            <div className="paste-empty-state">
+              <div className="paste-empty-state__title">Paste a report to begin</div>
+              <div className="paste-empty-state__desc">
+                Loot spec, difficulty and the boss list fill in from the report. The recommendation card and deployability table appear here.
+              </div>
+            </div>
           )}
 
           {loadStatus === 'error' && loadError && <p className="warning-banner">{loadError}</p>}
@@ -258,9 +263,12 @@ export function PasteScreen(props: {
           </div>
         </details>
 
-        <button type="button" className="btn-light" disabled={primaryDisabled} onClick={handlePrimary}>
-          {primaryLabel}
-        </button>
+        <div className="fetch-button-group">
+          <button type="button" className="btn-light" disabled={primaryDisabled} onClick={handlePrimary}>
+            {primaryLabel}
+          </button>
+          {!report && !detectedSource && loadStatus !== 'loading' && <div className="btn-hint">Needs a report URL</div>}
+        </div>
       </div>
     </div>
   )

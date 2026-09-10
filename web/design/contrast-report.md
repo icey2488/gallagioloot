@@ -1,6 +1,6 @@
 # Contrast audit
 
-Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 55/56 pairs pass; 1 fail.
+Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 60/61 pairs pass; 1 fail.
 
 ## Changes made
 
@@ -76,6 +76,11 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Loot boss list rank (muted) on panel | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
 | Light-filled primary button (Fetch report / Price my roll) label on off-white fill | `#0b1530` | `#f5f3ec` | 16.25:1 | 4.5:1 (text) | ✅ |
 | Disabled Loot spec/Difficulty placeholder text ("From report") on input fill | `#858fb0` | `#16264c` | 4.63:1 | 4.5:1 (text) | ✅ |
+| Paste empty-state title text on panel | `#f5f3ec` | `#121f42` | 14.54:1 | 4.5:1 (text) | ✅ |
+| Paste empty-state description text on panel | `#b7bdda` | `#121f42` | 8.69:1 | 4.5:1 (text) | ✅ |
+| Paste empty-state dashed border on panel | `#5870aa` | `#121f42` | 3.32:1 | 3:1 (UI component) | ✅ |
+| Disabled Fetch button hint ("Needs a report URL") on panel | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
+| Input/textarea placeholder text on input fill | `#b7bdda` | `#16264c` | 7.99:1 | 4.5:1 (text) | ✅ |
 
 ## Failing pairs
 

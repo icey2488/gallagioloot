@@ -117,6 +117,15 @@ textarea {
   font-size: var(--text-body);
 }
 
+/* Explicit placeholder color (v3 mockup addition) rather than relying on the
+   browser's UA-default placeholder opacity, which isn't guaranteed to clear
+   the 4.5:1 text floor against --bg-panel-alt. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
 input:focus,
 select:focus,
 textarea:focus,
@@ -1030,6 +1039,50 @@ select:disabled {
 
 .voidcore-field__input:focus {
   outline: none;
+}
+
+/* Pre-fetch empty state (v3 mockup "3a"): a dashed-border placeholder card telling the
+   user what appears once they paste a report, replacing a single muted sentence with a
+   headline + explanation. Dashed rather than solid so it doesn't read as a populated
+   panel -- no gold, no gradient, same --border token as every other outline in the app. */
+.paste-empty-state {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-9) var(--space-10);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: center;
+}
+
+.paste-empty-state__title {
+  font-size: var(--text-control-label);
+  font-weight: 600;
+}
+
+.paste-empty-state__desc {
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+  line-height: 1.45;
+  max-width: 420px;
+}
+
+/* Groups the primary button with its optional disabled-reason hint at a tighter 8px gap
+   (matching the v3 mockup's own button+caption sub-group), rather than letting the hint
+   consume a full run-settings-panel gap (18px) as an extra top-level child. */
+.fetch-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+/* Helper line under the disabled primary button (v3 mockup addition) explaining why
+   it's disabled -- muted, centered, same treatment as .field-hint. */
+.btn-hint {
+  font-size: var(--text-eyebrow);
+  color: var(--text-muted);
+  text-align: center;
 }
 
 /* Sim-report stats line under the URL field -- three counts before a fetch collapse to

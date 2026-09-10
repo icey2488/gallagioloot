@@ -163,6 +163,15 @@ const PAIRS: Pair[] = [
   // light-filled primary button, and disabled placeholder selects before a report loads.
   { name: 'Light-filled primary button (Fetch report / Price my roll) label on off-white fill', fg: COLORS.bgBase, bg: COLORS.text, requirement: 'text' },
   { name: 'Disabled Loot spec/Difficulty placeholder text ("From report") on input fill', fg: COLORS.textMuted, bg: COLORS.bgPanelAlt, requirement: 'text' },
+  // Paste pre-report empty state (v3 mockup "3a", 2026-09-10) -- dashed-border card
+  // replacing the single "Paste a report to begin." sentence, plus a hint line under the
+  // disabled Fetch button and an explicit input/textarea placeholder color. No new hex
+  // values: every element reuses an already-defined token, audited here as new locations.
+  { name: 'Paste empty-state title text on panel', fg: COLORS.text, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Paste empty-state description text on panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Paste empty-state dashed border on panel', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Disabled Fetch button hint ("Needs a report URL") on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Input/textarea placeholder text on input fill', fg: COLORS.textSecondary, bg: COLORS.bgPanelAlt, requirement: 'text' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather
