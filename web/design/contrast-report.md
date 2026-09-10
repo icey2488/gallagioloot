@@ -1,6 +1,6 @@
 # Contrast audit
 
-Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 48/49 pairs pass; 1 fail.
+Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 53/54 pairs pass; 1 fail.
 
 ## Changes made
 
@@ -69,6 +69,11 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Item-tag (Tier/Curio small-caps meta) text on panel | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
 | btn-secondary label text on panel | `#b7bdda` | `#121f42` | 8.69:1 | 4.5:1 (text) | ✅ |
 | btn-secondary border on panel | `#5870aa` | `#121f42` | 3.32:1 | 3:1 (UI component) | ✅ |
+| Nav tab label (secondary text) on header panel | `#b7bdda` | `#121f42` | 8.69:1 | 4.5:1 (text) | ✅ |
+| Active nav tab / active boss-list item text on hover fill (--bg-hover) | `#f5f3ec` | `#1b2c56` | 12.27:1 | 4.5:1 (text) | ✅ |
+| Run-settings sidebar border on its own panel fill | `#5870aa` | `#121f42` | 3.32:1 | 3:1 (UI component) | ✅ |
+| Stat-trio label (muted) on panel | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
+| Loot boss list rank (muted) on panel | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
 
 ## Failing pairs
 

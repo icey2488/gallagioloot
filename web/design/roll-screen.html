@@ -164,6 +164,40 @@ button:focus-visible,
   gap: var(--space-6);
 }
 
+/* Screen tab bar (Paste/Reconcile/Loot table/Recommendation), from the v2 design export.
+   Always its own full-width row -- v2 places it inline next to the wordmark on desktop,
+   but this app's header also carries the loot spec picker, "Loot table" jump, and
+   character switcher/Voidcores pill that v2's mockup doesn't have, so inline placement
+   would crowd those controls. Documented layout adaptation, not a hard-rule override. */
+.app-nav {
+  order: 4;
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+}
+
+.app-nav__item {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-nav__item:hover {
+  background: var(--bg-panel-alt);
+}
+
+.app-nav__item[aria-current='page'] {
+  background: var(--bg-hover);
+  color: var(--text);
+  font-weight: 600;
+}
+
 @media (min-width: 700px) {
   .app-header__brand {
     font-size: var(--text-wordmark-desktop);
@@ -185,6 +219,13 @@ button:focus-visible,
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
+}
+
+/* Paste/Reconcile/Loot table adopt v2's wider two-column layouts (a 380px settings
+   sidebar, a 260px boss list) -- the 720px column used everywhere else is too narrow
+   for those. Deployability/Roll keep 720px, matching the unchanged Turn 1 mockup. */
+.app-main--wide {
+  max-width: 1200px;
 }
 
 /* Same treatment as .rec-card (bg, radius, padding) minus the gold border --
@@ -365,6 +406,17 @@ tr.excluded .deploy-table__ev {
   box-sizing: border-box;
 }
 
+/* Numeric columns center rather than left-align at desktop widths, per v2's "numbers
+   centered in columns" note (applied to the Rollable Bosses and Loot Table tables, the
+   only tables with .num headers/cells). Left-aligned on phone, where .fold-table turns
+   each cell into a label/value flex row instead. */
+@media (min-width: 641px) {
+  th.num,
+  td.num {
+    text-align: center;
+  }
+}
+
 /* Phone-width: fold the table into a card list per row, keeping every column's data
    (via data-label) rather than dropping any -- same DOM, same columns, different layout.
    .fold-table is the shared hook (Rollable Bosses' .deploy-table and the Loot Table's
@@ -418,6 +470,40 @@ tr.excluded .deploy-table__ev {
   .fold-table td[data-label='Item']::before {
     content: none;
   }
+}
+
+/* Fixed layout with an explicit Item-column share -- an auto table layout squeezes
+   Item down to a sliver next to four narrower columns, wrapping every long item name
+   across 3-4 lines. */
+.loot-item-table {
+  table-layout: fixed;
+}
+
+.loot-item-table th:first-child,
+.loot-item-table td:first-child {
+  width: 34%;
+}
+
+.loot-item-table th:nth-child(2),
+.loot-item-table td:nth-child(2) {
+  width: 14%;
+}
+
+.loot-item-table th:nth-child(3),
+.loot-item-table td:nth-child(3) {
+  width: 16%;
+}
+
+.loot-item-table th:nth-child(3),
+.loot-item-table td:nth-child(3),
+.loot-item-table th:nth-child(4),
+.loot-item-table td:nth-child(4) {
+  white-space: nowrap;
+}
+
+.loot-item-table th:nth-child(4),
+.loot-item-table td:nth-child(4) {
+  width: 26%;
 }
 
 /* Fixed-width checkbox column so knockout controls line up in a column instead of
@@ -837,16 +923,122 @@ tr.excluded .deploy-table__ev {
   font-size: var(--text-section-title);
 }
 
-.loot-table-boss summary {
-  cursor: pointer;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 16px;
-  padding: 4px 0;
+/* Paste screen: primary paste/fetch flow left, a bordered "Run settings" sidebar right
+   (rolls available, expected kills, vault details, threshold, the primary action) --
+   matches v2's 2a layout. Single column, sidebar stacked below, under 700px. */
+.paste-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 380px;
+  gap: var(--space-14);
+  align-items: start;
 }
 
-.loot-table-boss + .loot-table-boss {
-  margin-top: 12px;
+@media (max-width: 699px) {
+  .paste-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.run-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-9);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-10);
+}
+
+/* Loot table: a "Bosses · kill order" list left, the selected boss's stat trio + item
+   table right -- matches v2's 2c layout (one boss at a time, replacing the old stacked
+   accordion). The boss list collapses to a <select> under 700px, per v2's phone variant. */
+.loot-table-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-14);
+  align-items: start;
+}
+
+.loot-boss-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.loot-boss-list__item {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  padding: var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body);
+  background: none;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.loot-boss-list__item:hover {
+  background: var(--bg-panel-alt);
+}
+
+.loot-boss-list__item[aria-current='true'] {
+  background: var(--bg-hover);
+  font-weight: 600;
+}
+
+.loot-boss-list__rank {
+  color: var(--text-muted);
+  width: 16px;
+  flex: none;
+}
+
+.loot-boss-list__item[aria-current='true'] .loot-boss-list__rank {
+  font-weight: 400;
+}
+
+/* Sidebar list on desktop, a <select> on phone -- same two options v2 shows for 2c. */
+.loot-boss-select {
+  display: none;
+}
+
+@media (max-width: 699px) {
+  .loot-table-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .loot-boss-select {
+    display: flex;
+  }
+
+  .loot-boss-list-wrap {
+    display: none;
+  }
+}
+
+.stat-trio {
+  display: flex;
+  gap: var(--space-12);
+  font-size: var(--text-body);
+  text-align: center;
+}
+
+.stat-trio__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-trio__value {
+  font-size: var(--text-control-label);
+  font-weight: 700;
+}
+
+.stat-trio__label {
+  font-size: var(--text-eyebrow);
+  color: var(--text-muted);
 }
 
 .warning-banner {
@@ -865,7 +1057,7 @@ tr.excluded .deploy-table__ev {
 </head>
 <body>
 <div class="app-shell">
-<header class="app-header"><span class="app-header__brand">GallagioLoot</span><div class="app-header__meta">Iceshaman · Elemental loot spec · Heroic</div><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
+<header class="app-header"><span class="app-header__brand">GallagioLoot</span><nav class="app-nav" aria-label="Screens"><button type="button" class="app-nav__item">Paste</button><button type="button" class="app-nav__item">Reconcile</button><button type="button" class="app-nav__item">Loot table</button><button type="button" class="app-nav__item" aria-current="page">Recommendation</button></nav><div class="app-header__meta">Iceshaman · Elemental loot spec · Heroic</div><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
 <main class="app-main">
 <section class="rec-card" aria-label="Bonus roll recommendation"><div class="rec-card__top"><div class="rec-card__eyebrow">GallagioLoot recommends</div><div class="rec-card__meta num">1 Voidcore</div></div><h2 class="rec-card__headline"><span class="rec-card__verb">Roll</span> <span class="rec-card__boss">The Lost Explorers <span class="rec-card__or">or</span> Vashnik the Malignant</span></h2><div class="rec-card__tossup-grid"><div class="rec-card__tossup-side"><div class="rec-card__tossup-pct num">2.30%</div><div class="rec-card__tossup-name">The Lost Explorers</div></div><div class="rec-card__tossup-vs">vs</div><div class="rec-card__tossup-side"><div class="rec-card__tossup-pct num">2.18%</div><div class="rec-card__tossup-name">Vashnik the Malignant</div></div></div><div class="rec-card__note rec-card__note--strong"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Toss-up<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span>: Within 0.12%: let kill order decide; roll whichever you kill first.</div><div class="rec-card__action"><button type="button" class="btn btn-gold">Mark as rolled</button></div></section>
 <footer class="app-footer panel"><div class="app-footer__columns"><div class="app-footer__col app-footer__col--main"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><details class="app-footer__assumptions"><summary>Show assumptions</summary><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></details></div><div class="app-footer__col app-footer__col--aside"><p>Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div></footer>

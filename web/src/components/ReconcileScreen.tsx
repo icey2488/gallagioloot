@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { deserialize, serialize } from '@engine/core/knockout'
 import type { BossEval, KnockoutState } from '@engine/core/types'
 import type { NormalizedReport } from '@engine/types'
+import { formatDifficulty } from '../lib/format'
 import { Tooltip } from './Tooltip'
 
 export function ReconcileScreen(props: {
@@ -63,7 +64,14 @@ export function ReconcileScreen(props: {
   return (
     <div>
       <div className="panel">
-        <h3>I rolled {bossName} and got:</h3>
+        <div className="screen-header" style={{ marginBottom: 14 }}>
+          <div className="screen-header__title-group">
+            <h3>I rolled {bossName} and got:</h3>
+          </div>
+          <span className="screen-header__meta">
+            {report.character} · {formatDifficulty(report.difficulty)}
+          </span>
+        </div>
         <div className="field">
           <label htmlFor="reconcile-boss">Boss</label>
           <select id="reconcile-boss" value={bossId ?? ''} onChange={(e) => setBossId(e.target.value ? Number(e.target.value) : null)}>

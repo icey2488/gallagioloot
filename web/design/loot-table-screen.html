@@ -164,6 +164,40 @@ button:focus-visible,
   gap: var(--space-6);
 }
 
+/* Screen tab bar (Paste/Reconcile/Loot table/Recommendation), from the v2 design export.
+   Always its own full-width row -- v2 places it inline next to the wordmark on desktop,
+   but this app's header also carries the loot spec picker, "Loot table" jump, and
+   character switcher/Voidcores pill that v2's mockup doesn't have, so inline placement
+   would crowd those controls. Documented layout adaptation, not a hard-rule override. */
+.app-nav {
+  order: 4;
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+}
+
+.app-nav__item {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+}
+
+.app-nav__item:hover {
+  background: var(--bg-panel-alt);
+}
+
+.app-nav__item[aria-current='page'] {
+  background: var(--bg-hover);
+  color: var(--text);
+  font-weight: 600;
+}
+
 @media (min-width: 700px) {
   .app-header__brand {
     font-size: var(--text-wordmark-desktop);
@@ -185,6 +219,13 @@ button:focus-visible,
   max-width: 720px;
   width: 100%;
   margin: 0 auto;
+}
+
+/* Paste/Reconcile/Loot table adopt v2's wider two-column layouts (a 380px settings
+   sidebar, a 260px boss list) -- the 720px column used everywhere else is too narrow
+   for those. Deployability/Roll keep 720px, matching the unchanged Turn 1 mockup. */
+.app-main--wide {
+  max-width: 1200px;
 }
 
 /* Same treatment as .rec-card (bg, radius, padding) minus the gold border --
@@ -365,6 +406,17 @@ tr.excluded .deploy-table__ev {
   box-sizing: border-box;
 }
 
+/* Numeric columns center rather than left-align at desktop widths, per v2's "numbers
+   centered in columns" note (applied to the Rollable Bosses and Loot Table tables, the
+   only tables with .num headers/cells). Left-aligned on phone, where .fold-table turns
+   each cell into a label/value flex row instead. */
+@media (min-width: 641px) {
+  th.num,
+  td.num {
+    text-align: center;
+  }
+}
+
 /* Phone-width: fold the table into a card list per row, keeping every column's data
    (via data-label) rather than dropping any -- same DOM, same columns, different layout.
    .fold-table is the shared hook (Rollable Bosses' .deploy-table and the Loot Table's
@@ -418,6 +470,40 @@ tr.excluded .deploy-table__ev {
   .fold-table td[data-label='Item']::before {
     content: none;
   }
+}
+
+/* Fixed layout with an explicit Item-column share -- an auto table layout squeezes
+   Item down to a sliver next to four narrower columns, wrapping every long item name
+   across 3-4 lines. */
+.loot-item-table {
+  table-layout: fixed;
+}
+
+.loot-item-table th:first-child,
+.loot-item-table td:first-child {
+  width: 34%;
+}
+
+.loot-item-table th:nth-child(2),
+.loot-item-table td:nth-child(2) {
+  width: 14%;
+}
+
+.loot-item-table th:nth-child(3),
+.loot-item-table td:nth-child(3) {
+  width: 16%;
+}
+
+.loot-item-table th:nth-child(3),
+.loot-item-table td:nth-child(3),
+.loot-item-table th:nth-child(4),
+.loot-item-table td:nth-child(4) {
+  white-space: nowrap;
+}
+
+.loot-item-table th:nth-child(4),
+.loot-item-table td:nth-child(4) {
+  width: 26%;
 }
 
 /* Fixed-width checkbox column so knockout controls line up in a column instead of
@@ -837,16 +923,122 @@ tr.excluded .deploy-table__ev {
   font-size: var(--text-section-title);
 }
 
-.loot-table-boss summary {
-  cursor: pointer;
-  font-family: var(--font-display);
-  font-weight: 600;
-  font-size: 16px;
-  padding: 4px 0;
+/* Paste screen: primary paste/fetch flow left, a bordered "Run settings" sidebar right
+   (rolls available, expected kills, vault details, threshold, the primary action) --
+   matches v2's 2a layout. Single column, sidebar stacked below, under 700px. */
+.paste-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) 380px;
+  gap: var(--space-14);
+  align-items: start;
 }
 
-.loot-table-boss + .loot-table-boss {
-  margin-top: 12px;
+@media (max-width: 699px) {
+  .paste-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.run-settings-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-9);
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: var(--space-10);
+}
+
+/* Loot table: a "Bosses · kill order" list left, the selected boss's stat trio + item
+   table right -- matches v2's 2c layout (one boss at a time, replacing the old stacked
+   accordion). The boss list collapses to a <select> under 700px, per v2's phone variant. */
+.loot-table-layout {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--space-14);
+  align-items: start;
+}
+
+.loot-boss-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.loot-boss-list__item {
+  display: flex;
+  gap: var(--space-5);
+  align-items: center;
+  padding: var(--space-6);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-body);
+  background: none;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.loot-boss-list__item:hover {
+  background: var(--bg-panel-alt);
+}
+
+.loot-boss-list__item[aria-current='true'] {
+  background: var(--bg-hover);
+  font-weight: 600;
+}
+
+.loot-boss-list__rank {
+  color: var(--text-muted);
+  width: 16px;
+  flex: none;
+}
+
+.loot-boss-list__item[aria-current='true'] .loot-boss-list__rank {
+  font-weight: 400;
+}
+
+/* Sidebar list on desktop, a <select> on phone -- same two options v2 shows for 2c. */
+.loot-boss-select {
+  display: none;
+}
+
+@media (max-width: 699px) {
+  .loot-table-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .loot-boss-select {
+    display: flex;
+  }
+
+  .loot-boss-list-wrap {
+    display: none;
+  }
+}
+
+.stat-trio {
+  display: flex;
+  gap: var(--space-12);
+  font-size: var(--text-body);
+  text-align: center;
+}
+
+.stat-trio__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-trio__value {
+  font-size: var(--text-control-label);
+  font-weight: 700;
+}
+
+.stat-trio__label {
+  font-size: var(--text-eyebrow);
+  color: var(--text-muted);
 }
 
 .warning-banner {
@@ -865,9 +1057,9 @@ tr.excluded .deploy-table__ev {
 </head>
 <body>
 <div class="app-shell">
-<header class="app-header"><span class="app-header__brand">GallagioLoot</span><div class="app-header__meta">Iceshaman · Elemental loot spec · Heroic</div><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
-<main class="app-main">
-<div><div class="panel"><div class="screen-header"><div class="screen-header__title-group"><h3>Loot table -- The Venomous Abyss</h3><span class="screen-header__meta">Elemental loot spec</span></div><span class="note-line" style="margin-top:0">data hash 0f25a4ee…</span></div></div><details class="panel loot-table-boss" open=""><summary>Nek&#x27;zali the Soulcoiler</summary><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Hexing Spiritrender</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">2.25%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Hexing Spiritrender"/></td></tr><tr><td data-label="Item">Strongblood&#x27;s Ceremonial Cleaver</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Strongblood&#x27;s Ceremonial Cleaver"/></td></tr><tr><td data-label="Item">Cursed Reliquary Cincture</td><td class="num" data-label="Slot">waist</td><td class="num" data-label="Sim gain">0.92%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Cursed Reliquary Cincture"/></td></tr><tr><td data-label="Item">Crown of the Eternal Fang</td><td class="num" data-label="Slot">head</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Crown of the Eternal Fang"/></td></tr><tr><td data-label="Item">Amani Summoning Shawl</td><td class="num" data-label="Slot">back</td><td class="num" data-label="Sim gain">0.93%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Amani Summoning Shawl"/></td></tr><tr><td data-label="Item">Tomb-Creeper&#x27;s Claw</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Tomb-Creeper&#x27;s Claw"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>Entombed Sentinels</summary><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Caustic Keeper-Crusher</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Caustic Keeper-Crusher"/></td></tr><tr><td data-label="Item">Ancient Construct&#x27;s Venomshiv</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Ancient Construct&#x27;s Venomshiv"/></td></tr><tr><td data-label="Item">Sentinel&#x27;s Vitriolic Chain</td><td class="num" data-label="Slot">neck</td><td class="num" data-label="Sim gain">0.43%</td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Sentinel&#x27;s Vitriolic Chain"/></td></tr><tr><td data-label="Item">Hexing Grips of the Ophidian Oracle<span class="item-tag">Tier</span></td><td class="num" data-label="Slot">hands</td><td class="num" data-label="Sim gain">1.88%</td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Hexing Grips of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>The Lost Explorers</summary><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Venom-Slashed Scuteward</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Venom-Slashed Scuteward"/></td></tr><tr><td data-label="Item">Malevolent Spiritcudgel</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">2.26%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Malevolent Spiritcudgel"/></td></tr><tr><td data-label="Item">Boots of the Reckless Wayfarer</td><td class="num" data-label="Slot">feet</td><td class="num" data-label="Sim gain">0.82%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Boots of the Reckless Wayfarer"/></td></tr><tr><td data-label="Item">Gebbo&#x27;s Bottomless Bag</td><td class="num" data-label="Slot">trinket</td><td class="num" data-label="Sim gain">6.28%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Gebbo&#x27;s Bottomless Bag"/></td></tr><tr><td data-label="Item">Hissing Mantle of the Ophidian Oracle<span class="item-tag">Tier</span></td><td class="num" data-label="Slot">shoulder</td><td class="num" data-label="Sim gain">2.13%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Hissing Mantle of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>Vashnik the Malignant</summary><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Venomancer&#x27;s Winged Channeler</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">1.59%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Venomancer&#x27;s Winged Channeler"/></td></tr><tr><td data-label="Item">Vile Alchemist&#x27;s Band</td><td class="num" data-label="Slot">finger</td><td class="num" data-label="Sim gain">1.56%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Vile Alchemist&#x27;s Band"/></td></tr><tr><td data-label="Item">Serpentine Mixing Belt</td><td class="num" data-label="Slot">waist</td><td class="num" data-label="Sim gain">1.29%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Serpentine Mixing Belt"/></td></tr><tr><td data-label="Item">Fang of Umbral Malignance <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td class="num" data-label="Slot">trinket</td><td class="num" data-label="Sim gain">5.43%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Fang of Umbral Malignance"/></td></tr><tr><td data-label="Item">Fanged Raiment of the Ophidian Oracle<span class="item-tag">Tier</span></td><td class="num" data-label="Slot">chest</td><td class="num" data-label="Sim gain">1.03%</td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Fanged Raiment of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>Sszorak</summary><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Slithering Savage&#x27;s Gavel</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Slithering Savage&#x27;s Gavel"/></td></tr><tr><td data-label="Item">Ferocious Scaleboots</td><td class="num" data-label="Slot">feet</td><td class="num" data-label="Sim gain">0.88%</td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Ferocious Scaleboots"/></td></tr><tr><td data-label="Item">Apex Brute&#x27;s Claw Ring</td><td class="num" data-label="Slot">finger</td><td class="num" data-label="Sim gain">1.19%</td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Apex Brute&#x27;s Claw Ring"/></td></tr><tr><td data-label="Item">Leggings of the Ophidian Oracle<span class="item-tag">Tier</span></td><td class="num" data-label="Slot">legs</td><td class="num" data-label="Sim gain">0.48%</td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Leggings of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>The Twin Fangs</summary><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Ophidian Fangmail</td><td class="num" data-label="Slot">chest</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~3.5, up to 6</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Ophidian Fangmail"/></td></tr><tr><td data-label="Item">Amulet of the Twin Fangs</td><td class="num" data-label="Slot">neck</td><td class="num" data-label="Sim gain">1.50%</td><td class="num" data-label="Rolls to target">~3.5, up to 6</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Amulet of the Twin Fangs"/></td></tr><tr><td data-label="Item">Ravenous Feaster&#x27;s Fang</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~3.5, up to 6</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Ravenous Feaster&#x27;s Fang"/></td></tr><tr><td data-label="Item">Vexhul&#x27;s Everflowing Gland <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td class="num" data-label="Slot">trinket</td><td class="num" data-label="Sim gain">6.30%</td><td class="num" data-label="Rolls to target">~3.5, up to 6</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Vexhul&#x27;s Everflowing Gland"/></td></tr><tr><td data-label="Item">Serpent Crown of the Ophidian Oracle<span class="item-tag">Tier</span></td><td class="num" data-label="Slot">head</td><td class="num" data-label="Sim gain">1.86%</td><td class="num" data-label="Rolls to target">~3.5, up to 6</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Serpent Crown of the Ophidian Oracle"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>The Coiled Altar</summary><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Aman&#x27;muso, Warlord&#x27;s Vengeance</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Aman&#x27;muso, Warlord&#x27;s Vengeance"/></td></tr><tr><td data-label="Item">Soulslither Spaulders</td><td class="num" data-label="Slot">shoulder</td><td class="num" data-label="Sim gain">2.07%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Soulslither Spaulders"/></td></tr><tr><td data-label="Item">Cuisses of the Uncoiled Union</td><td class="num" data-label="Slot">legs</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Cuisses of the Uncoiled Union"/></td></tr><tr><td data-label="Item">Silken Voodoo Drape</td><td class="num" data-label="Slot">back</td><td class="num" data-label="Sim gain">1.08%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Silken Voodoo Drape"/></td></tr><tr><td data-label="Item">Hex Lord&#x27;s Dooming Idol <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td class="num" data-label="Slot">trinket</td><td class="num" data-label="Sim gain">1.42%</td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Hex Lord&#x27;s Dooming Idol"/></td></tr></tbody></table></details><details class="panel loot-table-boss" open=""><summary>Ula&#x27;tek</summary><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th>Slot</th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Aqirbane Reliquary</td><td class="num" data-label="Slot">neck</td><td class="num" data-label="Sim gain">2.00%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Aqirbane Reliquary"/></td></tr><tr><td data-label="Item">Font of Venomous Rage <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td class="num" data-label="Slot">trinket</td><td class="num" data-label="Sim gain">6.26%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Font of Venomous Rage"/></td></tr><tr><td data-label="Item">Jan&#x27;thrazet, the Soul Fang</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">3.22%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Jan&#x27;thrazet, the Soul Fang"/></td></tr><tr><td data-label="Item">Zatha&#x27;tek, Breath of Corruption</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Zatha&#x27;tek, Breath of Corruption"/></td></tr><tr><td data-label="Item">Awoken Dreadfang Cuirass</td><td class="num" data-label="Slot">chest</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Awoken Dreadfang Cuirass"/></td></tr><tr><td data-label="Item">Fanged Raiment of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">chest</td><td class="num" data-label="Sim gain">2.71%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Fanged Raiment of the Ophidian Oracle"/></td></tr><tr><td data-label="Item">Hexing Grips of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">hands</td><td class="num" data-label="Sim gain">1.94%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Hexing Grips of the Ophidian Oracle"/></td></tr><tr><td data-label="Item">Serpent Crown of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">head</td><td class="num" data-label="Sim gain">1.81%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Serpent Crown of the Ophidian Oracle"/></td></tr><tr><td data-label="Item">Leggings of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">legs</td><td class="num" data-label="Sim gain">0.41%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Leggings of the Ophidian Oracle"/></td></tr><tr><td data-label="Item">Hissing Mantle of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">shoulder</td><td class="num" data-label="Sim gain">2.07%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Hissing Mantle of the Ophidian Oracle"/></td></tr></tbody></table></details></div>
+<header class="app-header"><span class="app-header__brand">GallagioLoot</span><nav class="app-nav" aria-label="Screens"><button type="button" class="app-nav__item">Paste</button><button type="button" class="app-nav__item">Reconcile</button><button type="button" class="app-nav__item" aria-current="page">Loot table</button><button type="button" class="app-nav__item">Recommendation</button></nav><div class="app-header__meta">Iceshaman · Elemental loot spec · Heroic</div><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
+<main class="app-main app-main--wide">
+<div><div class="panel"><div class="screen-header"><div class="screen-header__title-group"><h3>Loot table -- The Venomous Abyss</h3><span class="screen-header__meta">Elemental loot spec</span></div><span class="note-line" style="margin-top:0">data hash 0f25a4ee…</span></div></div><div class="panel loot-table-layout"><div><div class="loot-boss-select field"><label for="loot-boss-select">Boss · kill order</label><select id="loot-boss-select"><option value="2895" selected="">1 · Ula&#x27;tek</option><option value="2871">2 · Sszorak</option><option value="2882">3 · Vashnik the Malignant</option><option value="2888">4 · Nek&#x27;zali the Soulcoiler</option><option value="2894">5 · The Lost Explorers</option><option value="2874">6 · Entombed Sentinels</option><option value="2883">7 · The Coiled Altar</option><option value="2887">8 · The Twin Fangs</option></select></div><nav class="loot-boss-list-wrap" aria-label="Bosses, kill order"><div class="field-hint" style="margin-bottom:8px">Bosses · kill order</div><div class="loot-boss-list"><button type="button" class="loot-boss-list__item" aria-current="true"><span class="loot-boss-list__rank">1</span>Ula&#x27;tek</button><button type="button" class="loot-boss-list__item"><span class="loot-boss-list__rank">2</span>Sszorak</button><button type="button" class="loot-boss-list__item"><span class="loot-boss-list__rank">3</span>Vashnik the Malignant</button><button type="button" class="loot-boss-list__item"><span class="loot-boss-list__rank">4</span>Nek&#x27;zali the Soulcoiler</button><button type="button" class="loot-boss-list__item"><span class="loot-boss-list__rank">5</span>The Lost Explorers</button><button type="button" class="loot-boss-list__item"><span class="loot-boss-list__rank">6</span>Entombed Sentinels</button><button type="button" class="loot-boss-list__item"><span class="loot-boss-list__rank">7</span>The Coiled Altar</button><button type="button" class="loot-boss-list__item"><span class="loot-boss-list__rank">8</span>The Twin Fangs</button></div></nav></div><div><div class="screen-header" style="margin-bottom:14px"><div class="screen-header__title-group" style="display:block"><h3 style="margin-bottom:4px">Ula&#x27;tek</h3><span class="screen-header__meta">1st kill · Heroic · Elemental loot spec</span></div><div class="stat-trio"><div class="stat-trio__item"><span class="stat-trio__value num">11 / 11</span><span class="stat-trio__label">remaining</span></div><div class="stat-trio__item"><span class="stat-trio__value num">1.86%</span><span class="stat-trio__label">EV per roll</span></div><div class="stat-trio__item"><span class="stat-trio__value num">10 / 10</span><span class="stat-trio__label">simmed</span></div></div></div><table class="loot-item-table fold-table"><thead><tr><th>Item</th><th class="num">Slot</th><th class="num"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Sim gain<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th class="num"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Knockout</th></tr></thead><tbody><tr><td data-label="Item">Aqirbane Reliquary</td><td class="num" data-label="Slot">neck</td><td class="num" data-label="Sim gain">2.00%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Aqirbane Reliquary"/></td></tr><tr><td data-label="Item">Font of Venomous Rage <span class="badge"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">spec-specific<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></span><div class="note-line" style="margin-top:2px">counts only for Elemental</div></td><td class="num" data-label="Slot">trinket</td><td class="num" data-label="Sim gain">6.26%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Font of Venomous Rage"/></td></tr><tr><td data-label="Item">Jan&#x27;thrazet, the Soul Fang</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">3.22%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Jan&#x27;thrazet, the Soul Fang"/></td></tr><tr><td data-label="Item">Zatha&#x27;tek, Breath of Corruption</td><td class="num" data-label="Slot">—</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Zatha&#x27;tek, Breath of Corruption"/></td></tr><tr><td data-label="Item">Awoken Dreadfang Cuirass</td><td class="num" data-label="Slot">chest</td><td class="num" data-label="Sim gain">0.00%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Awoken Dreadfang Cuirass"/></td></tr><tr><td data-label="Item">Fanged Raiment of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">chest</td><td class="num" data-label="Sim gain">2.71%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Fanged Raiment of the Ophidian Oracle"/></td></tr><tr><td data-label="Item">Hexing Grips of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">hands</td><td class="num" data-label="Sim gain">1.94%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Hexing Grips of the Ophidian Oracle"/></td></tr><tr><td data-label="Item">Serpent Crown of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">head</td><td class="num" data-label="Sim gain">1.81%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Serpent Crown of the Ophidian Oracle"/></td></tr><tr><td data-label="Item">Leggings of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">legs</td><td class="num" data-label="Sim gain">0.41%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Leggings of the Ophidian Oracle"/></td></tr><tr><td data-label="Item">Hissing Mantle of the Ophidian Oracle<span class="item-tag">Curio</span></td><td class="num" data-label="Slot">shoulder</td><td class="num" data-label="Sim gain">2.07%</td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Knockout"><input type="checkbox" aria-label="Knock out Hissing Mantle of the Ophidian Oracle"/></td></tr></tbody></table></div></div></div>
 <footer class="app-footer panel"><div class="app-footer__columns"><div class="app-footer__col app-footer__col--main"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><details class="app-footer__assumptions"><summary>Show assumptions</summary><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></details></div><div class="app-footer__col app-footer__col--aside"><p>Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div></footer>
 </main>
 </div>

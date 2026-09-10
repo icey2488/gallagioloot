@@ -9,6 +9,7 @@ import type { KnockoutState, Settings, VaultItemInput } from '@engine/core/types
 import { detectSource, type ReportSource } from './lib/urlDetect'
 import { fetchLootTable, fetchReport, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData } from './lib/cardData'
+import { formatDifficulty } from './lib/format'
 import {
   LocalStorageAdapter,
   loadLastReportUrl,
@@ -19,6 +20,7 @@ import {
   saveVoidcoreCount,
 } from './lib/storage'
 import { useScreenHistory } from './state/useScreenHistory'
+import type { Screen } from './state/screenHistory'
 import { PasteScreen, type BossOption } from './components/PasteScreen'
 import { DeployabilityScreen } from './components/DeployabilityScreen'
 import { RollScreen } from './components/RollScreen'
@@ -30,11 +32,18 @@ import { Footer } from './components/Footer'
 
 const storageAdapter = new LocalStorageAdapter()
 
-/** "raid-vault-heroic" -> "Heroic" */
-function formatDifficulty(difficulty: string): string {
-  const last = difficulty.split('-').pop() ?? difficulty
-  return last.charAt(0).toUpperCase() + last.slice(1)
-}
+// Top nav tabs, matching the v2 design export's Paste/Reconcile/Loot table/Recommendation
+// bar. The app has five internal screens (deployability + roll are two steps of the same
+// "look at recommendations" flow); both map to the Recommendation tab, landing on the
+// Rollable Bosses table -- the fifth "roll" screen is still reachable from there.
+const NAV_TABS: Array<{ label: string; target: Screen; matches: Screen[] }> = [
+  { label: 'Paste', target: 'paste', matches: ['paste'] },
+  { label: 'Reconcile', target: 'reconcile', matches: ['reconcile'] },
+  { label: 'Loot table', target: 'lootTable', matches: ['lootTable'] },
+  { label: 'Recommendation', target: 'deployability', matches: ['deployability', 'roll'] },
+]
+
+const WIDE_SCREENS: Screen[] = ['paste', 'reconcile', 'lootTable']
 
 export default function App() {
   const { screen, go, replace } = useScreenHistory()
@@ -286,6 +295,22 @@ export default function App() {
     <div className="app-shell">
       <header className="app-header">
         <span className="app-header__brand">GallagioLoot</span>
+        <nav className="app-nav" aria-label="Screens">
+          {NAV_TABS.map((tab) => (
+            <button
+              key={tab.target}
+              type="button"
+              className="app-nav__item"
+              aria-current={tab.matches.includes(screen) ? 'page' : undefined}
+              onClick={() => {
+                if (tab.target === 'lootTable') setFocusBossId(null)
+                go(tab.target)
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
         {report && (
           <div className="app-header__meta">
             {report.character} · {lootSpecName ?? 'unknown'} loot spec · {formatDifficulty(report.difficulty)}
@@ -293,18 +318,6 @@ export default function App() {
         )}
         <div className="app-header__controls">
           <LootSpecPicker lootSpecId={lootSpecId} onChange={setLootSpecId} />
-          {report && (
-            <button
-              type="button"
-              className="btn-link"
-              onClick={() => {
-                setFocusBossId(null)
-                go('lootTable')
-              }}
-            >
-              Loot table
-            </button>
-          )}
           <CharacterSwitcher
             keys={characterKeys}
             currentKey={currentKey}
@@ -315,7 +328,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="app-main">
+      <main className={`app-main${WIDE_SCREENS.includes(screen) ? ' app-main--wide' : ''}`}>
         {screen === 'paste' && (
           <PasteScreen
             reportUrl={reportUrl}
@@ -366,6 +379,7 @@ export default function App() {
             lootTable={lootTable}
             lootTableStatus={lootTableStatus}
             lootTableError={lootTableError}
+            report={report}
             bossEvals={bossEvals}
             focusBossId={focusBossId}
             onToggleKnockout={handleToggleKnockout}

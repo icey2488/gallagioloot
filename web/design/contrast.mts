@@ -68,6 +68,7 @@ const COLORS = {
   bgBase: '#0b1530',
   bgPanel: '#121f42',
   bgPanelAlt: '#16264c',
+  bgHover: '#1b2c56',
   border: '#5870aa',
   borderStrong: '#647aad',
   text: '#f5f3ec',
@@ -149,6 +150,15 @@ const PAIRS: Pair[] = [
   { name: 'Item-tag (Tier/Curio small-caps meta) text on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'btn-secondary label text on panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'btn-secondary border on panel', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
+  // v2 design pass (2026-09-10) -- header nav tabs, Paste run-settings sidebar, and the
+  // Loot Table boss list. No new hex values beyond --bg-hover (already used for
+  // .btn-secondary:hover/.app-header__controls hover states, just not previously listed
+  // here); every other element reuses an already-audited token.
+  { name: 'Nav tab label (secondary text) on header panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Active nav tab / active boss-list item text on hover fill (--bg-hover)', fg: COLORS.text, bg: COLORS.bgHover, requirement: 'text' },
+  { name: 'Run-settings sidebar border on its own panel fill', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Stat-trio label (muted) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Loot boss list rank (muted) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather

@@ -36,12 +36,30 @@ const noop = () => {}
 
 const theme = readFileSync(new URL('../src/theme.css', import.meta.url), 'utf-8')
 
-function shellHtml(title: string, mainHtml: string, opts: { narrow?: boolean } = {}): string {
+const NAV_TABS = [
+  { label: 'Paste', current: false },
+  { label: 'Reconcile', current: false },
+  { label: 'Loot table', current: false },
+  { label: 'Recommendation', current: false },
+]
+
+function shellHtml(title: string, mainHtml: string, opts: { narrow?: boolean; wide?: boolean; activeNav?: string } = {}): string {
   const header = renderToStaticMarkup(
     createElement(
       'header',
       { className: 'app-header' },
       createElement('span', { className: 'app-header__brand' }, 'GallagioLoot'),
+      createElement(
+        'nav',
+        { className: 'app-nav', 'aria-label': 'Screens' },
+        NAV_TABS.map((tab) =>
+          createElement(
+            'button',
+            { key: tab.label, type: 'button', className: 'app-nav__item', 'aria-current': tab.label === opts.activeNav ? 'page' : undefined },
+            tab.label
+          )
+        )
+      ),
       createElement('div', { className: 'app-header__meta' }, `${report.character} · Elemental loot spec · Heroic`),
       createElement(
         'div',
@@ -65,7 +83,7 @@ ${opts.narrow ? '.app-main { max-width: 380px; }' : ''}
 <body>
 <div class="app-shell">
 ${header}
-<main class="app-main">
+<main class="app-main${opts.wide ? ' app-main--wide' : ''}">
 ${mainHtml}
 ${footer}
 </main>
@@ -109,7 +127,8 @@ const pages: Array<{ name: string; html: string }> = [
           onThresholdPctChange: noop,
           onContinue: noop,
         })
-      )
+      ),
+      { wide: true, activeNav: 'Paste' }
     ),
   },
   {
@@ -144,20 +163,23 @@ const pages: Array<{ name: string; html: string }> = [
           onThresholdPctChange: noop,
           onContinue: noop,
         })
-      )
+      ),
+      { wide: true, activeNav: 'Paste' }
     ),
   },
   {
     name: 'deployability',
     html: shellHtml(
       'Rollable Bosses',
-      renderToStaticMarkup(createElement(DeployabilityScreen, { bossEvals, thresholdPct: settings.thresholdPct, onViewRecommendation: noop }))
+      renderToStaticMarkup(createElement(DeployabilityScreen, { bossEvals, thresholdPct: settings.thresholdPct, onViewRecommendation: noop })),
+      { activeNav: 'Recommendation' }
     ),
   },
   {
     name: 'roll',
     html: shellHtml('Roll recommendation', renderToStaticMarkup(createElement(RecommendationCard, { card, onPrimaryAction: noop })), {
       narrow: true,
+      activeNav: 'Recommendation',
     }),
   },
   {
@@ -174,7 +196,8 @@ const pages: Array<{ name: string; html: string }> = [
           onRemoveEntry: noop,
           onImportState: noop,
         })
-      )
+      ),
+      { wide: true, activeNav: 'Reconcile' }
     ),
   },
   {
@@ -186,11 +209,13 @@ const pages: Array<{ name: string; html: string }> = [
           lootTable,
           lootTableStatus: 'idle',
           lootTableError: null,
+          report,
           bossEvals,
           focusBossId: null,
           onToggleKnockout: noop,
         })
-      )
+      ),
+      { wide: true, activeNav: 'Loot table' }
     ),
   },
 ]

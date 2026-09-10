@@ -3,7 +3,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { Simulate, type SyntheticEventData } from 'react-dom/test-utils'
 import { LootTableScreen } from '../src/components/LootTableScreen'
-import type { LootTable } from '@engine/types'
+import type { LootTable, NormalizedReport } from '@engine/types'
 import type { BossEval } from '@engine/core/types'
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -26,6 +26,20 @@ const LOOT_TABLE: LootTable = {
       ],
     },
   ],
+}
+
+const REPORT: NormalizedReport = {
+  source: 'raidbots',
+  reportId: 'test',
+  character: 'Testchar',
+  spec: 'Elemental',
+  role: 'dps',
+  metric: 'dps',
+  contentType: 'raid',
+  difficulty: 'raid-vault-heroic',
+  baseline: 1000,
+  items: [],
+  warnings: [],
 }
 
 const BOSS_EVALS: BossEval[] = [
@@ -67,6 +81,7 @@ function render(onToggleKnockout: (item: unknown, encounterId: number, encounter
         lootTable: LOOT_TABLE,
         lootTableStatus: 'idle',
         lootTableError: null,
+        report: REPORT,
         bossEvals: BOSS_EVALS,
         focusBossId: null,
         onToggleKnockout,
@@ -120,6 +135,7 @@ describe('LootTableScreen', () => {
           lootTable: LOOT_TABLE,
           lootTableStatus: 'idle',
           lootTableError: null,
+          report: REPORT,
           bossEvals: knockedOutEvals,
           focusBossId: null,
           onToggleKnockout,
