@@ -94,6 +94,7 @@ const PAIRS: Pair[] = [
   { name: 'Muted text on page background', fg: COLORS.textMuted, bg: COLORS.bgBase, requirement: 'text' },
   { name: 'Muted text on input/select fill', fg: COLORS.textMuted, bg: COLORS.bgPanelAlt, requirement: 'text' },
   { name: 'Footer disclaimer text on footer background (13px)', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Footer "Show/Hide assumptions" summary toggle text on footer background', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Excluded-row reason text on panel (de-emphasized, no opacity)', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
   {
     name: 'Excluded-row text, OLD approach (text-muted @ 0.7 opacity over panel)',

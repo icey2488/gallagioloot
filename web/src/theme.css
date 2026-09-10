@@ -56,7 +56,6 @@
   --radius: 12px;
   --radius-sm: 8px;
   --radius-xs: 4px;
-  --footer-height: 108px;
 }
 
 * {
@@ -113,7 +112,7 @@ input:focus,
 select:focus,
 textarea:focus,
 button:focus-visible,
-.app-footer:focus-visible {
+.app-footer__assumptions summary:focus-visible {
   outline: 2px solid var(--border-strong);
   outline-offset: 1px;
 }
@@ -122,7 +121,6 @@ button:focus-visible,
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  padding-bottom: var(--footer-height);
 }
 
 /* Wordmark + meta stack under one another on phone (identity is order:1, meta is
@@ -705,19 +703,13 @@ tr.excluded .deploy-table__ev {
   color: var(--text-muted);
 }
 
+/* In-flow, at the end of the active screen's content -- same max-width column,
+   separated from it by the .panel border treatment (no more position: fixed). */
 .app-footer {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: var(--bg-panel);
-  border-top: 1px solid var(--border);
-  padding: var(--space-4) var(--space-10) var(--space-6);
+  margin-top: var(--space-8);
   /* Was 11px -- below the 13px floor for small disclaimer text even at a passing ratio. */
   font-size: var(--text-meta);
   color: var(--text-muted);
-  max-height: var(--footer-height);
-  overflow-y: auto;
 }
 
 .app-footer p {
@@ -727,6 +719,19 @@ tr.excluded .deploy-table__ev {
 .app-footer ul {
   margin: var(--space-2) 0;
   padding-left: 18px;
+}
+
+/* Collapsed by default -- summary is the only always-visible affordance for the
+   assumptions list; keyboard-focusable natively via <details>/<summary>, no gold. */
+.app-footer__assumptions summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-weight: 600;
+  padding: var(--space-2) 0;
+}
+
+.app-footer__assumptions[open] summary {
+  margin-bottom: var(--space-2);
 }
 
 /* Two columns on desktop (disclaimer left, Delves/Prey Hunts note right, per the

@@ -371,9 +371,9 @@ export default function App() {
             onToggleKnockout={handleToggleKnockout}
           />
         )}
-      </main>
 
-      <Footer />
+        <Footer />
+      </main>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 # Contrast audit
 
-Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 47/48 pairs pass; 1 fail.
+Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 48/49 pairs pass; 1 fail.
 
 ## Changes made
 
@@ -30,6 +30,7 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Muted text on page background | `#858fb0` | `#0b1530` | 5.63:1 | 4.5:1 (text) | ✅ |
 | Muted text on input/select fill | `#858fb0` | `#16264c` | 4.63:1 | 4.5:1 (text) | ✅ |
 | Footer disclaimer text on footer background (13px) | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
+| Footer "Show/Hide assumptions" summary toggle text on footer background | `#b7bdda` | `#121f42` | 8.69:1 | 4.5:1 (text) | ✅ |
 | Excluded-row reason text on panel (de-emphasized, no opacity) | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
 | Excluded-row text, OLD approach (text-muted @ 0.7 opacity over panel) (Pre-fix behavior, kept here to document the regression this audit caught.) | `#5c678b` | `#121f42` | 2.90:1 | 4.5:1 (text) | ❌ |
 | Panel/input border on panel | `#5870aa` | `#121f42` | 3.32:1 | 3:1 (UI component) | ✅ |

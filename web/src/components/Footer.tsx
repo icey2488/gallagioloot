@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ASSUMPTIONS } from '@engine/core/rank'
 
 const CYA =
@@ -6,19 +7,23 @@ const CYA =
 const DELVES_NOTE =
   'Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.'
 
-/** Fixed on every screen. Disclaimers live only here -- never inline in tables or on the recommendation card. */
+/** Renders in-flow after the active screen's content, inside the same max-width column. Disclaimers live only here -- never inline in tables or on the recommendation card. */
 export function Footer() {
+  const [assumptionsOpen, setAssumptionsOpen] = useState(false)
+
   return (
-    // tabIndex so the scrollable region (overflow-y: auto, capped height) is keyboard-reachable -- WCAG 2.1.1.
-    <footer className="app-footer" tabIndex={0}>
+    <footer className="app-footer panel">
       <div className="app-footer__columns">
         <div className="app-footer__col app-footer__col--main">
           <p>{CYA}</p>
-          <ul>
-            {ASSUMPTIONS.map((assumption) => (
-              <li key={assumption}>{assumption}</li>
-            ))}
-          </ul>
+          <details className="app-footer__assumptions" onToggle={(e) => setAssumptionsOpen(e.currentTarget.open)}>
+            <summary>{assumptionsOpen ? 'Hide assumptions' : 'Show assumptions'}</summary>
+            <ul>
+              {ASSUMPTIONS.map((assumption) => (
+                <li key={assumption}>{assumption}</li>
+              ))}
+            </ul>
+          </details>
         </div>
         <div className="app-footer__col app-footer__col--aside">
           <p>{DELVES_NOTE}</p>

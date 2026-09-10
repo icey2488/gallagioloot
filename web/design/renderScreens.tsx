@@ -67,8 +67,8 @@ ${opts.narrow ? '.app-main { max-width: 380px; }' : ''}
 ${header}
 <main class="app-main">
 ${mainHtml}
-</main>
 ${footer}
+</main>
 </div>
 </body>
 </html>
@@ -76,6 +76,42 @@ ${footer}
 }
 
 const pages: Array<{ name: string; html: string }> = [
+  {
+    // No report loaded yet -- the actual first-visit state of the Paste screen, and
+    // what the in-flow-footer-visible-without-scrolling check verifies against (the
+    // fixture-loaded 'paste' page below is naturally taller than one viewport once a
+    // report's boss/vault fields render, which isn't the regression this redesign fixes).
+    name: 'paste-empty',
+    html: shellHtml(
+      'Paste screen (empty)',
+      renderToStaticMarkup(
+        createElement(PasteScreen, {
+          reportUrl: '',
+          onReportUrlChange: noop,
+          detectedSource: null,
+          loadStatus: 'idle',
+          loadError: null,
+          onFetch: noop,
+          report: null,
+          mismatchWarning: null,
+          rollsAvailable: 1,
+          onRollsAvailableChange: noop,
+          bossList: [],
+          expectedKillIds: new Set(),
+          onToggleExpectedKill: noop,
+          vaultItemName: '',
+          onVaultItemNameChange: noop,
+          vaultItemGainPct: '',
+          onVaultItemGainPctChange: noop,
+          vaultBossId: null,
+          onVaultBossIdChange: noop,
+          thresholdPct: 0.2,
+          onThresholdPctChange: noop,
+          onContinue: noop,
+        })
+      )
+    ),
+  },
   {
     name: 'paste',
     html: shellHtml(
