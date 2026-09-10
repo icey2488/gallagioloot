@@ -159,6 +159,10 @@ const PAIRS: Pair[] = [
   { name: 'Run-settings sidebar border on its own panel fill', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Stat-trio label (muted) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Loot boss list rank (muted) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
+  // Paste-screen redesign (2026-09-10) -- two-column layout live from first paint,
+  // light-filled primary button, and disabled placeholder selects before a report loads.
+  { name: 'Light-filled primary button (Fetch report / Price my roll) label on off-white fill', fg: COLORS.bgBase, bg: COLORS.text, requirement: 'text' },
+  { name: 'Disabled Loot spec/Difficulty placeholder text ("From report") on input fill', fg: COLORS.textMuted, bg: COLORS.bgPanelAlt, requirement: 'text' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather

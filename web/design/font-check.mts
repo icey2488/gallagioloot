@@ -37,8 +37,8 @@ async function main() {
   await page.fill('#report-url', REPORT_URL)
   await page.waitForSelector('text=Detected:')
   await page.click('text=Fetch report')
-  await page.waitForSelector('text=View recommendations', { timeout: 20000 })
-  await page.click('text=View recommendations')
+  await page.waitForSelector('text=Price my roll', { timeout: 20000 })
+  await page.click('text=Price my roll')
   await page.click('text=Roll this boss')
   await page.waitForSelector('.rec-card__headline')
 

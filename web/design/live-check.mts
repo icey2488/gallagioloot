@@ -27,10 +27,10 @@ async function main() {
   await page.waitForSelector('text=Detected:')
 
   await page.click('text=Fetch report')
-  await page.waitForSelector('text=View recommendations', { timeout: 20000 })
+  await page.waitForSelector('text=Price my roll', { timeout: 20000 })
   console.log('report fetched OK')
 
-  await page.click('text=View recommendations')
+  await page.click('text=Price my roll')
   await page.waitForSelector('table')
   const rowCount = await page.locator('tbody tr').count()
   console.log('Rollable Bosses rows:', rowCount)

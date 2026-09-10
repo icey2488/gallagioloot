@@ -30,13 +30,13 @@ async function main() {
     console.log('detected source:', detected)
 
     await page.click('text=Fetch report')
-    await page.waitForSelector('text=View recommendations', { timeout: 20000 })
+    await page.waitForSelector('text=Price my roll', { timeout: 20000 })
 
     const character = await page.locator('.panel strong').first().innerText()
     console.log('character:', character)
     await page.screenshot({ path: `design/e2e-${label}-paste-screen.png`, fullPage: true })
 
-    await page.click('text=View recommendations')
+    await page.click('text=Price my roll')
     await page.waitForSelector('table')
     const rowCount = await page.locator('tbody tr').count()
     console.log('deployability rows:', rowCount)

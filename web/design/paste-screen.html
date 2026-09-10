@@ -102,6 +102,15 @@ a {
   color: var(--text-secondary);
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 input,
 select,
 textarea {
@@ -129,10 +138,10 @@ button:focus-visible,
   flex-direction: column;
 }
 
-/* Wordmark + meta stack under one another on phone (identity is order:1, meta is
-   order:3 and forced full-width); at desktop width meta moves inline next to the
-   wordmark (order:2, auto width) and controls (loot spec picker, loot table link,
-   character switcher/Voidcores pill) stay pinned right via margin-left: auto. */
+/* v2 header: wordmark + Voidcores pill (+ character switcher, a documented adaptation --
+   see App.tsx) share the top row on phone, nav tabs fall to their own full-width row
+   below. At desktop width the nav tabs move inline next to the wordmark (matching the
+   v2 mockup exactly) and the pill/switcher stay pinned right via margin-left: auto. */
 .app-header {
   display: flex;
   flex-wrap: wrap;
@@ -151,11 +160,6 @@ button:focus-visible,
   letter-spacing: -0.01em;
 }
 
-.app-header__meta {
-  order: 3;
-  flex-basis: 100%;
-}
-
 .app-header__controls {
   order: 2;
   margin-left: auto;
@@ -165,17 +169,16 @@ button:focus-visible,
 }
 
 /* Screen tab bar (Paste/Reconcile/Loot table/Recommendation), from the v2 design export.
-   Always its own full-width row -- v2 places it inline next to the wordmark on desktop,
-   but this app's header also carries the loot spec picker, "Loot table" jump, and
-   character switcher/Voidcores pill that v2's mockup doesn't have, so inline placement
-   would crowd those controls. Documented layout adaptation, not a hard-rule override. */
+   Phone: its own full-width row below the wordmark/pill, laid out as an even 4-column
+   grid per v2's 390 frame. Desktop: inline next to the wordmark, per v2's 1200 frame. */
 .app-nav {
-  order: 4;
+  order: 3;
   flex-basis: 100%;
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-2);
-  font-size: var(--text-body);
+  font-size: var(--text-meta);
+  text-align: center;
 }
 
 .app-nav__item {
@@ -203,9 +206,14 @@ button:focus-visible,
     font-size: var(--text-wordmark-desktop);
   }
 
-  .app-header__meta {
+  .app-nav {
     order: 2;
     flex-basis: auto;
+    display: flex;
+    gap: var(--space-2);
+    font-size: var(--text-body);
+    text-align: left;
+    margin-left: var(--space-8);
   }
 
   .app-header__controls {
@@ -259,18 +267,35 @@ button:focus-visible,
   margin: -4px 0 12px;
 }
 
-/* Compact list -- expected-kills checkboxes, tighter row spacing than a form .field. */
+/* Expected-kills checklist: numbered rows separated by hairlines, matching v2's 2a
+   mockup (border-top on the list, border-bottom per row rather than a flex gap). */
 .checklist {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
   margin-top: var(--space-3);
+  border-top: 1px solid var(--border);
 }
 
 .checklist__item {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-5);
   align-items: center;
+  font-size: var(--text-body);
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--border);
+  min-height: 40px;
+  box-sizing: border-box;
+}
+
+.checklist__rank {
+  color: var(--text-muted);
+  width: 16px;
+  flex: none;
+}
+
+.checklist--empty {
+  padding: var(--space-5) 0;
+  color: var(--text-muted);
   font-size: var(--text-body);
 }
 
@@ -923,9 +948,10 @@ tr.excluded .deploy-table__ev {
   font-size: var(--text-section-title);
 }
 
-/* Paste screen: primary paste/fetch flow left, a bordered "Run settings" sidebar right
-   (rolls available, expected kills, vault details, threshold, the primary action) --
-   matches v2's 2a layout. Single column, sidebar stacked below, under 700px. */
+/* Paste screen: primary report/fetch flow left, a bordered "Run settings" sidebar right
+   (loot spec, difficulty, voidcores, expected kills, vault details, threshold, the
+   primary action) -- matches v2's 2a layout, rendered from the first paint (not only
+   after a report loads). Single column, sidebar stacked below, under 900px. */
 .paste-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) 380px;
@@ -933,7 +959,7 @@ tr.excluded .deploy-table__ev {
   align-items: start;
 }
 
-@media (max-width: 699px) {
+@media (max-width: 899px) {
   .paste-grid {
     grid-template-columns: 1fr;
   }
@@ -947,6 +973,112 @@ tr.excluded .deploy-table__ev {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: var(--space-10);
+}
+
+.run-settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-6);
+}
+
+.field-label-text {
+  display: block;
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 4px;
+}
+
+/* Difficulty display once a report is loaded -- a select-styled box, not a real
+   <select>, since the value is derived from the report rather than user-chosen. */
+.select-readonly {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--text-body);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+select:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+/* Run-settings' own Voidcores field (distinct from the header pill -- both are bound
+   to the same voidcoreCount state, matching v2's mockup which shows both at once). No
+   "max 5" hint: unlike the mockup, this app's voidcore count has no enforced maximum. */
+.voidcore-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0 var(--space-6);
+  min-height: 44px;
+  box-sizing: border-box;
+}
+
+.voidcore-field__input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.voidcore-field__input:focus {
+  outline: none;
+}
+
+/* Sim-report stats line under the URL field -- three counts before a fetch collapse to
+   a single muted placeholder sentence. */
+.stats-line {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+}
+
+.stats-line .num {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.stats-line--empty {
+  color: var(--text-muted);
+}
+
+/* Full-width, light-filled primary action (Fetch report / Price my roll) -- the only
+   button on this screen styled this way, per v2's 2a mockup. */
+.btn-light {
+  background: var(--text);
+  color: var(--bg-base);
+  border: 0;
+  border-radius: var(--radius-sm);
+  padding: var(--space-6) var(--space-9);
+  cursor: pointer;
+  font-size: var(--text-body);
+  font-weight: 600;
+  min-height: 44px;
+  width: 100%;
+}
+
+.btn-light:hover {
+  filter: brightness(0.92);
+}
+
+.btn-light:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Loot table: a "Bosses · kill order" list left, the selected boss's stat trio + item
@@ -1057,9 +1189,9 @@ tr.excluded .deploy-table__ev {
 </head>
 <body>
 <div class="app-shell">
-<header class="app-header"><span class="app-header__brand">GallagioLoot</span><nav class="app-nav" aria-label="Screens"><button type="button" class="app-nav__item" aria-current="page">Paste</button><button type="button" class="app-nav__item">Reconcile</button><button type="button" class="app-nav__item">Loot table</button><button type="button" class="app-nav__item">Recommendation</button></nav><div class="app-header__meta">Iceshaman · Elemental loot spec · Heroic</div><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
+<header class="app-header"><span class="app-header__brand">GallagioLoot</span><nav class="app-nav" aria-label="Screens"><button type="button" class="app-nav__item" aria-current="page">Paste</button><button type="button" class="app-nav__item">Reconcile</button><button type="button" class="app-nav__item">Loot table</button><button type="button" class="app-nav__item">Recommendation</button></nav><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
 <main class="app-main app-main--wide">
-<div class="paste-grid"><div><div class="panel"><p class="field-hint" style="margin-top:0">Run this before you open the vault. If a vault item looks good, sim it and enter its gain below; GallagioLoot prices it against the Voidcore.</p><div class="field"><label for="report-url">Report URL</label><input id="report-url" type="text" placeholder="https://www.raidbots.com/reports/... or https://questionablyepic.com/..." value="https://www.raidbots.com/reports/jk6WmLFEnBpEqWueDkyRqA"/><div class="field-hint" style="margin-bottom:0">Detected: Raidbots</div></div><div class="field"><label for="vault-item-gain">Best vault item gain % (optional)</label><input id="vault-item-gain" type="number" step="0.01" value=""/><div class="field-hint" style="margin-bottom:0">From a Top Gear sim of the vault item. Leave blank if nothing in the vault is tempting.</div></div><button type="button" class="btn">Fetch report</button></div><div class="panel"><h3 style="margin-bottom:10px">Report</h3><p style="margin:4px 0"><strong>Iceshaman</strong></p><p style="margin:4px 0;color:var(--text-secondary)">shaman — elemental (dps)</p><p style="margin:4px 0;color:var(--text-secondary)">The Venomous Abyss — raid-vault-heroic</p></div></div><div class="run-settings-panel"><div style="font-size:var(--text-section-title);font-weight:700">Run settings</div><div class="field"><label for="rolls-available">Rolls available</label><select id="rolls-available"><option value="1" selected="">1</option><option value="2">2</option></select></div><div class="field" style="margin-bottom:0"><label>Expected kills this week</label><div class="checklist"><label class="checklist__item"><input type="checkbox" checked=""/>Ula&#x27;tek</label><label class="checklist__item"><input type="checkbox" checked=""/>Sszorak</label><label class="checklist__item"><input type="checkbox" checked=""/>Vashnik the Malignant</label><label class="checklist__item"><input type="checkbox" checked=""/>Nek&#x27;zali the Soulcoiler</label><label class="checklist__item"><input type="checkbox" checked=""/>The Lost Explorers</label><label class="checklist__item"><input type="checkbox" checked=""/>Entombed Sentinels</label><label class="checklist__item"><input type="checkbox" checked=""/>The Coiled Altar</label><label class="checklist__item"><input type="checkbox" checked=""/>The Twin Fangs</label></div></div><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Great Vault item (optional)</summary><div class="field" style="margin-top:10px"><label for="vault-item-name">Vault item name</label><input id="vault-item-name" type="text" value=""/></div><div class="field"><label for="vault-boss">Boss (optional)</label><select id="vault-boss"><option value="" selected="">Not specified</option><option value="2895">Ula&#x27;tek</option><option value="2871">Sszorak</option><option value="2882">Vashnik the Malignant</option><option value="2888">Nek&#x27;zali the Soulcoiler</option><option value="2894">The Lost Explorers</option><option value="2874">Entombed Sentinels</option><option value="2883">The Coiled Altar</option><option value="2887">The Twin Fangs</option></select></div></details><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Advanced</summary><div class="field" style="margin-top:10px;margin-bottom:0"><label for="threshold"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Threshold %<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></label><input id="threshold" type="number" step="0.01" value="0.2"/></div></details><button type="button" class="btn">View recommendations</button></div></div>
+<div class="paste-grid"><div><div class="panel"><p class="field-hint" style="margin-top:0">Run this before you open the vault. If a vault item looks good, sim it and enter its gain below; GallagioLoot prices it against the Voidcore.</p><div class="screen-header" style="margin-bottom:6px"><div class="screen-header__title-group"><h3>Sim report</h3></div><div class="screen-header__meta">Raidbots or QE Live report URL</div></div><div class="field"><label for="report-url" class="sr-only">Report URL</label><input id="report-url" type="text" placeholder="https://www.raidbots.com/reports/... or https://questionablyepic.com/..." value="https://www.raidbots.com/reports/jk6WmLFEnBpEqWueDkyRqA"/><div class="field-hint" style="margin-bottom:0">Detected: Raidbots</div></div><div class="field"><label for="vault-item-gain">Best vault item gain % (optional)</label><input id="vault-item-gain" type="number" step="0.01" value=""/><div class="field-hint" style="margin-bottom:0">From a Top Gear sim of the vault item. Leave blank if nothing in the vault is tempting.</div></div><div class="stats-line"><span class="num">51</span> items parsed · <span class="num">51</span> matched to loot tables · <span class="num">9</span> not in report</div></div><div class="panel"><h3 style="margin-bottom:10px">Report</h3><p style="margin:4px 0"><strong>Iceshaman</strong></p><p style="margin:4px 0;color:var(--text-secondary)">shaman — elemental (dps)</p><p style="margin:4px 0;color:var(--text-secondary)">The Venomous Abyss — raid-vault-heroic</p></div></div><div class="run-settings-panel"><div style="font-size:var(--text-section-title);font-weight:700">Run settings</div><div class="run-settings-row"><div class="field" style="margin-bottom:0"><span class="field-label-text">Loot spec</span><select aria-label="Loot spec"><option value="" disabled="">Loot spec…</option><optgroup label="Warrior"><option value="71">Arms</option><option value="72">Fury</option><option value="73">Protection</option></optgroup><optgroup label="Paladin"><option value="65">Holy</option><option value="66">Protection</option><option value="70">Retribution</option></optgroup><optgroup label="Hunter"><option value="253">Beast Mastery</option><option value="254">Marksmanship</option><option value="255">Survival</option></optgroup><optgroup label="Rogue"><option value="259">Assassination</option><option value="260">Outlaw</option><option value="261">Subtlety</option></optgroup><optgroup label="Priest"><option value="256">Discipline</option><option value="257">Holy</option><option value="258">Shadow</option></optgroup><optgroup label="Death Knight"><option value="250">Blood</option><option value="251">Frost</option><option value="252">Unholy</option></optgroup><optgroup label="Shaman"><option value="262" selected="">Elemental</option><option value="263">Enhancement</option><option value="264">Restoration</option></optgroup><optgroup label="Mage"><option value="62">Arcane</option><option value="63">Fire</option><option value="64">Frost</option></optgroup><optgroup label="Warlock"><option value="265">Affliction</option><option value="266">Demonology</option><option value="267">Destruction</option></optgroup><optgroup label="Monk"><option value="268">Brewmaster</option><option value="269">Windwalker</option><option value="270">Mistweaver</option></optgroup><optgroup label="Druid"><option value="102">Balance</option><option value="103">Feral</option><option value="104">Guardian</option><option value="105">Restoration</option></optgroup><optgroup label="Demon Hunter"><option value="577">Havoc</option><option value="581">Vengeance</option><option value="1480">Devourer</option></optgroup><optgroup label="Evoker"><option value="1467">Devastation</option><option value="1468">Preservation</option><option value="1473">Augmentation</option></optgroup></select></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Difficulty</span><div class="select-readonly" role="textbox" aria-readonly="true" aria-label="Difficulty">Heroic</div></div></div><div class="field" style="margin-bottom:0"><label for="rolls-available">Rolls available</label><select id="rolls-available"><option value="1" selected="">1</option><option value="2">2</option></select></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Voidcores held</span><div class="voidcore-field"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-field__input num" aria-label="Voidcores held" value="2"/></div></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Expected kills this week</span><div class="checklist"><label class="checklist__item"><input type="checkbox" checked=""/><span class="checklist__rank">1</span>Ula&#x27;tek</label><label class="checklist__item"><input type="checkbox" checked=""/><span class="checklist__rank">2</span>Sszorak</label><label class="checklist__item"><input type="checkbox" checked=""/><span class="checklist__rank">3</span>Vashnik the Malignant</label><label class="checklist__item"><input type="checkbox" checked=""/><span class="checklist__rank">4</span>Nek&#x27;zali the Soulcoiler</label><label class="checklist__item"><input type="checkbox" checked=""/><span class="checklist__rank">5</span>The Lost Explorers</label><label class="checklist__item"><input type="checkbox" checked=""/><span class="checklist__rank">6</span>Entombed Sentinels</label><label class="checklist__item"><input type="checkbox" checked=""/><span class="checklist__rank">7</span>The Coiled Altar</label><label class="checklist__item"><input type="checkbox" checked=""/><span class="checklist__rank">8</span>The Twin Fangs</label></div></div><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Great Vault item (optional)</summary><div class="field" style="margin-top:10px"><label for="vault-item-name">Vault item name</label><input id="vault-item-name" type="text" value=""/></div><div class="field"><label for="vault-boss">Boss (optional)</label><select id="vault-boss"><option value="" selected="">Not specified</option><option value="2895">Ula&#x27;tek</option><option value="2871">Sszorak</option><option value="2882">Vashnik the Malignant</option><option value="2888">Nek&#x27;zali the Soulcoiler</option><option value="2894">The Lost Explorers</option><option value="2874">Entombed Sentinels</option><option value="2883">The Coiled Altar</option><option value="2887">The Twin Fangs</option></select></div></details><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Advanced</summary><div class="field" style="margin-top:10px;margin-bottom:0"><label for="threshold"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Threshold %<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></label><input id="threshold" type="number" step="0.01" value="0.2"/></div></details><button type="button" class="btn-light">Price my roll</button></div></div>
 <footer class="app-footer panel"><div class="app-footer__columns"><div class="app-footer__col app-footer__col--main"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><details class="app-footer__assumptions"><summary>Show assumptions</summary><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></details></div><div class="app-footer__col app-footer__col--aside"><p>Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div></footer>
 </main>
 </div>

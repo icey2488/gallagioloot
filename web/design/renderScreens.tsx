@@ -60,7 +60,6 @@ function shellHtml(title: string, mainHtml: string, opts: { narrow?: boolean; wi
           )
         )
       ),
-      createElement('div', { className: 'app-header__meta' }, `${report.character} · Elemental loot spec · Heroic`),
       createElement(
         'div',
         { className: 'app-header__controls' },
@@ -125,6 +124,11 @@ const pages: Array<{ name: string; html: string }> = [
           onVaultBossIdChange: noop,
           thresholdPct: 0.2,
           onThresholdPctChange: noop,
+          lootSpecId: null,
+          onLootSpecIdChange: noop,
+          voidcoreCount: 2,
+          onVoidcoreCountChange: noop,
+          notInReportCount: null,
           onContinue: noop,
         })
       ),
@@ -161,6 +165,11 @@ const pages: Array<{ name: string; html: string }> = [
           onVaultBossIdChange: noop,
           thresholdPct: 0.2,
           onThresholdPctChange: noop,
+          lootSpecId: lootTable.lootSpecId,
+          onLootSpecIdChange: noop,
+          voidcoreCount: 2,
+          onVoidcoreCountChange: noop,
+          notInReportCount: bossEvals.reduce((sum, b) => sum + b.pool.filter((p) => p.notInSimReport).length, 0),
           onContinue: noop,
         })
       ),

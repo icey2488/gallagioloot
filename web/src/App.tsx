@@ -4,12 +4,10 @@ import { addEntry, createState, markSpecSpecific, reconcile, removeEntry, storag
 import { buildBossPools } from '@engine/core/pool'
 import { recommend } from '@engine/core/rank'
 import { compareVault } from '@engine/core/vault'
-import { getSpecById } from '@engine/lookup/specs'
 import type { KnockoutState, Settings, VaultItemInput } from '@engine/core/types'
 import { detectSource, type ReportSource } from './lib/urlDetect'
 import { fetchLootTable, fetchReport, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData } from './lib/cardData'
-import { formatDifficulty } from './lib/format'
 import {
   LocalStorageAdapter,
   loadLastReportUrl,
@@ -26,7 +24,6 @@ import { DeployabilityScreen } from './components/DeployabilityScreen'
 import { RollScreen } from './components/RollScreen'
 import { ReconcileScreen } from './components/ReconcileScreen'
 import { LootTableScreen } from './components/LootTableScreen'
-import { LootSpecPicker } from './components/LootSpecPicker'
 import { CharacterSwitcher } from './components/CharacterSwitcher'
 import { Footer } from './components/Footer'
 
@@ -289,7 +286,10 @@ export default function App() {
     go('lootTable')
   }
 
-  const lootSpecName = lootSpecId != null ? getSpecById(lootSpecId)?.specName : undefined
+  const notInReportCount = useMemo(() => {
+    if (!report || !lootTable) return null
+    return bossEvals.reduce((sum, b) => sum + b.pool.filter((p) => p.notInSimReport).length, 0)
+  }, [report, lootTable, bossEvals])
 
   return (
     <div className="app-shell">
@@ -311,13 +311,10 @@ export default function App() {
             </button>
           ))}
         </nav>
-        {report && (
-          <div className="app-header__meta">
-            {report.character} · {lootSpecName ?? 'unknown'} loot spec · {formatDifficulty(report.difficulty)}
-          </div>
-        )}
+        {/* Character switcher: app-specific control not present in the v2 mockup (which
+            only shows wordmark/nav/Voidcores pill) -- kept here as a documented layout
+            adaptation, same precedent as the nav tab bar comment above used to carry. */}
         <div className="app-header__controls">
-          <LootSpecPicker lootSpecId={lootSpecId} onChange={setLootSpecId} />
           <CharacterSwitcher
             keys={characterKeys}
             currentKey={currentKey}
@@ -352,6 +349,11 @@ export default function App() {
             onVaultBossIdChange={setVaultBossId}
             thresholdPct={thresholdPct}
             onThresholdPctChange={setThresholdPct}
+            lootSpecId={lootSpecId}
+            onLootSpecIdChange={setLootSpecId}
+            voidcoreCount={voidcoreCount}
+            onVoidcoreCountChange={setVoidcoreCount}
+            notInReportCount={notInReportCount}
             onContinue={() => go('deployability')}
           />
         )}
