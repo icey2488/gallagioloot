@@ -268,12 +268,18 @@ export default function App() {
       setManualVaultGainPct('')
       setVaultBossId(null)
 
-      const storedTopGearUrl = loadLastTopGearUrl(key)
-      setTopGearUrl(storedTopGearUrl ?? '')
-      if (!storedTopGearUrl) {
-        setTopGearResult(null)
-        setTopGearStatus('idle')
-        setTopGearError(null)
+      // Only restore the character's saved Top Gear URL when the field is currently
+      // empty -- the user may have already typed one in this same Paste flow (its
+      // character key isn't known until this fetch resolves), and that shouldn't be
+      // clobbered by a per-character restore.
+      if (!topGearUrl.trim()) {
+        const storedTopGearUrl = loadLastTopGearUrl(key)
+        setTopGearUrl(storedTopGearUrl ?? '')
+        if (!storedTopGearUrl) {
+          setTopGearResult(null)
+          setTopGearStatus('idle')
+          setTopGearError(null)
+        }
       }
 
       saveLastReportUrl(key, url)
