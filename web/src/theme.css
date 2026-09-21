@@ -135,6 +135,15 @@ button:focus-visible,
   outline-offset: 1px;
 }
 
+/* v4a gold-accent pass (2026-09-20): checkboxes get a gold check mark/border only once
+   CHECKED (matches every checkbox in the v4 mockup, accent-color:#E3B94A) -- unchecked
+   boxes are left on the browser's neutral default, per the design brief's explicit
+   "unchecked stays neutral" requirement. Applies app-wide (expected-kills checklist,
+   Loot table "Knockout" checkbox, Reconcile's "Spec-only drop" checkbox). */
+input[type='checkbox']:checked {
+  accent-color: var(--gold);
+}
+
 .app-shell {
   min-height: 100%;
   display: flex;
@@ -155,12 +164,16 @@ button:focus-visible,
   background: var(--bg-panel);
 }
 
+/* v4a gold-accent pass (2026-09-20, full mockup parity): the wordmark is gold in every
+   frame of the v4 mockup (color:#E3B94A) -- reuses --gold, an accent-weight text color,
+   not a fill, so it stays well clear of the recommendation card's heavier treatment. */
 .app-header__brand {
   order: 1;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--text-wordmark-phone);
   letter-spacing: -0.01em;
+  color: var(--gold);
 }
 
 .app-header__controls {
@@ -198,10 +211,14 @@ button:focus-visible,
   background: var(--bg-panel-alt);
 }
 
+/* v4a gold-accent pass (2026-09-20): active nav tab gets the mockup's gold underline
+   (box-shadow: inset 0 -2px 0 #E3B94A) -- an accent-weight 2px line, not a fill; label
+   text stays --text (white), matching the mockup exactly. */
 .app-nav__item[aria-current='page'] {
   background: var(--bg-hover);
   color: var(--text);
   font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--gold);
 }
 
 @media (min-width: 700px) {
@@ -239,8 +256,9 @@ button:focus-visible,
   max-width: 1200px;
 }
 
-/* Same treatment as .rec-card (bg, radius, padding) minus the gold border --
-   gold stays reserved for the recommendation card alone. */
+/* Same treatment as .rec-card (bg, radius, padding) minus the gold border -- the card's
+   2px gold border is its own heaviest-on-screen signal (see .rec-card below); a plain
+   panel never gets a gold border, even on screens that now carry other gold accents. */
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -424,8 +442,15 @@ tr.excluded .deploy-table__ev {
   top: 1px;
 }
 
+/* v4a gold-accent pass (2026-09-20): the mockup's "Deployable"/Yes status dot fills gold
+   (#E3B94A), not white. .deploy-dot--yes is shared with the Reconcile knockout-list
+   "Scope" dot (an app-specific addition not in the mockup); recoloring the shared class
+   gives that dot the same gold treatment as a side effect -- reusing an existing token
+   for an existing element, not new gold real estate, so left as one class per the
+   "reuse tokens" guidance rather than forking a second class for the same visual meaning
+   (a filled dot signaling the "on" state of a yes/no pair). */
 .deploy-dot--yes {
-  background: var(--text);
+  background: var(--gold);
 }
 
 .deploy-dot--no {
@@ -590,7 +615,9 @@ tr.excluded .deploy-table__ev {
   margin-top: 8px;
 }
 
-/* Recommendation card: the ONLY place gold is used, per the aesthetic brief.
+/* Recommendation card: the strongest gold treatment on any screen (2px gold border +
+   gold headline + gold primary button, all at once) -- everywhere else in the app gold
+   is accent-weight only (see the CLAUDE.md "Design (web/)" gold-accent rule).
    container-type lets the toss-up pct pair scale with the card's own width
    (clamp(...cqi...) below) rather than the viewport, so it reads well whether
    the card sits at 354px on phone or 440px on desktop. */
@@ -770,16 +797,15 @@ tr.excluded .deploy-table__ev {
   margin-top: 14px;
 }
 
-.chip-stack__bar {
-  fill: var(--border-strong);
-}
-
-.chip-stack__bar--mid {
-  fill: var(--text-muted);
-}
-
+/* v4a gold-accent pass (2026-09-20): the mockup's Voidcores glyph is stroked gold
+   (#E3B94A) in every frame -- our chip-stack is a documented original glyph (see
+   ChipStack.tsx), not a redraw of the mockup's ellipse icon, but carries the same gold
+   treatment. Uniform gold across all three bars, matching the mockup's uniform stroke
+   color (it doesn't shade the three ellipses differently). */
+.chip-stack__bar,
+.chip-stack__bar--mid,
 .chip-stack__bar--top {
-  fill: var(--text-secondary);
+  fill: var(--gold);
 }
 
 /* Header Voidcore-count pill -- labeled (visible "Voidcores held" text, not just an
@@ -795,6 +821,10 @@ tr.excluded .deploy-table__ev {
   box-sizing: border-box;
 }
 
+/* v4a gold-accent pass (2026-09-20): the header pill's Voidcore count is gold in the
+   mockup (color:#E3B94A on the number span). The run-settings sidebar's own Voidcore
+   field (.voidcore-field__input, below) keeps its number white -- the mockup renders
+   that one as a plain <input> with no gold color override, only the icon is gold there. */
 .voidcore-pill__input {
   width: 28px;
   background: none;
@@ -803,7 +833,7 @@ tr.excluded .deploy-table__ev {
   font-size: 18px;
   font-weight: 700;
   line-height: 1;
-  color: var(--text);
+  color: var(--gold);
   -moz-appearance: textfield;
 }
 
@@ -1105,12 +1135,11 @@ select:disabled {
 }
 
 /* Full-width, light-filled primary action (Fetch report / Price my roll) -- the only
-   button on this screen styled this way, per v2's 2a mockup. */
-/* v4 gold-accent pass (2026-09-20): this is the Paste screen's single card-level gold
-   touch (the primary action inside the run-settings card) -- per the hard-rule override,
-   NOT the broader v4 mockup treatment (no gold wordmark/nav/icons/checkboxes on this
-   screen). Reuses the existing --gold/--gold-strong/--gold-text-on tokens already
-   audited for .btn-gold; same pair, just a second consumer. */
+   button on this screen styled this way, per v2's 2a mockup.
+   v4 gold-accent pass (2026-09-20): gold fill (--gold/--gold-strong/--gold-text-on,
+   already contrast-audited for .btn-gold) instead of the prior off-white -- this was
+   the first button shipped gold, kept as its own class since .btn-light is full-width
+   and .btn-gold isn't. */
 .btn-light {
   background: var(--gold);
   color: var(--gold-text-on);
@@ -1168,10 +1197,11 @@ select:disabled {
   background: var(--bg-panel-alt);
 }
 
-/* v4 gold-accent pass (2026-09-20): the Loot table screen's single card-level gold
-   touch -- a flat inset left stripe on the selected boss row (matches the v4 mockup's
-   own inset accent), not a shadow/glow. Everything else on this screen (simmed dot,
-   In pool checkbox, kill checkboxes) stays neutral per the one-accent-per-screen rule. */
+/* v4 gold-accent pass (2026-09-20): a flat inset left stripe on the selected boss row
+   (matches the v4 mockup's own inset accent), not a shadow/glow. The Loot table's
+   "Knockout" checkbox also goes gold when checked (see the app-wide
+   input[type='checkbox']:checked rule above) -- both are accent-weight, well under the
+   recommendation card's border+headline+button treatment. */
 .loot-boss-list__item[aria-current='true'] {
   background: var(--bg-hover);
   font-weight: 600;
@@ -1230,11 +1260,10 @@ select:disabled {
   color: var(--text-muted);
 }
 
-/* v4 gold-accent pass (2026-09-20): the Recommendation/Rollable-Bosses screen's single
-   card-level gold touch -- a small vertical rule before the "Rollable Bosses" heading
-   (mirrors the v4 mockup's "Deployability" heading treatment). This is the only gold on
-   this screen's own panel; the RecommendationCard reached via "Roll this boss" keeps its
-   own pre-existing gold border+button, which is a separate screen/card. */
+/* v4 gold-accent pass (2026-09-20): a small vertical rule before the "Rollable Bosses"
+   heading (mirrors the v4 mockup's "Deployability" heading treatment). The "Roll this
+   boss" button and the Yes/deployable status dot on this same screen are also gold now
+   (v4a pass, full mockup parity) -- see .btn-gold and .deploy-dot--yes. */
 .heading-gold-bar {
   display: inline-block;
   width: 4px;

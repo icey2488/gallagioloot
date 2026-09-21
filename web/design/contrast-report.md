@@ -1,6 +1,6 @@
 # Contrast audit
 
-Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 65/66 pairs pass; 1 fail.
+Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 74/75 pairs pass; 1 fail.
 
 ## Changes made
 
@@ -86,6 +86,15 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Reconcile screen Confirm button label on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
 | Loot table selected-row gold inset stripe on hover fill (--bg-hover) | `#d4af37` | `#1b2c56` | 6.48:1 | 3:1 (UI component) | ✅ |
 | Recommendation screen "Rollable Bosses" heading gold bar on panel | `#d4af37` | `#121f42` | 7.68:1 | 3:1 (UI component) | ✅ |
+| App wordmark (gold text) on header panel | `#d4af37` | `#121f42` | 7.68:1 | 4.5:1 (text) | ✅ |
+| Active nav-tab gold underline (inset box-shadow) on hover fill (--bg-hover) | `#d4af37` | `#1b2c56` | 6.48:1 | 3:1 (UI component) | ✅ |
+| Header Voidcores pill count (gold text) on header panel | `#d4af37` | `#121f42` | 7.68:1 | 4.5:1 (text) | ✅ |
+| Voidcores chip-stack glyph (gold fill) on header panel | `#d4af37` | `#121f42` | 7.68:1 | 3:1 (UI component) | ✅ |
+| Checked checkbox (accent-color gold) on panel | `#d4af37` | `#121f42` | 7.68:1 | 3:1 (UI component) | ✅ |
+| Checked checkbox (accent-color gold) on input/select fill | `#d4af37` | `#16264c` | 7.05:1 | 3:1 (UI component) | ✅ |
+| Deployability "Yes" status dot (gold fill) on panel | `#d4af37` | `#121f42` | 7.68:1 | 3:1 (UI component) | ✅ |
+| Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
+| Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold-strong hover fill | `#17110a` | `#e4c158` | 10.77:1 | 4.5:1 (text) | ✅ |
 
 ## Failing pairs
 

@@ -21,14 +21,23 @@ async function main() {
   assert.ok(reportUrlBox && runSettingsBox, 'expected both the URL field and the Run settings panel to be visible')
   assert.ok(runSettingsBox!.x > reportUrlBox!.x + reportUrlBox!.width - 50, 'expected Run settings to sit in a right-hand column, not stacked below')
 
-  // v4 gold-accent pass (2026-09-20): the Paste screen's single card-level gold touch is
-  // this primary button, now gold-filled (--gold, rgb(212, 175, 55)) instead of the prior
-  // off-white -- per the hard-rule override, nothing else on this screen (wordmark, nav,
-  // Voidcores icon/number, checkboxes) goes gold.
+  // v4 gold-accent pass (2026-09-20): the Fetch report button is gold-filled (--gold,
+  // rgb(212, 175, 55)) instead of the prior off-white.
   const fetchBtn = page.locator('button.btn-light', { hasText: 'Fetch report' })
   await fetchBtn.waitFor({ state: 'visible' })
   const bg = await fetchBtn.evaluate((el) => getComputedStyle(el).backgroundColor)
   assert.equal(bg, 'rgb(212, 175, 55)', `expected the gold accent fill, got ${bg}`)
+
+  // v4a gold-accent pass (2026-09-20, full mockup parity): the wordmark and the active
+  // nav tab's underline are gold too now (superseding the prior one-accent-per-screen
+  // rule -- see CLAUDE.md's "Design (web/)" section for the replacement rule).
+  const wordmarkColor = await page.locator('.app-header__brand').evaluate((el) => getComputedStyle(el).color)
+  assert.equal(wordmarkColor, 'rgb(212, 175, 55)', `expected the gold wordmark, got ${wordmarkColor}`)
+
+  const activeNavShadow = await page
+    .locator('.app-nav__item[aria-current="page"]', { hasText: 'Paste' })
+    .evaluate((el) => getComputedStyle(el).boxShadow)
+  assert.ok(activeNavShadow.includes('212, 175, 55'), `expected the gold active-tab underline, got ${activeNavShadow}`)
 
   // v3 mockup ("3a" pre-report Paste) addition: a dashed-border empty-state card telling
   // the user what fills in once they paste a report, replacing the old single-sentence
@@ -42,6 +51,8 @@ async function main() {
 
   console.log(`Run settings panel: x=${runSettingsBox!.x.toFixed(0)} (right of report URL field, x=${reportUrlBox!.x.toFixed(0)})`)
   console.log(`Fetch report button background: ${bg}`)
+  console.log(`Wordmark color: ${wordmarkColor}`)
+  console.log(`Active nav-tab box-shadow: ${activeNavShadow}`)
   console.log(`Empty-state card: title=${JSON.stringify(emptyStateTitle)}, border-style=${borderStyle}`)
   console.log('PASS: pre-fetch Paste screen at 1200px shows two columns, the light "Fetch report" button, and the v3 dashed empty-state card.')
 

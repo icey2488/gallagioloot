@@ -141,6 +141,15 @@ button:focus-visible,
   outline-offset: 1px;
 }
 
+/* v4a gold-accent pass (2026-09-20): checkboxes get a gold check mark/border only once
+   CHECKED (matches every checkbox in the v4 mockup, accent-color:#E3B94A) -- unchecked
+   boxes are left on the browser's neutral default, per the design brief's explicit
+   "unchecked stays neutral" requirement. Applies app-wide (expected-kills checklist,
+   Loot table "Knockout" checkbox, Reconcile's "Spec-only drop" checkbox). */
+input[type='checkbox']:checked {
+  accent-color: var(--gold);
+}
+
 .app-shell {
   min-height: 100%;
   display: flex;
@@ -161,12 +170,16 @@ button:focus-visible,
   background: var(--bg-panel);
 }
 
+/* v4a gold-accent pass (2026-09-20, full mockup parity): the wordmark is gold in every
+   frame of the v4 mockup (color:#E3B94A) -- reuses --gold, an accent-weight text color,
+   not a fill, so it stays well clear of the recommendation card's heavier treatment. */
 .app-header__brand {
   order: 1;
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--text-wordmark-phone);
   letter-spacing: -0.01em;
+  color: var(--gold);
 }
 
 .app-header__controls {
@@ -204,10 +217,14 @@ button:focus-visible,
   background: var(--bg-panel-alt);
 }
 
+/* v4a gold-accent pass (2026-09-20): active nav tab gets the mockup's gold underline
+   (box-shadow: inset 0 -2px 0 #E3B94A) -- an accent-weight 2px line, not a fill; label
+   text stays --text (white), matching the mockup exactly. */
 .app-nav__item[aria-current='page'] {
   background: var(--bg-hover);
   color: var(--text);
   font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--gold);
 }
 
 @media (min-width: 700px) {
@@ -245,8 +262,9 @@ button:focus-visible,
   max-width: 1200px;
 }
 
-/* Same treatment as .rec-card (bg, radius, padding) minus the gold border --
-   gold stays reserved for the recommendation card alone. */
+/* Same treatment as .rec-card (bg, radius, padding) minus the gold border -- the card's
+   2px gold border is its own heaviest-on-screen signal (see .rec-card below); a plain
+   panel never gets a gold border, even on screens that now carry other gold accents. */
 .panel {
   background: var(--bg-panel);
   border: 1px solid var(--border);
@@ -430,8 +448,15 @@ tr.excluded .deploy-table__ev {
   top: 1px;
 }
 
+/* v4a gold-accent pass (2026-09-20): the mockup's "Deployable"/Yes status dot fills gold
+   (#E3B94A), not white. .deploy-dot--yes is shared with the Reconcile knockout-list
+   "Scope" dot (an app-specific addition not in the mockup); recoloring the shared class
+   gives that dot the same gold treatment as a side effect -- reusing an existing token
+   for an existing element, not new gold real estate, so left as one class per the
+   "reuse tokens" guidance rather than forking a second class for the same visual meaning
+   (a filled dot signaling the "on" state of a yes/no pair). */
 .deploy-dot--yes {
-  background: var(--text);
+  background: var(--gold);
 }
 
 .deploy-dot--no {
@@ -596,7 +621,9 @@ tr.excluded .deploy-table__ev {
   margin-top: 8px;
 }
 
-/* Recommendation card: the ONLY place gold is used, per the aesthetic brief.
+/* Recommendation card: the strongest gold treatment on any screen (2px gold border +
+   gold headline + gold primary button, all at once) -- everywhere else in the app gold
+   is accent-weight only (see the CLAUDE.md "Design (web/)" gold-accent rule).
    container-type lets the toss-up pct pair scale with the card's own width
    (clamp(...cqi...) below) rather than the viewport, so it reads well whether
    the card sits at 354px on phone or 440px on desktop. */
@@ -776,16 +803,15 @@ tr.excluded .deploy-table__ev {
   margin-top: 14px;
 }
 
-.chip-stack__bar {
-  fill: var(--border-strong);
-}
-
-.chip-stack__bar--mid {
-  fill: var(--text-muted);
-}
-
+/* v4a gold-accent pass (2026-09-20): the mockup's Voidcores glyph is stroked gold
+   (#E3B94A) in every frame -- our chip-stack is a documented original glyph (see
+   ChipStack.tsx), not a redraw of the mockup's ellipse icon, but carries the same gold
+   treatment. Uniform gold across all three bars, matching the mockup's uniform stroke
+   color (it doesn't shade the three ellipses differently). */
+.chip-stack__bar,
+.chip-stack__bar--mid,
 .chip-stack__bar--top {
-  fill: var(--text-secondary);
+  fill: var(--gold);
 }
 
 /* Header Voidcore-count pill -- labeled (visible "Voidcores held" text, not just an
@@ -801,6 +827,10 @@ tr.excluded .deploy-table__ev {
   box-sizing: border-box;
 }
 
+/* v4a gold-accent pass (2026-09-20): the header pill's Voidcore count is gold in the
+   mockup (color:#E3B94A on the number span). The run-settings sidebar's own Voidcore
+   field (.voidcore-field__input, below) keeps its number white -- the mockup renders
+   that one as a plain <input> with no gold color override, only the icon is gold there. */
 .voidcore-pill__input {
   width: 28px;
   background: none;
@@ -809,7 +839,7 @@ tr.excluded .deploy-table__ev {
   font-size: 18px;
   font-weight: 700;
   line-height: 1;
-  color: var(--text);
+  color: var(--gold);
   -moz-appearance: textfield;
 }
 
@@ -1111,12 +1141,11 @@ select:disabled {
 }
 
 /* Full-width, light-filled primary action (Fetch report / Price my roll) -- the only
-   button on this screen styled this way, per v2's 2a mockup. */
-/* v4 gold-accent pass (2026-09-20): this is the Paste screen's single card-level gold
-   touch (the primary action inside the run-settings card) -- per the hard-rule override,
-   NOT the broader v4 mockup treatment (no gold wordmark/nav/icons/checkboxes on this
-   screen). Reuses the existing --gold/--gold-strong/--gold-text-on tokens already
-   audited for .btn-gold; same pair, just a second consumer. */
+   button on this screen styled this way, per v2's 2a mockup.
+   v4 gold-accent pass (2026-09-20): gold fill (--gold/--gold-strong/--gold-text-on,
+   already contrast-audited for .btn-gold) instead of the prior off-white -- this was
+   the first button shipped gold, kept as its own class since .btn-light is full-width
+   and .btn-gold isn't. */
 .btn-light {
   background: var(--gold);
   color: var(--gold-text-on);
@@ -1174,10 +1203,11 @@ select:disabled {
   background: var(--bg-panel-alt);
 }
 
-/* v4 gold-accent pass (2026-09-20): the Loot table screen's single card-level gold
-   touch -- a flat inset left stripe on the selected boss row (matches the v4 mockup's
-   own inset accent), not a shadow/glow. Everything else on this screen (simmed dot,
-   In pool checkbox, kill checkboxes) stays neutral per the one-accent-per-screen rule. */
+/* v4 gold-accent pass (2026-09-20): a flat inset left stripe on the selected boss row
+   (matches the v4 mockup's own inset accent), not a shadow/glow. The Loot table's
+   "Knockout" checkbox also goes gold when checked (see the app-wide
+   input[type='checkbox']:checked rule above) -- both are accent-weight, well under the
+   recommendation card's border+headline+button treatment. */
 .loot-boss-list__item[aria-current='true'] {
   background: var(--bg-hover);
   font-weight: 600;
@@ -1236,11 +1266,10 @@ select:disabled {
   color: var(--text-muted);
 }
 
-/* v4 gold-accent pass (2026-09-20): the Recommendation/Rollable-Bosses screen's single
-   card-level gold touch -- a small vertical rule before the "Rollable Bosses" heading
-   (mirrors the v4 mockup's "Deployability" heading treatment). This is the only gold on
-   this screen's own panel; the RecommendationCard reached via "Roll this boss" keeps its
-   own pre-existing gold border+button, which is a separate screen/card. */
+/* v4 gold-accent pass (2026-09-20): a small vertical rule before the "Rollable Bosses"
+   heading (mirrors the v4 mockup's "Deployability" heading treatment). The "Roll this
+   boss" button and the Yes/deployable status dot on this same screen are also gold now
+   (v4a pass, full mockup parity) -- see .btn-gold and .deploy-dot--yes. */
 .heading-gold-bar {
   display: inline-block;
   width: 4px;
@@ -1269,7 +1298,7 @@ select:disabled {
 <div class="app-shell">
 <header class="app-header"><span class="app-header__brand">GallagioLoot</span><nav class="app-nav" aria-label="Screens"><button type="button" class="app-nav__item">Paste</button><button type="button" class="app-nav__item">Reconcile</button><button type="button" class="app-nav__item">Loot table</button><button type="button" class="app-nav__item" aria-current="page">Recommendation</button></nav><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
 <main class="app-main">
-<div><div class="panel"><div class="screen-header"><div class="screen-header__title-group"><h3><span class="heading-gold-bar" aria-hidden="true"></span>Rollable Bosses</h3><span class="screen-header__meta">Bosses in kill order · threshold 0.20%</span></div><button type="button" class="btn">Roll this boss</button></div></div><div class="panel"><table class="deploy-table fold-table"><thead><tr><th class="deploy-table__rank">#</th><th>Boss</th><th class="num">Remaining</th><th class="num"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">EV %<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Best case</th><th class="num"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rollable<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Notes</th></tr></thead><tbody><tr><td class="deploy-table__rank" data-label="#">1</td><td data-label="Boss">Ula&#x27;tek</td><td class="num" data-label="Remaining">11 / 11</td><td class="num deploy-table__ev" data-label="EV %">1.86%</td><td data-label="Best case">Font of Venomous Rage <span class="num" style="font-weight:600">(6.26%)</span></td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">Curio counts as one item; value assumes you pick your best missing tier slot; 2 items in the loot table but not in sim report (valued 0); 5 items in sim report but not in this boss&#x27;s loot table</td></tr><tr><td class="deploy-table__rank" data-label="#">2</td><td data-label="Boss">Sszorak</td><td class="num" data-label="Remaining">4 / 4</td><td class="num deploy-table__ev" data-label="EV %">0.64%</td><td data-label="Best case">Apex Brute&#x27;s Claw Ring <span class="num" style="font-weight:600">(1.19%)</span></td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">1 item in the loot table but not in sim report (valued 0)</td></tr><tr><td class="deploy-table__rank" data-label="#">3</td><td data-label="Boss">Vashnik the Malignant</td><td class="num" data-label="Remaining">5 / 5</td><td class="num deploy-table__ev" data-label="EV %">2.18%</td><td data-label="Best case">Fang of Umbral Malignance <span class="num" style="font-weight:600">(5.43%)</span></td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes"></td></tr><tr><td class="deploy-table__rank" data-label="#">4</td><td data-label="Boss">Nek&#x27;zali the Soulcoiler</td><td class="num" data-label="Remaining">7 / 7</td><td class="num deploy-table__ev" data-label="EV %">0.86%</td><td data-label="Best case">Hexing Spiritrender <span class="num" style="font-weight:600">(2.25%)</span></td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">2 items in the loot table but not in sim report (valued 0); 1 item in sim report but not in this boss&#x27;s loot table</td></tr><tr><td class="deploy-table__rank" data-label="#">5</td><td data-label="Boss">The Lost Explorers</td><td class="num" data-label="Remaining">5 / 5</td><td class="num deploy-table__ev" data-label="EV %">2.30%</td><td data-label="Best case">Gebbo&#x27;s Bottomless Bag <span class="num" style="font-weight:600">(6.28%)</span></td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes"></td></tr><tr><td class="deploy-table__rank" data-label="#">6</td><td data-label="Boss">Entombed Sentinels</td><td class="num" data-label="Remaining">4 / 4</td><td class="num deploy-table__ev" data-label="EV %">0.58%</td><td data-label="Best case">Hexing Grips of the Ophidian Oracle <span class="num" style="font-weight:600">(1.88%)</span></td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">2 items in the loot table but not in sim report (valued 0)</td></tr><tr><td class="deploy-table__rank" data-label="#">7</td><td data-label="Boss">The Coiled Altar</td><td class="num" data-label="Remaining">7 / 7</td><td class="num deploy-table__ev" data-label="EV %">1.08%</td><td data-label="Best case">Hissing Mantle of the Ophidian Oracle <span class="num" style="font-weight:600">(2.10%)</span></td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">1 item in the loot table but not in sim report (valued 0); 2 items in sim report but not in this boss&#x27;s loot table</td></tr><tr><td class="deploy-table__rank" data-label="#">8</td><td data-label="Boss">The Twin Fangs</td><td class="num" data-label="Remaining">6 / 6</td><td class="num deploy-table__ev" data-label="EV %">1.79%</td><td data-label="Best case">Vexhul&#x27;s Everflowing Gland <span class="num" style="font-weight:600">(6.30%)</span></td><td class="num" data-label="Rolls to target">~3.5, up to 6</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">1 item in the loot table but not in sim report (valued 0); 1 item in sim report but not in this boss&#x27;s loot table</td></tr></tbody></table></div></div>
+<div><div class="panel"><div class="screen-header"><div class="screen-header__title-group"><h3><span class="heading-gold-bar" aria-hidden="true"></span>Rollable Bosses</h3><span class="screen-header__meta">Bosses in kill order · threshold 0.20%</span></div><button type="button" class="btn btn-gold">Roll this boss</button></div></div><div class="panel"><table class="deploy-table fold-table"><thead><tr><th class="deploy-table__rank">#</th><th>Boss</th><th class="num">Remaining</th><th class="num"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">EV %<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Best case</th><th class="num"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rolls to target<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Rollable<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></th><th>Notes</th></tr></thead><tbody><tr><td class="deploy-table__rank" data-label="#">1</td><td data-label="Boss">Ula&#x27;tek</td><td class="num" data-label="Remaining">11 / 11</td><td class="num deploy-table__ev" data-label="EV %">1.86%</td><td data-label="Best case">Font of Venomous Rage <span class="num" style="font-weight:600">(6.26%)</span></td><td class="num" data-label="Rolls to target">~6.0, up to 11</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">Curio counts as one item; value assumes you pick your best missing tier slot; 2 items in the loot table but not in sim report (valued 0); 5 items in sim report but not in this boss&#x27;s loot table</td></tr><tr><td class="deploy-table__rank" data-label="#">2</td><td data-label="Boss">Sszorak</td><td class="num" data-label="Remaining">4 / 4</td><td class="num deploy-table__ev" data-label="EV %">0.64%</td><td data-label="Best case">Apex Brute&#x27;s Claw Ring <span class="num" style="font-weight:600">(1.19%)</span></td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">1 item in the loot table but not in sim report (valued 0)</td></tr><tr><td class="deploy-table__rank" data-label="#">3</td><td data-label="Boss">Vashnik the Malignant</td><td class="num" data-label="Remaining">5 / 5</td><td class="num deploy-table__ev" data-label="EV %">2.18%</td><td data-label="Best case">Fang of Umbral Malignance <span class="num" style="font-weight:600">(5.43%)</span></td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes"></td></tr><tr><td class="deploy-table__rank" data-label="#">4</td><td data-label="Boss">Nek&#x27;zali the Soulcoiler</td><td class="num" data-label="Remaining">7 / 7</td><td class="num deploy-table__ev" data-label="EV %">0.86%</td><td data-label="Best case">Hexing Spiritrender <span class="num" style="font-weight:600">(2.25%)</span></td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">2 items in the loot table but not in sim report (valued 0); 1 item in sim report but not in this boss&#x27;s loot table</td></tr><tr><td class="deploy-table__rank" data-label="#">5</td><td data-label="Boss">The Lost Explorers</td><td class="num" data-label="Remaining">5 / 5</td><td class="num deploy-table__ev" data-label="EV %">2.30%</td><td data-label="Best case">Gebbo&#x27;s Bottomless Bag <span class="num" style="font-weight:600">(6.28%)</span></td><td class="num" data-label="Rolls to target">~3.0, up to 5</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes"></td></tr><tr><td class="deploy-table__rank" data-label="#">6</td><td data-label="Boss">Entombed Sentinels</td><td class="num" data-label="Remaining">4 / 4</td><td class="num deploy-table__ev" data-label="EV %">0.58%</td><td data-label="Best case">Hexing Grips of the Ophidian Oracle <span class="num" style="font-weight:600">(1.88%)</span></td><td class="num" data-label="Rolls to target">~2.5, up to 4</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">2 items in the loot table but not in sim report (valued 0)</td></tr><tr><td class="deploy-table__rank" data-label="#">7</td><td data-label="Boss">The Coiled Altar</td><td class="num" data-label="Remaining">7 / 7</td><td class="num deploy-table__ev" data-label="EV %">1.08%</td><td data-label="Best case">Hissing Mantle of the Ophidian Oracle <span class="num" style="font-weight:600">(2.10%)</span></td><td class="num" data-label="Rolls to target">~4.0, up to 7</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">1 item in the loot table but not in sim report (valued 0); 2 items in sim report but not in this boss&#x27;s loot table</td></tr><tr><td class="deploy-table__rank" data-label="#">8</td><td data-label="Boss">The Twin Fangs</td><td class="num" data-label="Remaining">6 / 6</td><td class="num deploy-table__ev" data-label="EV %">1.79%</td><td data-label="Best case">Vexhul&#x27;s Everflowing Gland <span class="num" style="font-weight:600">(6.30%)</span></td><td class="num" data-label="Rolls to target">~3.5, up to 6</td><td data-label="Rollable"><span class="deploy-indicator"><span class="deploy-dot deploy-dot--yes" aria-hidden="true"></span>Yes</span></td><td data-label="Notes">1 item in the loot table but not in sim report (valued 0); 1 item in sim report but not in this boss&#x27;s loot table</td></tr></tbody></table></div></div>
 <footer class="app-footer panel"><div class="app-footer__columns"><div class="app-footer__col app-footer__col--main"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><details class="app-footer__assumptions"><summary>Show assumptions</summary><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></details></div><div class="app-footer__col app-footer__col--aside"><p>Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div></footer>
 </main>
 </div>

@@ -28,7 +28,11 @@ export function DeployabilityScreen(props: {
             </h3>
             <span className="screen-header__meta">Bosses in kill order · threshold {thresholdPct.toFixed(2)}%</span>
           </div>
-          <button type="button" className="btn" onClick={onViewRecommendation}>
+          {/* v4a gold-accent pass (2026-09-20, full mockup parity): this screen's primary
+              action now goes gold too (beyond the single heading-bar touch shipped in the
+              prior pass) -- still one button, still accent-weight, well under the
+              recommendation card's border+headline+button treatment. */}
+          <button type="button" className="btn btn-gold" onClick={onViewRecommendation}>
             Roll this boss
           </button>
         </div>

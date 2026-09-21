@@ -19,6 +19,17 @@ Data layer + decision engine for GallagioLoot (WoW bonus roll optimizer): a Clou
 
 - Not deployed automatically. `wrangler.toml` has a commented-out route for `gallagioloot-proxy.icehunter.net` — don't uncomment/deploy without explicit instruction.
 
+## Design (web/)
+
+Hard rules for the `web/` UI (Cloudflare Worker static site, see `web/CLAUDE.md`-equivalent context below -- there's no separate file, this is the canonical copy):
+
+- No gradients, glow, or neon effects.
+- WCAG AA contrast (verified with `web/design/contrast.mts`).
+- Tabular figures for numbers (`font-variant-numeric: tabular-nums`).
+- Disclaimers live in the in-flow footer, not a modal/overlay.
+- No external assets (fonts/icons are bundled, not fetched from a CDN at runtime beyond the one Google Fonts `<link>` already in use).
+- Gold accent rule (superseded 2026-09-20; previously "exactly one gold accent per screen, card only"): The recommendation card carries the strongest gold treatment on any screen (border + headline + primary action); everywhere else gold is accent-weight only: wordmark, active-tab underline, Voidcores pill glyph/number, section expander "+" marks, selected-row stripe, primary buttons, small heading bars. Never gold on body text, table numbers, or large fills.
+
 ## Behavior
 
 - Endpoints: `GET /raidbots/:id`, `GET /qelive/:id`, `GET /encounter-items` (debug), `GET /tier-map/:instanceId` (debug), `GET /loot-table/:instanceId?lootSpec=:specId`, `GET /health` (reports the current Raidbots static-data hash + its age). See `README.md` for the full schema and upstream shape notes, including mismatches found against the original spec (the Raidbots data-hash discovery location, `encounter-names.json`/`instance-names.json` being flat objects rather than arrays, and the Tidebound Grotto instance/encounter id in the tier seed table — see "Tier-token resolution" in README.md).

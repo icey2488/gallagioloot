@@ -183,6 +183,20 @@ const PAIRS: Pair[] = [
   { name: 'Reconcile screen Confirm button label on gold fill', fg: COLORS.goldTextOn, bg: COLORS.gold, requirement: 'text' },
   { name: 'Loot table selected-row gold inset stripe on hover fill (--bg-hover)', fg: COLORS.gold, bg: COLORS.bgHover, requirement: 'ui' },
   { name: 'Recommendation screen "Rollable Bosses" heading gold bar on panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
+  // v4a gold-accent pass (2026-09-20, full mockup parity) -- every gold element the v4
+  // mockup drew that the prior pass declined under the now-retired one-accent-per-screen
+  // rule (see CLAUDE.md's "Design (web/)" section for the replacement rule). No new hex
+  // values: every element below reuses --gold/--gold-strong/--gold-text-on, all already
+  // audited above; these rows just cover the new consumers/locations.
+  { name: 'App wordmark (gold text) on header panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Active nav-tab gold underline (inset box-shadow) on hover fill (--bg-hover)', fg: COLORS.gold, bg: COLORS.bgHover, requirement: 'ui' },
+  { name: 'Header Voidcores pill count (gold text) on header panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Voidcores chip-stack glyph (gold fill) on header panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Checked checkbox (accent-color gold) on panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Checked checkbox (accent-color gold) on input/select fill', fg: COLORS.gold, bg: COLORS.bgPanelAlt, requirement: 'ui' },
+  { name: 'Deployability "Yes" status dot (gold fill) on panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold fill', fg: COLORS.goldTextOn, bg: COLORS.gold, requirement: 'text' },
+  { name: 'Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold-strong hover fill', fg: COLORS.goldTextOn, bg: COLORS.goldStrong, requirement: 'text' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather
