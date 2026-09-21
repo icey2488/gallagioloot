@@ -4,6 +4,7 @@ import { extractLearnedTierData, getLearnedTierData, mergeLearnedTierData, saveL
 import { getSeedTierMap } from '../src/lookup/tierSeed'
 import { normalizeRaidbotsReport, type RaidbotsRawReport } from '../src/normalize/raidbots'
 import { normalizeQELiveReport, parseQELiveResponseBody } from '../src/normalize/qelive'
+import { normalizeTopGearReport, type RaidbotsTopGearRawReport } from '../src/normalize/topgear'
 import type { EncounterItemEntry, InstanceEntry } from '../src/types'
 import type { LookupEnv } from '../src/lookup/encounterItems'
 
@@ -14,6 +15,7 @@ const RUN_LIVE = process.env.RUN_LIVE === '1'
 
 const RAIDBOTS_REPORT_ID = 'jk6WmLFEnBpEqWueDkyRqA'
 const QELIVE_REPORT_ID = 'wzfyzqxqjqej'
+const TOPGEAR_REPORT_ID = 'miriTcb27bfGDYmV6JjvD1'
 
 async function fetchLiveLookup() {
   const homepage = await fetch('https://www.raidbots.com/')
@@ -121,5 +123,38 @@ describe.skipIf(!RUN_LIVE)('live integration', () => {
       expect(curioRow?.viaCurio).toBe(true)
       expect(rows.some((r) => r.encounterId !== 2895 && !r.viaCurio)).toBe(true)
     }
+  })
+
+  it('normalizes a real Raidbots Top Gear report (simbot.simType "optimize", not "topgear") into a best set and resolved candidates', async () => {
+    const res = await fetch(`https://www.raidbots.com/reports/${TOPGEAR_REPORT_ID}/data.json`)
+    expect(res.ok).toBe(true)
+    const raw = (await res.json()) as RaidbotsTopGearRawReport
+    console.log('[topgear] simbot.simType:', raw.simbot.simType)
+    expect(raw.simbot.simType).toBe('optimize')
+
+    const lookup = await fetchLiveLookup()
+    const learnedByInstance = new Map<number, LearnedTierData>()
+    const result = normalizeTopGearReport(TOPGEAR_REPORT_ID, raw, lookup, learnedByInstance)
+
+    console.log('[topgear] character/spec:', result.character, result.spec)
+    console.log('[topgear] baseline:', result.baseline)
+    console.log('[topgear] bestSet delta/pct:', result.bestSet.delta, result.bestSet.pct)
+    console.log('[topgear] bestSet items:', result.bestSet.items.map((i) => `${i.name} (${i.slot})`))
+    console.log(
+      '[topgear] candidates:',
+      result.candidates.map((c) => `${c.name} (${c.slot}) <- ${c.encounterName ?? 'not a raid/dungeon item'}`)
+    )
+    console.log('[topgear] allSets:', result.allSets.map((s) => s.pct.toFixed(4)))
+
+    expect(result.baseline).toBeGreaterThan(0)
+    expect(result.bestSet.pct).toBeGreaterThan(0)
+    expect(result.candidates.length).toBeGreaterThanOrEqual(1)
+    // Verified 2026-09-20 against this exact live report: the winning combination swaps
+    // in Lightspire Core (a trinket) over the equipped Freightrunner's Flask -- see
+    // README.md's Top Gear shape notes for the full derivation.
+    expect(result.candidates.some((c) => c.itemId === 250214)).toBe(true)
+    const lightspireCore = result.candidates.find((c) => c.itemId === 250214)!
+    expect(lightspireCore.encounterId).toBeDefined()
+    expect(lightspireCore.encounterName).toBeDefined()
   })
 })

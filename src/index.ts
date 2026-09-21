@@ -4,7 +4,8 @@ import { getAllSeedInstanceIds, getCurioEncounterId, getSeedTierMap, isKnownSeed
 import { buildLootTable } from './lookup/lootTable'
 import { normalizeRaidbotsReport, UnsupportedReportError, type RaidbotsRawReport } from './normalize/raidbots'
 import { normalizeQELiveReport, parseQELiveResponseBody } from './normalize/qelive'
-import type { EncounterItemsLookup, LootTable, NormalizedReport } from './types'
+import { normalizeTopGearReport, UnsupportedTopGearReportError, type RaidbotsTopGearRawReport } from './normalize/topgear'
+import type { EncounterItemsLookup, LootTable, NormalizedReport, NormalizedTopGear } from './types'
 
 const VERSION = '0.1.0'
 
@@ -46,7 +47,7 @@ export default {
             service: 'gallagioloot-proxy',
             version: VERSION,
             status: 'ok',
-            endpoints: ['/raidbots/:id', '/qelive/:id', '/encounter-items', '/tier-map/:instanceId', '/loot-table/:instanceId'],
+            endpoints: ['/raidbots/:id', '/qelive/:id', '/topgear/:id', '/encounter-items', '/tier-map/:instanceId', '/loot-table/:instanceId'],
             dataHash: versionInfo.version,
             dataHashDiscoveredAt: new Date(versionInfo.discoveredAt).toISOString(),
             dataHashAgeSeconds: Math.max(0, Math.floor((Date.now() - versionInfo.discoveredAt) / 1000)),
@@ -62,6 +63,10 @@ export default {
 
       if (path.startsWith('/qelive/')) {
         return await handleQELive(path.slice('/qelive/'.length), url.searchParams, env, ctx, allowedOrigin)
+      }
+
+      if (path.startsWith('/topgear/')) {
+        return await handleTopGear(path.slice('/topgear/'.length), url.searchParams, env, ctx, allowedOrigin)
       }
 
       if (path === '/encounter-items') {
@@ -185,6 +190,61 @@ async function handleQELive(
   return respondAndCache(normalized, cacheKey, ctx, allowedOrigin)
 }
 
+/**
+ * A Raidbots "Top Gear" report -- fetched from the same `data.json` endpoint as
+ * `/raidbots/:id`, since Raidbots serves every sim type from one URL shape. Its
+ * `simbot.simType` is `"optimize"`, not `"topgear"` -- see README.md's Top Gear shape
+ * notes for how this was verified against a live report.
+ */
+async function handleTopGear(
+  rawIdOrUrl: string,
+  params: URLSearchParams,
+  env: Env,
+  ctx: ExecutionContext,
+  allowedOrigin: string | null
+): Promise<Response> {
+  const candidate = decodeURIComponent(rawIdOrUrl) || params.get('url') || params.get('id') || ''
+  const id = extractId(candidate, RAIDBOTS_ID_RE)
+  if (!id) {
+    return jsonResponse({ error: 'invalid_id', detail: 'Expected a 22-character Raidbots report id or URL' }, 400, allowedOrigin)
+  }
+
+  const cacheKey = reportCacheKey('topgear', id)
+  const cached = await caches.default.match(cacheKey)
+  if (cached) return withCors(cached, allowedOrigin)
+
+  let upstream: Response
+  try {
+    upstream = await fetchWithTimeout(`https://www.raidbots.com/reports/${id}/data.json`)
+  } catch (e) {
+    return jsonResponse({ error: 'fetch_failed', detail: (e as Error).message }, 502, allowedOrigin)
+  }
+  if (!upstream.ok) {
+    return jsonResponse({ error: 'upstream_error', status: upstream.status }, 502, allowedOrigin)
+  }
+
+  let raw: RaidbotsTopGearRawReport
+  try {
+    raw = (await upstream.json()) as RaidbotsTopGearRawReport
+  } catch (e) {
+    return jsonResponse({ error: 'parse_failed', detail: (e as Error).message }, 502, allowedOrigin)
+  }
+
+  let normalized: NormalizedTopGear
+  try {
+    const lookup = await getEncounterItemsLookup(env)
+    const learnedByInstance = await getAllLearnedTierData(env, getAllSeedInstanceIds())
+    normalized = normalizeTopGearReport(id, raw, lookup, learnedByInstance)
+  } catch (e) {
+    if (e instanceof UnsupportedTopGearReportError) {
+      return jsonResponse({ error: 'unsupported_report', detail: e.message }, 400, allowedOrigin)
+    }
+    throw e
+  }
+
+  return respondAndCache(normalized, cacheKey, ctx, allowedOrigin)
+}
+
 async function handleTierMap(instanceIdRaw: string, env: Env, allowedOrigin: string | null): Promise<Response> {
   const instanceId = Number(instanceIdRaw)
   if (!Number.isFinite(instanceId)) {
@@ -263,7 +323,7 @@ function reportCacheKey(source: string, id: string): Request {
 }
 
 async function respondAndCache(
-  normalized: NormalizedReport,
+  normalized: NormalizedReport | NormalizedTopGear,
   cacheKey: Request,
   ctx: ExecutionContext,
   allowedOrigin: string | null

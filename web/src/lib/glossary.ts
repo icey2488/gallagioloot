@@ -1,7 +1,7 @@
 // Single source of truth for tooltip copy attached to jargon terms across the app.
 // Edit here -- the Tooltip component and every screen that uses a term pull from
 // this file rather than hardcoding copy inline.
-export type GlossaryTerm = 'threshold' | 'ev' | 'rollsToTarget' | 'tossUp' | 'deployable' | 'knockout' | 'specSpecific' | 'lootSpec'
+export type GlossaryTerm = 'threshold' | 'ev' | 'rollsToTarget' | 'tossUp' | 'deployable' | 'knockout' | 'specSpecific' | 'lootSpec' | 'topGear'
 
 export const GLOSSARY: Record<GlossaryTerm, { label: string; copy: string }> = {
   threshold: {
@@ -35,5 +35,9 @@ export const GLOSSARY: Record<GlossaryTerm, { label: string; copy: string }> = {
   lootSpec: {
     label: 'Loot spec',
     copy: 'The spec the game uses to decide what you can receive. Set it in-game before you roll; this tool must match it.',
+  },
+  topGear: {
+    label: 'Top Gear',
+    copy: "Raidbots' gear-combination sim. Paste a Top Gear report that includes your Great Vault choice, and GallagioLoot reads the gain and the item straight from it -- no manual typing.",
   },
 }

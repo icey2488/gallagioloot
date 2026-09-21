@@ -203,6 +203,14 @@ const PAIRS: Pair[] = [
   { name: 'Outline "Fetch report" button label (enabled) on panel', fg: COLORS.text, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Outline "Fetch report" button border (enabled) on panel', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Outline "Fetch report" button label (disabled) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
+  // Top Gear vault-item field (2026-09-20) -- replaces the old manual "Best vault item
+  // gain %" number input. Reuses the existing field-hint token (--text-muted on panel)
+  // for both the auto-filled "Vault item: name · +pct% · boss" summary line and the
+  // smaller "Also added: ..." extra-candidates line nested inside it (11px, no new
+  // color -- inherits the parent field-hint's color, so it clears the same 4.5:1 floor
+  // as the parent, stricter than the 3:1 large-text floor its own size would allow).
+  { name: 'Top Gear "Vault item: name · pct% · boss" summary line on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Top Gear "Also added: ..." extra-candidates line (11px, inherits parent color) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather

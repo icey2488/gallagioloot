@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { compareVault, rollsToTarget } from '../src/core/vault'
+import { compareVault, rollsToTarget, vaultItemFromTopGear } from '../src/core/vault'
 import type { BossEval, PoolEntry, Recommendation, Settings } from '../src/core/types'
-import type { NormalizedReport } from '../src/types'
+import type { NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../src/types'
 
 const BASELINE = 100000
 
@@ -231,5 +231,52 @@ describe('compareVault', () => {
     expect(decision.savedRolls).toBe(0)
     expect(decision.notes.some((n) => n.includes('Could not identify the loot pool'))).toBe(true)
     expect(decision.vaultItemGainPct).toBe(2.0)
+  })
+})
+
+function makeCandidate(itemId: number, name: string, overrides: Partial<TopGearCandidate> = {}): TopGearCandidate {
+  return { itemId, name, slot: 'trinket2', ilvl: 334, ...overrides }
+}
+
+function makeTopGear(candidates: TopGearCandidate[], pct = 0.33): NormalizedTopGear {
+  return {
+    source: 'raidbots',
+    reportId: 'abc',
+    character: 'Icemagus',
+    spec: 'arcane',
+    baseline: 554420.23,
+    metric: 'dps',
+    bestSet: { delta: (pct / 100) * 554420.23, pct, items: candidates },
+    equippedItems: [],
+    candidates,
+    allSets: [],
+  }
+}
+
+describe('vaultItemFromTopGear', () => {
+  it('returns null when the winning combination added no new candidate', () => {
+    expect(vaultItemFromTopGear(makeTopGear([]))).toBeNull()
+  })
+
+  it('builds a compareVault-shaped vaultItem from the single candidate, using bestSet.pct as gainPct', () => {
+    const candidate = makeCandidate(250214, 'Lightspire Core', { encounterId: 2771 })
+    const result = vaultItemFromTopGear(makeTopGear([candidate], 0.33))
+    expect(result).toEqual({ name: 'Lightspire Core', gainPct: 0.33, itemId: 250214, encounterId: 2771, extraCandidates: undefined })
+  })
+
+  it('uses the first candidate as primary and carries the rest as extraCandidates when the winning combo swapped in more than one item', () => {
+    const primary = makeCandidate(271483, 'Serpent Crown of the Ophidian Oracle', { slot: 'head', encounterId: 2887 })
+    const extra = makeCandidate(250214, 'Lightspire Core', { encounterId: 2894 })
+    const result = vaultItemFromTopGear(makeTopGear([primary, extra], 0.5))
+    expect(result?.name).toBe('Serpent Crown of the Ophidian Oracle')
+    expect(result?.itemId).toBe(271483)
+    expect(result?.extraCandidates).toEqual([extra])
+  })
+
+  it('leaves itemId/encounterId undefined on the returned vaultItem when the candidate has no resolved boss', () => {
+    const candidate = makeCandidate(999, 'Crafted Gizmo')
+    const result = vaultItemFromTopGear(makeTopGear([candidate]))
+    expect(result?.encounterId).toBeUndefined()
+    expect(result?.itemId).toBe(999)
   })
 })

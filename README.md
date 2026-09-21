@@ -24,6 +24,32 @@ Fetches `https://questionablyepic.com/api/getUpgradeReport.php?reportID={id}`, n
 
 `:id` accepts a bare 12-lowercase-letter QE Live id (`wzfyzqxqjqej`) or a full report URL, same extraction rules as above.
 
+### `GET /topgear/:id`
+
+Fetches a Raidbots "Top Gear" report from the same `data.json` endpoint `/raidbots/:id` uses (Raidbots serves every sim type from one URL shape), normalizes it, and returns a `NormalizedTopGear`. `:id` accepts the same bare-id-or-URL shapes as `/raidbots/:id`.
+
+Rejects with `400 unsupported_report` if the report's `simbot.simType` isn't `"optimize"`, or it has no `simbot.meta.rawFormData.optimize` block (e.g. a droptimizer or raid-summary report was pasted here instead). **`simbot.simType` for a Top Gear report is `"optimize"`, not `"topgear"`** — verified live 2026-09-20 against a real report (`miriTcb27bfGDYmV6JjvD1`); `simbot.meta.title` reads `"Top Gear · Great Vault"` but that's cosmetic, not a stable discriminator to gate on. See "Top Gear shape notes" below for the full derivation.
+
+```ts
+type NormalizedTopGear = {
+  source: 'raidbots'
+  reportId: string
+  character: string
+  spec: string
+  baseline: number             // absolute dps/hps of the equipped set
+  metric: 'dps' | 'hps'
+  bestSet: { delta: number; pct: number; items: TopGearItem[] }   // the highest-pct tested combination
+  equippedItems: TopGearItem[]
+  candidates: TopGearCandidate[]  // items in bestSet not in equippedItems, each resolved to a boss when possible
+  allSets: Array<{ delta: number; pct: number; items: TopGearItem[] }>  // every tested combination, sorted by pct desc, trimmed to 10
+}
+
+type TopGearItem = { itemId: number; name: string; slot: string; ilvl: number }
+type TopGearCandidate = TopGearItem & { encounterId?: number; encounterName?: string; instanceId?: number }
+```
+
+Cached like `/raidbots`/`/qelive` (10 minutes, Cache API, keyed by id).
+
 ### `GET /encounter-items`
 
 Returns the cached Raidbots item → encounter/instance lookup as JSON, for debugging. Not meant for production consumption — it's a full dump of the lookup maps built from Raidbots' static data files.
@@ -168,6 +194,19 @@ type NormalizedItem = {
 - A `"Raid"` report's rows can span **every raid instance active in the current tier** (e.g. the main raid plus a smaller "raid lair"), since QE Live doesn't scope `dropLoc: "Raid"` to one instance. `normalizeQELiveReport` resolves every row via the encounter-items lookup, tallies which instance each resolved row belongs to, and keeps only the rows matching the dominant (most-represented) instance — the report's own `instanceId`/`instanceName` are set from that instance, matching the Raidbots normalizer's one-report-per-instance behavior. Rows resolving to a different instance are dropped with a count in `warnings`. See "Ninth boss" under Decision engine for how this was found.
 - QE Live doesn't expose the equipped-set baseline directly. It's derived as `baseline = rawDiff / (percDiff / 100)`, taking the **median** across kept rows with nonzero `percDiff` for stability. If no row qualifies, `baseline = 0` and a warning is added.
 - `results[]` rows carry **no encounter or item-name info** — only an item id. Both are joined from the Raidbots encounter-items lookup (below). Items with no mapping are dropped from `items` and listed by id in `warnings`.
+
+### Raidbots "Top Gear" report (`optimize` simType)
+
+**Contradicts the original task spec:** the task assumed `simbot.simType === "topgear"`. Fetching a real Top Gear report (`miriTcb27bfGDYmV6JjvD1`, a "Top Gear · Great Vault" run, verified live 2026-09-20) shows `simbot.simType` is actually `"optimize"` — the same value Raidbots' plain "Quick Sim"/gear-optimizer reports use. `simbot.meta.title` (`"Top Gear · Great Vault"` for this report) names the feature, but it's free-text UI copy, not a stable field to gate on; `/topgear` instead requires `simbot.simType === "optimize"` **and** a `simbot.meta.rawFormData.optimize` block being present (a plain droptimizer report has `simType: "droptimizer"` and no `optimize` block at all, so this combination still rejects it cleanly).
+
+Unlike a droptimizer report, an "optimize" report has no `sim.profilesets.results[].name` slash-delimited shape, no `itemLibrary`, and no `rawFormData.droptimizer.{instance,difficulty}` — its own shape instead:
+
+- **Baseline**: `sim.players[0].collected_data.dps.mean`, same field as droptimizer.
+- **`rawFormData.optimize.combinations[]`**: one entry per tested gear/talent combination, each a 16-element `gear` index array in a fixed slot order (`head, neck, shoulder, back, chest, wrist, hands, waist, legs, feet, finger1, finger2, trinket1, trinket2, main_hand, off_hand`). Each slot's value indexes into that slot's candidate pool in `rawFormData.optimize.allGear` — **not** into the differently-scoped `rawFormData.optimize.gear` ("selected for combination generation" subset, despite the near-identical name) or `.selected`. Both ring slots (`finger1`/`finger2`) share one pool, `allGear.rings`; both trinket slots share `allGear.trinkets`.
+- **`sim.profilesets.results[].name`** is `"Combo N"` (1-indexed into `combinations[]`), with a plain `mean` (no slash-delimited item/encounter info to parse). **Combination 1 (the currently-equipped gear) is never present in `results[]`** — its mean already equals the top-level baseline, so simc doesn't re-test it as a profileset. Confirmed on the live sample: `numCombinations: 4`, but only `"Combo 2"`/`"Combo 3"`/`"Combo 4"` appear in `results[]`.
+- **Equipped set**: `rawFormData.optimize.equippedGear`, keyed by pool name (`head`, `trinkets`, `rings`, etc.) with one entry per equipped item, each carrying its own `equippedSlot` (e.g. `"trinket2"`) — used directly, rather than assuming `combinations[0]` is always the baseline (true on the sample, but the seed table lesson elsewhere in this doc is not to trust an unverified structural assumption when the data itself says otherwise).
+- **Candidates**: for the winning (highest-`pct`) combination, every item not present in the equipped set, resolved to a boss via the same encounter-items lookup + tier-token seed/learned fallback QE Live uses (`resolveTierEncounters`) — a Top Gear candidate has no instance id of its own either, so a "dominant instance" is established the same way (from whichever other candidates in the same winning combination resolve directly), and a resolved source is only kept if its instance type is actually `raid`/`dungeon` (Top Gear happily tests crafted/PvP/world-content candidates too, which should surface as "not a raid/dungeon item", not a wrong boss).
+- On the live sample, the winning combination ("Combo 4", +0.33%) swaps **Lightspire Core** into `trinket2`, replacing the equipped Freightrunner's Flask (the other trinket, Gebbo's Bottomless Bag, just moves slots — not a new candidate). Lightspire Core resolves to a real boss via a direct `encounter-items.json` source (not a tier token), landing on `instanceId 1309`, encounter "Lightwarden Ruia".
 
 ### Raidbots static encounter-items lookup
 

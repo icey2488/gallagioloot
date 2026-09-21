@@ -3,9 +3,11 @@ import { createState, storageKey } from '@engine/core/knockout'
 import {
   LocalStorageAdapter,
   loadLastReportUrl,
+  loadLastTopGearUrl,
   loadSettings,
   loadVoidcoreCount,
   saveLastReportUrl,
+  saveLastTopGearUrl,
   saveSettings,
   saveVoidcoreCount,
   DEFAULT_STORED_SETTINGS,
@@ -90,6 +92,14 @@ describe('settings / last report URL / voidcore persistence', () => {
   it('round-trips the last report URL', () => {
     expect(loadLastReportUrl(key)).toBeNull()
     saveLastReportUrl(key, 'https://www.raidbots.com/reports/abc')
+    expect(loadLastReportUrl(key)).toBe('https://www.raidbots.com/reports/abc')
+  })
+
+  it('round-trips the last Top Gear report URL, independently of the last (sim) report URL', () => {
+    expect(loadLastTopGearUrl(key)).toBeNull()
+    saveLastReportUrl(key, 'https://www.raidbots.com/reports/abc')
+    saveLastTopGearUrl(key, 'https://www.raidbots.com/reports/xyz')
+    expect(loadLastTopGearUrl(key)).toBe('https://www.raidbots.com/reports/xyz')
     expect(loadLastReportUrl(key)).toBe('https://www.raidbots.com/reports/abc')
   })
 

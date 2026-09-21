@@ -134,3 +134,45 @@ export type LootTable = {
   sourceHash: string
   encounters: LootTableEncounter[]
 }
+
+export type TopGearItem = {
+  itemId: number
+  name: string
+  slot: string
+  ilvl: number
+}
+
+/** A TopGearItem present in the best set but not in the currently-equipped set. */
+export type TopGearCandidate = TopGearItem & {
+  encounterId?: number
+  encounterName?: string
+  instanceId?: number
+}
+
+export type TopGearSet = {
+  /** Absolute dps/hps gain over `NormalizedTopGear.baseline`. */
+  delta: number
+  pct: number
+  items: TopGearItem[]
+}
+
+/**
+ * A Raidbots "Top Gear" report (`simbot.simType === "optimize"`, not `"topgear"` -- see
+ * README.md's Top Gear shape notes for how this was verified against a live report),
+ * normalized down to the equipped set, the best-scoring combination it tested, and the
+ * items that combination adds over what's currently equipped (candidates).
+ */
+export type NormalizedTopGear = {
+  source: 'raidbots'
+  reportId: string
+  character: string
+  spec: string
+  baseline: number
+  metric: Metric
+  bestSet: TopGearSet
+  equippedItems: TopGearItem[]
+  /** Items in `bestSet` not in `equippedItems`, each resolved to a boss when possible (undefined fields when the item isn't a raid/dungeon drop). */
+  candidates: TopGearCandidate[]
+  /** Every tested combination (excluding the equipped baseline), sorted by `pct` descending, trimmed to 10. */
+  allSets: TopGearSet[]
+}

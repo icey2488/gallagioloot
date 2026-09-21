@@ -1,4 +1,4 @@
-import type { NormalizedReport } from '@engine/types'
+import type { NormalizedReport, NormalizedTopGear } from '@engine/types'
 import type { ReportSource } from '../lib/urlDetect'
 import { SOURCE_LABELS } from '../lib/urlDetect'
 import { formatDifficulty } from '../lib/format'
@@ -24,10 +24,15 @@ export function PasteScreen(props: {
   onToggleExpectedKill: (encounterId: number) => void
   vaultItemName: string
   onVaultItemNameChange: (name: string) => void
-  vaultItemGainPct: string
-  onVaultItemGainPctChange: (value: string) => void
   vaultBossId: number | null
   onVaultBossIdChange: (id: number | null) => void
+  topGearUrl: string
+  onTopGearUrlChange: (url: string) => void
+  topGearStatus: 'idle' | 'loading' | 'error'
+  topGearError: string | null
+  topGearResult: NormalizedTopGear | null
+  manualVaultGainPct: string
+  onManualVaultGainPctChange: (value: string) => void
   thresholdPct: number
   onThresholdPctChange: (pct: number) => void
   lootSpecId: number | null
@@ -53,10 +58,15 @@ export function PasteScreen(props: {
     onToggleExpectedKill,
     vaultItemName,
     onVaultItemNameChange,
-    vaultItemGainPct,
-    onVaultItemGainPctChange,
     vaultBossId,
     onVaultBossIdChange,
+    topGearUrl,
+    onTopGearUrlChange,
+    topGearStatus,
+    topGearError,
+    topGearResult,
+    manualVaultGainPct,
+    onManualVaultGainPctChange,
     thresholdPct,
     onThresholdPctChange,
     lootSpecId,
@@ -107,11 +117,43 @@ export function PasteScreen(props: {
             </div>
           </div>
           <div className="field">
-            <label htmlFor="vault-item-gain">Best vault item gain % (optional)</label>
-            <input id="vault-item-gain" type="number" step="0.01" value={vaultItemGainPct} onChange={(e) => onVaultItemGainPctChange(e.target.value)} />
-            <div className="field-hint" style={{ marginBottom: 0 }}>
-              From a Top Gear sim of the vault item. Leave blank if nothing in the vault is tempting.
-            </div>
+            <label htmlFor="topgear-url">
+              <Tooltip term="topGear">Top Gear report URL (optional)</Tooltip>
+            </label>
+            <input
+              id="topgear-url"
+              type="text"
+              placeholder="https://www.raidbots.com/reports/… (Top Gear with the vault item)"
+              value={topGearUrl}
+              onChange={(e) => onTopGearUrlChange(e.target.value)}
+            />
+            {topGearStatus === 'loading' && (
+              <div className="field-hint" style={{ marginBottom: 0 }}>
+                Fetching Top Gear report…
+              </div>
+            )}
+            {topGearStatus === 'error' && topGearError && <p className="warning-banner">{topGearError}</p>}
+            {topGearStatus === 'idle' && topGearResult && topGearResult.candidates.length > 0 && (
+              <div className="field-hint" style={{ marginBottom: 0 }}>
+                Vault item: {topGearResult.candidates[0].name} · +{topGearResult.bestSet.pct.toFixed(2)}% ·{' '}
+                {topGearResult.candidates[0].encounterName ?? 'not a raid/dungeon item'}
+                {topGearResult.candidates.length > 1 && (
+                  <div style={{ fontSize: 11, marginTop: 2 }}>
+                    Also added: {topGearResult.candidates.slice(1).map((c) => c.name).join(', ')}
+                  </div>
+                )}
+              </div>
+            )}
+            {topGearStatus === 'idle' && topGearResult && topGearResult.candidates.length === 0 && (
+              <div className="field-hint" style={{ marginBottom: 0 }}>
+                No vault item found in this Top Gear report's best set.
+              </div>
+            )}
+            {topGearStatus === 'idle' && !topGearResult && (
+              <div className="field-hint" style={{ marginBottom: 0 }}>
+                Paste a Top Gear report that includes your Great Vault item. Leave blank if nothing in the vault is tempting.
+              </div>
+            )}
           </div>
 
           {report ? (
@@ -249,7 +291,7 @@ export function PasteScreen(props: {
 
         <details>
           <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13 }}>Advanced</summary>
-          <div className="field" style={{ marginTop: 10, marginBottom: 0 }}>
+          <div className="field" style={{ marginTop: 10 }}>
             <label htmlFor="threshold">
               <Tooltip term="threshold">Threshold %</Tooltip>
             </label>
@@ -259,6 +301,16 @@ export function PasteScreen(props: {
               step="0.01"
               value={thresholdPct}
               onChange={(e) => onThresholdPctChange(Number(e.target.value) || 0)}
+            />
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label htmlFor="manual-vault-gain">Manual vault gain % (overrides the report)</label>
+            <input
+              id="manual-vault-gain"
+              type="number"
+              step="0.01"
+              value={manualVaultGainPct}
+              onChange={(e) => onManualVaultGainPctChange(e.target.value)}
             />
           </div>
         </details>

@@ -11,6 +11,7 @@ const NS = 'gallagioloot'
 const KNOCKOUT_PREFIX = `${NS}:knockout:`
 const SETTINGS_PREFIX = `${NS}:settings:`
 const LAST_URL_PREFIX = `${NS}:lastUrl:`
+const LAST_TOPGEAR_URL_PREFIX = `${NS}:lastTopGearUrl:`
 const VOIDCORE_PREFIX = `${NS}:voidcore:`
 
 export class LocalStorageAdapter implements StorageAdapter {
@@ -76,6 +77,14 @@ export function loadLastReportUrl(key: string): string | null {
 
 export function saveLastReportUrl(key: string, url: string): void {
   localStorage.setItem(LAST_URL_PREFIX + key, url)
+}
+
+export function loadLastTopGearUrl(key: string): string | null {
+  return localStorage.getItem(LAST_TOPGEAR_URL_PREFIX + key)
+}
+
+export function saveLastTopGearUrl(key: string, url: string): void {
+  localStorage.setItem(LAST_TOPGEAR_URL_PREFIX + key, url)
 }
 
 export function loadVoidcoreCount(key: string): number {

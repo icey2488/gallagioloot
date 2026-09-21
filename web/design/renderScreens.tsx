@@ -9,7 +9,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { createState } from '../../src/core/knockout'
 import { buildBossPools } from '../../src/core/pool'
 import { recommend } from '../../src/core/rank'
-import type { LootTable, NormalizedReport } from '../../src/types'
+import type { LootTable, NormalizedReport, NormalizedTopGear } from '../../src/types'
 import type { Settings } from '../../src/core/types'
 import { buildCardData } from '../src/lib/cardData'
 import { RecommendationCard } from '../src/components/RecommendationCard'
@@ -25,6 +25,31 @@ const report = JSON.parse(
 ) as NormalizedReport
 
 const lootTable = JSON.parse(readFileSync(new URL('./fixtures/loot-table-1320-262.json', import.meta.url), 'utf-8')) as LootTable
+
+// Top Gear field demo data (real values, verified live 2026-09-20 against report
+// miriTcb27bfGDYmV6JjvD1 -- see README.md's "Top Gear shape notes"), so the Paste
+// screenshot shows the feature populated rather than its empty state.
+const topGear: NormalizedTopGear = {
+  source: 'raidbots',
+  reportId: 'miriTcb27bfGDYmV6JjvD1',
+  character: 'Icemagus',
+  spec: 'arcane',
+  baseline: 554420.233784871,
+  metric: 'dps',
+  bestSet: {
+    delta: 1825.0056939647766,
+    pct: 0.32917371747166874,
+    items: [{ itemId: 250214, name: 'Lightspire Core', slot: 'trinket2', ilvl: 334 }],
+  },
+  equippedItems: [],
+  candidates: [
+    { itemId: 250214, name: 'Lightspire Core', slot: 'trinket2', ilvl: 334, encounterId: 2771, encounterName: 'Lightwarden Ruia', instanceId: 1309 },
+  ],
+  allSets: [
+    { delta: 1825.0056939647766, pct: 0.32917371747166874, items: [] },
+    { delta: 506.25, pct: 0.0913, items: [] },
+  ],
+}
 
 const settings: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false, lootSpecId: lootTable.lootSpecId }
 const knockout = createState(report.character, report.difficulty, report.realm, report.region)
@@ -118,10 +143,15 @@ const pages: Array<{ name: string; html: string }> = [
           onToggleExpectedKill: noop,
           vaultItemName: '',
           onVaultItemNameChange: noop,
-          vaultItemGainPct: '',
-          onVaultItemGainPctChange: noop,
           vaultBossId: null,
           onVaultBossIdChange: noop,
+          topGearUrl: '',
+          onTopGearUrlChange: noop,
+          topGearStatus: 'idle',
+          topGearError: null,
+          topGearResult: null,
+          manualVaultGainPct: '',
+          onManualVaultGainPctChange: noop,
           thresholdPct: 0.2,
           onThresholdPctChange: noop,
           lootSpecId: null,
@@ -159,10 +189,15 @@ const pages: Array<{ name: string; html: string }> = [
           onToggleExpectedKill: noop,
           vaultItemName: '',
           onVaultItemNameChange: noop,
-          vaultItemGainPct: '',
-          onVaultItemGainPctChange: noop,
           vaultBossId: null,
           onVaultBossIdChange: noop,
+          topGearUrl: 'https://www.raidbots.com/reports/miriTcb27bfGDYmV6JjvD1',
+          onTopGearUrlChange: noop,
+          topGearStatus: 'idle',
+          topGearError: null,
+          topGearResult: topGear,
+          manualVaultGainPct: '',
+          onManualVaultGainPctChange: noop,
           thresholdPct: 0.2,
           onThresholdPctChange: noop,
           lootSpecId: lootTable.lootSpecId,

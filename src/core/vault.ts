@@ -1,4 +1,4 @@
-import type { NormalizedReport } from '../types'
+import type { NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../types'
 import type { BossEval, PoolEntry, Recommendation, RollsToTarget, Settings, VaultDecision, VaultItemInput } from './types'
 import { isTossUpGap } from './tossup'
 
@@ -153,4 +153,34 @@ export function compareVault(input: {
   }
 
   return { voidcoreGainPct, vaultItemGainPct, savedRolls, verdict, explanation, notes }
+}
+
+export type TopGearVaultItem = VaultItemInput & {
+  /** Other items the winning Top Gear combination also swapped in, beyond the primary one -- for display only, not fed into compareVault. */
+  extraCandidates?: TopGearCandidate[]
+}
+
+/**
+ * Builds a `compareVault` `vaultItem` input from a normalized Top Gear report:
+ * `gainPct` is the winning combination's `pct` over baseline, and the item is the
+ * candidate the winning combination added over what's currently equipped. Null when
+ * the winning combination added nothing new (every candidate was already equipped, or
+ * no combination beat the baseline).
+ *
+ * A Top Gear combination can swap in more than one item at once (e.g. two trinkets).
+ * Top Gear never reports a per-item delta, only the whole combination's -- so there's
+ * no principled way to split credit between candidates, and the first one (the
+ * normalizer's emission order, which follows armor-slot order) is used as the primary;
+ * the rest ride along as `extraCandidates` for the UI to list, not fed into `compareVault`.
+ */
+export function vaultItemFromTopGear(tg: NormalizedTopGear): TopGearVaultItem | null {
+  const [primary, ...rest] = tg.candidates
+  if (!primary) return null
+  return {
+    name: primary.name,
+    gainPct: tg.bestSet.pct,
+    itemId: primary.itemId,
+    encounterId: primary.encounterId,
+    extraCandidates: rest.length > 0 ? rest : undefined,
+  }
 }

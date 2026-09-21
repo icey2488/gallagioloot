@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { detectSource } from '../src/lib/urlDetect'
+import { detectSource, friendlyReportMismatch } from '../src/lib/urlDetect'
 
 describe('detectSource', () => {
   it('detects Raidbots from a full report URL', () => {
@@ -33,5 +33,27 @@ describe('detectSource', () => {
 
   it('returns null for garbage input that is not a URL or a valid bare id', () => {
     expect(detectSource('not a url and not an id')).toBeNull()
+  })
+})
+
+describe('friendlyReportMismatch', () => {
+  it('flags a Top Gear ("optimize") report pasted into the main sim report field', () => {
+    expect(friendlyReportMismatch('Unsupported simType: optimize (expected "droptimizer")', 'sim')).toBe(
+      "That's a Top Gear report; paste a Raidbots droptimizer or QE Live report."
+    )
+  })
+
+  it('flags a droptimizer report pasted into the Top Gear field', () => {
+    expect(friendlyReportMismatch('Unsupported simType: droptimizer (expected a Raidbots Top Gear "optimize" report)', 'topgear')).toBe(
+      "That's a droptimizer; paste a Top Gear report."
+    )
+  })
+
+  it('returns null for an unrelated error detail', () => {
+    expect(friendlyReportMismatch('Failed to fetch report: 404', 'sim')).toBeNull()
+  })
+
+  it('returns null when the simType in the detail does not indicate a cross-field paste', () => {
+    expect(friendlyReportMismatch('Unsupported simType: raidSummary (expected "droptimizer")', 'sim')).toBeNull()
   })
 })

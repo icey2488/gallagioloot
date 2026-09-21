@@ -1,6 +1,6 @@
 # Contrast audit
 
-Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 77/78 pairs pass; 1 fail.
+Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 79/80 pairs pass; 1 fail.
 
 ## Changes made
 
@@ -99,6 +99,8 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Outline "Fetch report" button label (enabled) on panel | `#eef1f7` | `#0b1426` | 16.25:1 | 4.5:1 (text) | ✅ |
 | Outline "Fetch report" button border (enabled) on panel | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Outline "Fetch report" button label (disabled) on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
+| Top Gear "Vault item: name · pct% · boss" summary line on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
+| Top Gear "Also added: ..." extra-candidates line (11px, inherits parent color) on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
 
 ## Failing pairs
 

@@ -809,19 +809,10 @@ tr.excluded .deploy-table__ev {
   margin-top: 14px;
 }
 
-/* v4a gold-accent pass (2026-09-20): the mockup's Voidcores glyph is stroked gold
-   (#E3B94A) in every frame -- our chip-stack is a documented original glyph (see
-   ChipStack.tsx), not a redraw of the mockup's ellipse icon, but carries the same gold
-   treatment. Uniform gold across all three bars, matching the mockup's uniform stroke
-   color (it doesn't shade the three ellipses differently). */
-.chip-stack__bar,
-.chip-stack__bar--mid,
-.chip-stack__bar--top {
-  fill: var(--gold);
-}
-
 /* Header Voidcore-count pill -- labeled (visible "Voidcores held" text, not just an
-   aria-label) so it reads as a display of stored state rather than an unlabeled spinner. */
+   aria-label) so it reads as a display of stored state rather than an unlabeled spinner.
+   `color` here drives the ChipStack glyph's `stroke="currentColor"`, matching the
+   mockup's uniform gold stroke across all three ellipses. */
 .voidcore-pill {
   display: flex;
   align-items: center;
@@ -831,6 +822,7 @@ tr.excluded .deploy-table__ev {
   padding: 6px 12px 6px 10px;
   min-height: 44px;
   box-sizing: border-box;
+  color: var(--gold);
 }
 
 /* v4a gold-accent pass (2026-09-20): the header pill's Voidcore count is gold in the
@@ -1066,6 +1058,7 @@ select:disabled {
   padding: 0 var(--space-6);
   min-height: 44px;
   box-sizing: border-box;
+  color: var(--gold);
 }
 
 .voidcore-field__input {
@@ -1335,7 +1328,7 @@ select:disabled {
 </head>
 <body>
 <div class="app-shell">
-<header class="app-header"><span class="app-header__brand">GallagioLoot</span><nav class="app-nav" aria-label="Screens"><button type="button" class="app-nav__item">Paste</button><button type="button" class="app-nav__item">Reconcile</button><button type="button" class="app-nav__item">Loot table</button><button type="button" class="app-nav__item" aria-current="page">Recommendation</button></nav><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
+<header class="app-header"><span class="app-header__brand">GallagioLoot</span><nav class="app-nav" aria-label="Screens"><button type="button" class="app-nav__item">Paste</button><button type="button" class="app-nav__item">Reconcile</button><button type="button" class="app-nav__item">Loot table</button><button type="button" class="app-nav__item" aria-current="page">Recommendation</button></nav><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><ellipse cx="11" cy="13.5" rx="9" ry="3.2" fill="none" stroke="currentColor" stroke-width="1.6"></ellipse><ellipse cx="11" cy="9" rx="9" ry="3.2" fill="none" stroke="currentColor" stroke-width="1.6"></ellipse><ellipse cx="11" cy="4.5" rx="9" ry="3.2" fill="none" stroke="currentColor" stroke-width="1.6"></ellipse></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
 <main class="app-main">
 <section class="rec-card" aria-label="Bonus roll recommendation"><div class="rec-card__top"><div class="rec-card__eyebrow">GallagioLoot recommends</div><div class="rec-card__meta num">1 Voidcore</div></div><h2 class="rec-card__headline"><span class="rec-card__verb">Roll</span> <span class="rec-card__boss">The Lost Explorers <span class="rec-card__or">or</span> Vashnik the Malignant</span></h2><div class="rec-card__tossup-grid"><div class="rec-card__tossup-side"><div class="rec-card__tossup-pct num">2.30%</div><div class="rec-card__tossup-name">The Lost Explorers</div></div><div class="rec-card__tossup-vs">vs</div><div class="rec-card__tossup-side"><div class="rec-card__tossup-pct num">2.18%</div><div class="rec-card__tossup-name">Vashnik the Malignant</div></div></div><div class="rec-card__note rec-card__note--strong"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Toss-up<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span>: Within 0.12%: let kill order decide; roll whichever you kill first.</div><div class="rec-card__action"><button type="button" class="btn btn-gold">Mark as rolled</button></div></section>
 <footer class="app-footer panel"><div class="app-footer__columns"><div class="app-footer__col app-footer__col--main"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><details class="app-footer__assumptions"><summary>Show assumptions</summary><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></details></div><div class="app-footer__col app-footer__col--aside"><p>Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div></footer>

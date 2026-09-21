@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { LootTable, LootTableItem, NormalizedReport } from '@engine/types'
+import type { LootTable, LootTableItem, NormalizedReport, NormalizedTopGear } from '@engine/types'
 import { addEntry, createState, markSpecSpecific, reconcile, removeEntry, storageKey } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
 import { recommend } from '@engine/core/rank'
-import { compareVault } from '@engine/core/vault'
+import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
 import type { KnockoutState, Settings, VaultItemInput } from '@engine/core/types'
-import { detectSource, type ReportSource } from './lib/urlDetect'
-import { fetchLootTable, fetchReport, ProxyRequestError } from './lib/proxyClient'
+import { detectSource, friendlyReportMismatch, type ReportSource } from './lib/urlDetect'
+import { fetchLootTable, fetchReport, fetchTopGear, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData } from './lib/cardData'
 import {
   LocalStorageAdapter,
   loadLastReportUrl,
+  loadLastTopGearUrl,
   loadSettings,
   loadVoidcoreCount,
   saveLastReportUrl,
+  saveLastTopGearUrl,
   saveSettings,
   saveVoidcoreCount,
 } from './lib/storage'
@@ -56,8 +58,13 @@ export default function App() {
   const [expectedKillIds, setExpectedKillIds] = useState<Set<number>>(new Set())
 
   const [vaultItemName, setVaultItemName] = useState('')
-  const [vaultItemGainPct, setVaultItemGainPct] = useState('')
   const [vaultBossId, setVaultBossId] = useState<number | null>(null)
+  const [manualVaultGainPct, setManualVaultGainPct] = useState('')
+
+  const [topGearUrl, setTopGearUrl] = useState('')
+  const [topGearResult, setTopGearResult] = useState<NormalizedTopGear | null>(null)
+  const [topGearStatus, setTopGearStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [topGearError, setTopGearError] = useState<string | null>(null)
 
   const [voidcoreCount, setVoidcoreCount] = useState(0)
   const [knockoutState, setKnockoutState] = useState<KnockoutState | null>(null)
@@ -103,11 +110,21 @@ export default function App() {
 
   const recommendation = useMemo(() => (report && bossEvals.length ? recommend(bossEvals, settings, report) : null), [report, bossEvals, settings])
 
+  const topGearVaultItem = useMemo(() => (topGearResult ? vaultItemFromTopGear(topGearResult) : null), [topGearResult])
+
   const vaultItemInput: VaultItemInput | null = useMemo(() => {
-    const gain = Number(vaultItemGainPct)
-    if (!vaultItemGainPct || Number.isNaN(gain)) return null
-    return { name: vaultItemName || 'Vault item', gainPct: gain, encounterId: vaultBossId ?? undefined }
-  }, [vaultItemName, vaultItemGainPct, vaultBossId])
+    const manualGain = manualVaultGainPct === '' ? null : Number(manualVaultGainPct)
+    const hasManualGain = manualGain !== null && !Number.isNaN(manualGain)
+
+    if (!hasManualGain && !topGearVaultItem) return null
+
+    return {
+      name: vaultItemName || topGearVaultItem?.name || 'Vault item',
+      gainPct: hasManualGain ? manualGain! : topGearVaultItem!.gainPct,
+      itemId: topGearVaultItem?.itemId,
+      encounterId: vaultBossId ?? topGearVaultItem?.encounterId,
+    }
+  }, [vaultItemName, vaultBossId, manualVaultGainPct, topGearVaultItem])
 
   const vaultDecision = useMemo(() => {
     if (!report || !recommendation || !vaultItemInput) return null
@@ -150,6 +167,44 @@ export default function App() {
     }
   }, [report?.instanceId, lootSpecId])
 
+  // Fetches the Top Gear report whenever a recognizable Raidbots URL/id is pasted into
+  // the field -- same reactive-fetch shape as the loot table effect above, rather than
+  // being tied to the main report's Fetch/Price button (which the user may have already
+  // clicked before pasting this second URL).
+  useEffect(() => {
+    const trimmed = topGearUrl.trim()
+    if (!trimmed) {
+      setTopGearResult(null)
+      setTopGearStatus('idle')
+      setTopGearError(null)
+      return
+    }
+    if (detectSource(trimmed) !== 'raidbots') {
+      setTopGearStatus('idle')
+      setTopGearError(null)
+      return
+    }
+    let cancelled = false
+    setTopGearStatus('loading')
+    setTopGearError(null)
+    fetchTopGear(trimmed)
+      .then((result) => {
+        if (cancelled) return
+        setTopGearResult(result)
+        setTopGearStatus('idle')
+      })
+      .catch((e) => {
+        if (cancelled) return
+        const message = e instanceof ProxyRequestError ? e.message : (e as Error).message
+        setTopGearError((e instanceof ProxyRequestError && friendlyReportMismatch(message, 'topgear')) || message)
+        setTopGearResult(null)
+        setTopGearStatus('error')
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [topGearUrl])
+
   // A reload (or a history entry restored from a previous session) can put us on
   // deployability/roll/reconcile with no report in memory -- the report itself
   // isn't persisted, only per-character knockout state/settings/last URL are.
@@ -168,6 +223,11 @@ export default function App() {
     if (!currentKey) return
     saveVoidcoreCount(currentKey, voidcoreCount)
   }, [currentKey, voidcoreCount])
+
+  useEffect(() => {
+    if (!currentKey || !topGearUrl) return
+    saveLastTopGearUrl(currentKey, topGearUrl)
+  }, [currentKey, topGearUrl])
 
   useEffect(() => {
     if (!currentKey || !knockoutState) return
@@ -205,14 +265,23 @@ export default function App() {
       }
       setExpectedKillIds(new Set(seen.keys()))
       setVaultItemName('')
-      setVaultItemGainPct('')
+      setManualVaultGainPct('')
       setVaultBossId(null)
+
+      const storedTopGearUrl = loadLastTopGearUrl(key)
+      setTopGearUrl(storedTopGearUrl ?? '')
+      if (!storedTopGearUrl) {
+        setTopGearResult(null)
+        setTopGearStatus('idle')
+        setTopGearError(null)
+      }
 
       saveLastReportUrl(key, url)
       setLoadStatus('idle')
       return true
     } catch (e) {
-      setLoadError(e instanceof ProxyRequestError ? e.message : (e as Error).message)
+      const message = e instanceof ProxyRequestError ? e.message : (e as Error).message
+      setLoadError((e instanceof ProxyRequestError && friendlyReportMismatch(message, 'sim')) || message)
       setLoadStatus('error')
       return false
     }
@@ -343,10 +412,15 @@ export default function App() {
             onToggleExpectedKill={toggleExpectedKill}
             vaultItemName={vaultItemName}
             onVaultItemNameChange={setVaultItemName}
-            vaultItemGainPct={vaultItemGainPct}
-            onVaultItemGainPctChange={setVaultItemGainPct}
             vaultBossId={vaultBossId}
             onVaultBossIdChange={setVaultBossId}
+            topGearUrl={topGearUrl}
+            onTopGearUrlChange={setTopGearUrl}
+            topGearStatus={topGearStatus}
+            topGearError={topGearError}
+            topGearResult={topGearResult}
+            manualVaultGainPct={manualVaultGainPct}
+            onManualVaultGainPctChange={setManualVaultGainPct}
             thresholdPct={thresholdPct}
             onThresholdPctChange={setThresholdPct}
             lootSpecId={lootSpecId}

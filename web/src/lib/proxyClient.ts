@@ -1,4 +1,4 @@
-import type { LootTable, NormalizedReport } from '@engine/types'
+import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/types'
 import type { ReportSource } from './urlDetect'
 
 /** Falls back to a localhost `wrangler dev` default so the app works out of the box in local dev. */
@@ -27,6 +27,17 @@ export async function fetchReport(source: ReportSource, urlOrId: string, baseUrl
   }
 
   return (await res.json()) as NormalizedReport
+}
+
+export async function fetchTopGear(urlOrId: string, baseUrl = getProxyBaseUrl()): Promise<NormalizedTopGear> {
+  const res = await fetch(`${baseUrl}/topgear/${encodeURIComponent(urlOrId)}`)
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}) as { error?: string; detail?: string })
+    throw new ProxyRequestError(body.detail || body.error || `Top Gear fetch failed: HTTP ${res.status}`, res.status)
+  }
+
+  return (await res.json()) as NormalizedTopGear
 }
 
 export async function fetchLootTable(instanceId: number, lootSpecId: number, baseUrl = getProxyBaseUrl()): Promise<LootTable> {

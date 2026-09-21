@@ -28,3 +28,19 @@ export const SOURCE_LABELS: Record<ReportSource, string> = {
   raidbots: 'Raidbots',
   qelive: 'QE Live',
 }
+
+/**
+ * The proxy's `unsupported_report` error detail is always `Unsupported simType: X (expected ...)`
+ * (see `UnsupportedReportError`/`UnsupportedTopGearReportError` in src/normalize/*.ts).
+ * Turns that into an actionable message when the mismatch is the other report kind --
+ * a droptimizer pasted into the Top Gear field, or vice versa -- rather than showing the
+ * raw upstream error text.
+ */
+export function friendlyReportMismatch(detail: string, expected: 'sim' | 'topgear'): string | null {
+  const match = detail.match(/Unsupported simType: (\w+)/)
+  if (!match) return null
+  const simType = match[1]
+  if (expected === 'sim' && simType === 'optimize') return "That's a Top Gear report; paste a Raidbots droptimizer or QE Live report."
+  if (expected === 'topgear' && simType === 'droptimizer') return "That's a droptimizer; paste a Top Gear report."
+  return null
+}
