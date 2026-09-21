@@ -99,7 +99,10 @@ export function ReconcileScreen(props: {
           <input type="checkbox" checked={specOnly} onChange={(e) => setSpecOnly(e.target.checked)} disabled={!itemId} />
           <Tooltip term="specSpecific">Spec-only drop</Tooltip>
         </label>
-        <button type="button" className="btn" onClick={submitReconcile} disabled={bossId == null}>
+        {/* v4 gold-accent pass (2026-09-20): the Reconcile screen's single card-level
+            gold touch (this panel's primary action), per the hard-rule override -- no
+            gold on the wordmark/nav/checkboxes/dots elsewhere on this screen. */}
+        <button type="button" className="btn btn-gold" onClick={submitReconcile} disabled={bossId == null}>
           Confirm
         </button>
       </div>

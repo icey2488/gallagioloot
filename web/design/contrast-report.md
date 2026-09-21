@@ -1,6 +1,6 @@
 # Contrast audit
 
-Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 60/61 pairs pass; 1 fail.
+Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 65/66 pairs pass; 1 fail.
 
 ## Changes made
 
@@ -81,6 +81,11 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Paste empty-state dashed border on panel | `#5870aa` | `#121f42` | 3.32:1 | 3:1 (UI component) | ✅ |
 | Disabled Fetch button hint ("Needs a report URL") on panel | `#858fb0` | `#121f42` | 5.04:1 | 4.5:1 (text) | ✅ |
 | Input/textarea placeholder text on input fill | `#b7bdda` | `#16264c` | 7.99:1 | 4.5:1 (text) | ✅ |
+| Paste screen primary button (Fetch report / Price my roll) label on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
+| Paste screen primary button label on gold-strong hover fill | `#17110a` | `#e4c158` | 10.77:1 | 4.5:1 (text) | ✅ |
+| Reconcile screen Confirm button label on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
+| Loot table selected-row gold inset stripe on hover fill (--bg-hover) | `#d4af37` | `#1b2c56` | 6.48:1 | 3:1 (UI component) | ✅ |
+| Recommendation screen "Rollable Bosses" heading gold bar on panel | `#d4af37` | `#121f42` | 7.68:1 | 3:1 (UI component) | ✅ |
 
 ## Failing pairs
 

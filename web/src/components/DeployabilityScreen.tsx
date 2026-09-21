@@ -22,7 +22,10 @@ export function DeployabilityScreen(props: {
       <div className="panel">
         <div className="screen-header">
           <div className="screen-header__title-group">
-            <h3>Rollable Bosses</h3>
+            <h3>
+              <span className="heading-gold-bar" aria-hidden="true" />
+              Rollable Bosses
+            </h3>
             <span className="screen-header__meta">Bosses in kill order · threshold {thresholdPct.toFixed(2)}%</span>
           </div>
           <button type="button" className="btn" onClick={onViewRecommendation}>

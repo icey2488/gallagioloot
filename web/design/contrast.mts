@@ -172,6 +172,17 @@ const PAIRS: Pair[] = [
   { name: 'Paste empty-state dashed border on panel', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Disabled Fetch button hint ("Needs a report URL") on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Input/textarea placeholder text on input fill', fg: COLORS.textSecondary, bg: COLORS.bgPanelAlt, requirement: 'text' },
+  // v4 gold-accent pass (2026-09-20) -- one gold touch added per screen (Paste/Reconcile/
+  // Loot table/Recommendation), confined to that screen's own card per the hard-rule
+  // override on top of the v4 mockup (which put gold on the wordmark, nav, icons,
+  // checkboxes and dots everywhere -- not reproduced here). No new hex values: every
+  // touch reuses --gold/--gold-strong/--gold-text-on, already audited above for
+  // .btn-gold/.rec-card; these are just new consumers/locations, audited explicitly.
+  { name: 'Paste screen primary button (Fetch report / Price my roll) label on gold fill', fg: COLORS.goldTextOn, bg: COLORS.gold, requirement: 'text' },
+  { name: 'Paste screen primary button label on gold-strong hover fill', fg: COLORS.goldTextOn, bg: COLORS.goldStrong, requirement: 'text' },
+  { name: 'Reconcile screen Confirm button label on gold fill', fg: COLORS.goldTextOn, bg: COLORS.gold, requirement: 'text' },
+  { name: 'Loot table selected-row gold inset stripe on hover fill (--bg-hover)', fg: COLORS.gold, bg: COLORS.bgHover, requirement: 'ui' },
+  { name: 'Recommendation screen "Rollable Bosses" heading gold bar on panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather

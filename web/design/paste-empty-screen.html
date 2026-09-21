@@ -1112,9 +1112,14 @@ select:disabled {
 
 /* Full-width, light-filled primary action (Fetch report / Price my roll) -- the only
    button on this screen styled this way, per v2's 2a mockup. */
+/* v4 gold-accent pass (2026-09-20): this is the Paste screen's single card-level gold
+   touch (the primary action inside the run-settings card) -- per the hard-rule override,
+   NOT the broader v4 mockup treatment (no gold wordmark/nav/icons/checkboxes on this
+   screen). Reuses the existing --gold/--gold-strong/--gold-text-on tokens already
+   audited for .btn-gold; same pair, just a second consumer. */
 .btn-light {
-  background: var(--text);
-  color: var(--bg-base);
+  background: var(--gold);
+  color: var(--gold-text-on);
   border: 0;
   border-radius: var(--radius-sm);
   padding: var(--space-6) var(--space-9);
@@ -1126,7 +1131,7 @@ select:disabled {
 }
 
 .btn-light:hover {
-  filter: brightness(0.92);
+  background: var(--gold-strong);
 }
 
 .btn-light:disabled {
@@ -1169,9 +1174,14 @@ select:disabled {
   background: var(--bg-panel-alt);
 }
 
+/* v4 gold-accent pass (2026-09-20): the Loot table screen's single card-level gold
+   touch -- a flat inset left stripe on the selected boss row (matches the v4 mockup's
+   own inset accent), not a shadow/glow. Everything else on this screen (simmed dot,
+   In pool checkbox, kill checkboxes) stays neutral per the one-accent-per-screen rule. */
 .loot-boss-list__item[aria-current='true'] {
   background: var(--bg-hover);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--gold);
 }
 
 .loot-boss-list__rank {
@@ -1224,6 +1234,21 @@ select:disabled {
 .stat-trio__label {
   font-size: var(--text-eyebrow);
   color: var(--text-muted);
+}
+
+/* v4 gold-accent pass (2026-09-20): the Recommendation/Rollable-Bosses screen's single
+   card-level gold touch -- a small vertical rule before the "Rollable Bosses" heading
+   (mirrors the v4 mockup's "Deployability" heading treatment). This is the only gold on
+   this screen's own panel; the RecommendationCard reached via "Roll this boss" keeps its
+   own pre-existing gold border+button, which is a separate screen/card. */
+.heading-gold-bar {
+  display: inline-block;
+  width: 4px;
+  height: 18px;
+  background: var(--gold);
+  border-radius: 2px;
+  margin-right: 10px;
+  vertical-align: text-bottom;
 }
 
 .warning-banner {

@@ -37,6 +37,21 @@ async function main() {
   if (rowCount !== 8) throw new Error(`expected 8 rows, got ${rowCount}`)
   await page.screenshot({ path: 'design/live-rollable-bosses.png', fullPage: true })
 
+  // v4 gold-accent pass (2026-09-20): the Recommendation/Rollable-Bosses screen's single
+  // card-level gold touch -- a small vertical bar before the "Rollable Bosses" heading.
+  const goldBarBg = await page.locator('.heading-gold-bar').first().evaluate((el) => getComputedStyle(el).backgroundColor)
+  console.log('Rollable Bosses heading gold-bar background:', goldBarBg)
+  if (goldBarBg !== 'rgb(212, 175, 55)') throw new Error(`expected the gold heading bar, got ${goldBarBg}`)
+
+  // v4 gold-accent pass: the Reconcile screen's single card-level gold touch is its
+  // Confirm button, now gold-filled -- nothing else on this screen goes gold.
+  await page.click('.app-nav__item:has-text("Reconcile")')
+  const confirmBg = await page.locator('button.btn-gold', { hasText: 'Confirm' }).evaluate((el) => getComputedStyle(el).backgroundColor)
+  console.log('Reconcile Confirm button background:', confirmBg)
+  if (confirmBg !== 'rgb(212, 175, 55)') throw new Error(`expected the gold Confirm button, got ${confirmBg}`)
+  await page.click('.app-nav__item:has-text("Recommendation")')
+  await page.waitForSelector('table')
+
   await page.click('text=Roll this boss')
   await page.waitForSelector('.rec-card')
   const headline = await page.locator('.rec-card__headline').innerText()
@@ -61,6 +76,25 @@ async function main() {
   console.log(`Loot Table rows for ${bossName}:`, lootRowCount)
   if (lootRowCount < 1) throw new Error('expected loot table rows to render')
   await page.screenshot({ path: 'design/live-loot-table.png', fullPage: true })
+
+  // v4 gold-accent pass (2026-09-20): the Loot table screen's single card-level gold
+  // touch -- a flat inset left stripe on the selected boss row. Only rendered at desktop
+  // widths (the boss list collapses to a <select> under 700px), so check with a wider page.
+  const widePage = await browser.newPage({ viewport: { width: 1200, height: 900 } })
+  await widePage.goto(APP_URL)
+  await widePage.fill('#report-url', REPORT_URL)
+  await widePage.waitForSelector('text=Detected:')
+  await widePage.click('text=Fetch report')
+  await widePage.waitForSelector('text=Price my roll', { timeout: 20000 })
+  await widePage.click('text=Price my roll')
+  await widePage.click('.app-nav__item:has-text("Loot table")')
+  await widePage.waitForSelector('.loot-boss-list__item[aria-current="true"]')
+  const stripeShadow = await widePage
+    .locator('.loot-boss-list__item[aria-current="true"]')
+    .evaluate((el) => getComputedStyle(el).boxShadow)
+  console.log('Loot table selected-row box-shadow:', stripeShadow)
+  if (!stripeShadow.includes('212, 175, 55')) throw new Error(`expected the gold inset stripe, got ${stripeShadow}`)
+  await widePage.close()
 
   await browser.close()
   console.log('\nAll live smoke-test assertions passed.')

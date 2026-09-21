@@ -21,10 +21,14 @@ async function main() {
   assert.ok(reportUrlBox && runSettingsBox, 'expected both the URL field and the Run settings panel to be visible')
   assert.ok(runSettingsBox!.x > reportUrlBox!.x + reportUrlBox!.width - 50, 'expected Run settings to sit in a right-hand column, not stacked below')
 
+  // v4 gold-accent pass (2026-09-20): the Paste screen's single card-level gold touch is
+  // this primary button, now gold-filled (--gold, rgb(212, 175, 55)) instead of the prior
+  // off-white -- per the hard-rule override, nothing else on this screen (wordmark, nav,
+  // Voidcores icon/number, checkboxes) goes gold.
   const fetchBtn = page.locator('button.btn-light', { hasText: 'Fetch report' })
   await fetchBtn.waitFor({ state: 'visible' })
   const bg = await fetchBtn.evaluate((el) => getComputedStyle(el).backgroundColor)
-  assert.match(bg, /rgb\(2[34][0-9], 2[34][0-9], 2[34][0-9]\)/, `expected an off-white fill, got ${bg}`)
+  assert.equal(bg, 'rgb(212, 175, 55)', `expected the gold accent fill, got ${bg}`)
 
   // v3 mockup ("3a" pre-report Paste) addition: a dashed-border empty-state card telling
   // the user what fills in once they paste a report, replacing the old single-sentence
