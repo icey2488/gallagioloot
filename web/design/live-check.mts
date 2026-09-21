@@ -80,6 +80,15 @@ async function main() {
   console.log('Header Voidcores pill count color:', voidcorePillCount)
   if (voidcorePillCount !== 'rgb(212, 175, 55)') throw new Error(`expected the gold Voidcores pill count, got ${voidcorePillCount}`)
 
+  // Voidcore chip glyph (mockup parity, 2026-09-20): stacked ellipses, stroke-only --
+  // no filled paths, so it takes the pill's gold `color` via stroke="currentColor".
+  const chipFills = await page.locator('.voidcore-pill svg ellipse').evaluateAll((els) => els.map((el) => el.getAttribute('fill')))
+  console.log('Voidcore chip ellipse fills:', chipFills)
+  if (chipFills.length === 0 || chipFills.some((f) => f !== 'none')) {
+    throw new Error(`expected all Voidcore chip ellipses to have fill="none", got ${JSON.stringify(chipFills)}`)
+  }
+  await page.locator('.voidcore-pill').first().screenshot({ path: 'design/chip-after.png' })
+
   // v4 gold-accent pass: the Reconcile screen's single card-level gold touch is its
   // Confirm button, now gold-filled -- nothing else on this screen goes gold.
   await page.click('.app-nav__item:has-text("Reconcile")')

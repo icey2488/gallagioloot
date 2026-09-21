@@ -191,7 +191,7 @@ const PAIRS: Pair[] = [
   { name: 'App wordmark (gold text) on header panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Active nav-tab gold underline (inset box-shadow) on hover fill (--bg-hover)', fg: COLORS.gold, bg: COLORS.bgHover, requirement: 'ui' },
   { name: 'Header Voidcores pill count (gold text) on header panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'text' },
-  { name: 'Voidcores chip-stack glyph (gold fill) on header panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Voidcores chip-stack glyph (gold stroke) on header panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Checked checkbox (accent-color gold) on panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Checked checkbox (accent-color gold) on input/select fill', fg: COLORS.gold, bg: COLORS.bgPanelAlt, requirement: 'ui' },
   { name: 'Deployability "Yes" status dot (gold fill) on panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },

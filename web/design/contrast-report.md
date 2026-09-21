@@ -90,7 +90,7 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | App wordmark (gold text) on header panel | `#d4af37` | `#0b1426` | 8.74:1 | 4.5:1 (text) | ✅ |
 | Active nav-tab gold underline (inset box-shadow) on hover fill (--bg-hover) | `#d4af37` | `#12203c` | 7.70:1 | 3:1 (UI component) | ✅ |
 | Header Voidcores pill count (gold text) on header panel | `#d4af37` | `#0b1426` | 8.74:1 | 4.5:1 (text) | ✅ |
-| Voidcores chip-stack glyph (gold fill) on header panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |
+| Voidcores chip-stack glyph (gold stroke) on header panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |
 | Checked checkbox (accent-color gold) on panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |
 | Checked checkbox (accent-color gold) on input/select fill | `#d4af37` | `#0f1a33` | 8.21:1 | 3:1 (UI component) | ✅ |
 | Deployability "Yes" status dot (gold fill) on panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |

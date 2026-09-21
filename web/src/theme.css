@@ -803,19 +803,10 @@ tr.excluded .deploy-table__ev {
   margin-top: 14px;
 }
 
-/* v4a gold-accent pass (2026-09-20): the mockup's Voidcores glyph is stroked gold
-   (#E3B94A) in every frame -- our chip-stack is a documented original glyph (see
-   ChipStack.tsx), not a redraw of the mockup's ellipse icon, but carries the same gold
-   treatment. Uniform gold across all three bars, matching the mockup's uniform stroke
-   color (it doesn't shade the three ellipses differently). */
-.chip-stack__bar,
-.chip-stack__bar--mid,
-.chip-stack__bar--top {
-  fill: var(--gold);
-}
-
 /* Header Voidcore-count pill -- labeled (visible "Voidcores held" text, not just an
-   aria-label) so it reads as a display of stored state rather than an unlabeled spinner. */
+   aria-label) so it reads as a display of stored state rather than an unlabeled spinner.
+   `color` here drives the ChipStack glyph's `stroke="currentColor"`, matching the
+   mockup's uniform gold stroke across all three ellipses. */
 .voidcore-pill {
   display: flex;
   align-items: center;
@@ -825,6 +816,7 @@ tr.excluded .deploy-table__ev {
   padding: 6px 12px 6px 10px;
   min-height: 44px;
   box-sizing: border-box;
+  color: var(--gold);
 }
 
 /* v4a gold-accent pass (2026-09-20): the header pill's Voidcore count is gold in the
@@ -1060,6 +1052,7 @@ select:disabled {
   padding: 0 var(--space-6);
   min-height: 44px;
   box-sizing: border-box;
+  color: var(--gold);
 }
 
 .voidcore-field__input {
