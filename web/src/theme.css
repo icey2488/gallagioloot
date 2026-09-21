@@ -1,18 +1,24 @@
 :root {
-  --bg-base: #0b1530;
-  --bg-panel: #121f42;
-  --bg-panel-alt: #16264c;
-  --bg-hover: #1b2c56;
-  /* Lightened from #26355e/#34467a: the originals measured ~1.2-2.0:1 against every
-     panel background in the app, well under the 3:1 WCAG 1.4.11 floor for borders
-     and focus rings. Same hue, raised lightness + a touch less saturation so they
-     read as a lighter steel-blue rather than a saturated accent. */
-  --border: #5870aa;
-  --border-strong: #647aad;
-  --text: #f5f3ec;
-  --text-secondary: #b7bdda;
-  /* Lightened from #7c86aa (4.13:1 against --bg-panel-alt, under the 4.5:1 text floor). */
-  --text-muted: #858fb0;
+  /* v4b darker-base pass (2026-09-20): tokens swapped to the darker palette from the
+     "GallagioLoot UI Redesign v4" mockup (GallagioLoot Redesign.dc.html / RecoCard.dc.html).
+     --bg-panel-alt maps to the mockup's input/select fill (#0F1A33, no separate "panel-alt"
+     swatch shown). --bg-hover has no mockup equivalent (no hover state shown) -- derived by
+     keeping the same lightness delta above the new --bg-panel that the old --bg-hover had
+     above the old --bg-panel (~+5.7 L in HSL), landing on #12203c. --border-strong defaults
+     to the mockup's single hairline hex (#6B7A9C, same value used for border/hairline/divider
+     throughout the mockup) since it still clears the 3:1 UI floor against every background
+     (4.02-4.44:1, see design/contrast.mts). --text-secondary and --text-muted collapse to the
+     mockup's single gray (#A3AFCA, used pervasively for both roles) since that still clears
+     4.5:1 text against every background (7.85-8.66:1) -- no need to keep them apart. */
+  --bg-base: #06101f;
+  --bg-panel: #0b1426;
+  --bg-panel-alt: #0f1a33;
+  --bg-hover: #12203c;
+  --border: #6b7a9c;
+  --border-strong: #6b7a9c;
+  --text: #eef1f7;
+  --text-secondary: #a3afca;
+  --text-muted: #a3afca;
   --gold: #d4af37;
   --gold-strong: #e4c158;
   --gold-text-on: #17110a;
@@ -1158,6 +1164,39 @@ select:disabled {
 }
 
 .btn-light:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pre-fetch "Fetch report" state (v4 mockup "3a", the only state the mockup shows for
+   this button: disabled, background:transparent, color:#A3AFCA, border:1px solid #6B7A9C).
+   The mockup never shows this button enabled, so the enabled look here is inferred:
+   same transparent fill, but full --text/--border (not muted) once a URL is entered,
+   matching how every other enabled/disabled pair in this file differentiates (muted+opacity
+   only once disabled). Kept as a separate class from .btn-light (gold) rather than a
+   variant, since .btn-light's post-fetch "Price my roll" gold fill (mockup #E3B94A) must
+   stay exactly as-is. */
+.btn-light--outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-6) var(--space-9);
+  cursor: pointer;
+  font-size: var(--text-body);
+  font-weight: 600;
+  min-height: 44px;
+  width: 100%;
+}
+
+.btn-light--outline:hover {
+  background: var(--bg-panel-alt);
+}
+
+.btn-light--outline:disabled {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
   opacity: 0.5;
   cursor: not-allowed;
 }

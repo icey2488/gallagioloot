@@ -264,7 +264,7 @@ export function PasteScreen(props: {
         </details>
 
         <div className="fetch-button-group">
-          <button type="button" className="btn-light" disabled={primaryDisabled} onClick={handlePrimary}>
+          <button type="button" className={report ? 'btn-light' : 'btn-light--outline'} disabled={primaryDisabled} onClick={handlePrimary}>
             {primaryLabel}
           </button>
           {!report && !detectedSource && loadStatus !== 'loading' && <div className="btn-hint">Needs a report URL</div>}

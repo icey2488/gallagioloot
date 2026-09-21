@@ -23,6 +23,13 @@ async function main() {
 
   await page.goto(APP_URL)
   await page.waitForSelector('#report-url', { timeout: 10000 })
+
+  // v4b darker-base pass (2026-09-20): --bg-base is now #06101f (mockup page background),
+  // rendered on <body>.
+  const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
+  console.log('Body background-color:', bodyBg)
+  if (bodyBg !== 'rgb(6, 16, 31)') throw new Error(`expected the darker --bg-base fill (rgb(6, 16, 31)), got ${bodyBg}`)
+
   await page.fill('#report-url', REPORT_URL)
   await page.waitForSelector('text=Detected:')
 

@@ -21,12 +21,17 @@ async function main() {
   assert.ok(reportUrlBox && runSettingsBox, 'expected both the URL field and the Run settings panel to be visible')
   assert.ok(runSettingsBox!.x > reportUrlBox!.x + reportUrlBox!.width - 50, 'expected Run settings to sit in a right-hand column, not stacked below')
 
-  // v4 gold-accent pass (2026-09-20): the Fetch report button is gold-filled (--gold,
-  // rgb(212, 175, 55)) instead of the prior off-white.
-  const fetchBtn = page.locator('button.btn-light', { hasText: 'Fetch report' })
+  // v4b darker-base pass (2026-09-20): the mockup's only shown "Fetch report" state
+  // (pre-fetch, frame "3a") is OUTLINED -- transparent fill, muted text, --border hairline
+  // -- not gold-filled. Gold fill (--gold) is reserved for the post-fetch "Price my roll"
+  // state (.btn-light), which this pre-fetch screen never shows. See .btn-light--outline
+  // in theme.css.
+  const fetchBtn = page.locator('button.btn-light--outline', { hasText: 'Fetch report' })
   await fetchBtn.waitFor({ state: 'visible' })
   const bg = await fetchBtn.evaluate((el) => getComputedStyle(el).backgroundColor)
-  assert.equal(bg, 'rgb(212, 175, 55)', `expected the gold accent fill, got ${bg}`)
+  assert.equal(bg, 'rgba(0, 0, 0, 0)', `expected a transparent fill for the pre-fetch outline button, got ${bg}`)
+  const borderColor = await fetchBtn.evaluate((el) => getComputedStyle(el).borderColor)
+  assert.equal(borderColor, 'rgb(107, 122, 156)', `expected the --border hairline (#6b7a9c), got ${borderColor}`)
 
   // v4a gold-accent pass (2026-09-20, full mockup parity): the wordmark and the active
   // nav tab's underline are gold too now (superseding the prior one-accent-per-screen

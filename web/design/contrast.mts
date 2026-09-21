@@ -65,15 +65,15 @@ type Pair = {
 // consume it, grouped by where it shows up. `fg`/`bg` are the CURRENT (post-fix) hex
 // values -- see contrast-report.md for the before/after on the ones that changed.
 const COLORS = {
-  bgBase: '#0b1530',
-  bgPanel: '#121f42',
-  bgPanelAlt: '#16264c',
-  bgHover: '#1b2c56',
-  border: '#5870aa',
-  borderStrong: '#647aad',
-  text: '#f5f3ec',
-  textSecondary: '#b7bdda',
-  textMuted: '#858fb0',
+  bgBase: '#06101f',
+  bgPanel: '#0b1426',
+  bgPanelAlt: '#0f1a33',
+  bgHover: '#12203c',
+  border: '#6b7a9c',
+  borderStrong: '#6b7a9c',
+  text: '#eef1f7',
+  textSecondary: '#a3afca',
+  textMuted: '#a3afca',
   gold: '#d4af37',
   goldStrong: '#e4c158',
   goldTextOn: '#17110a',
@@ -197,6 +197,12 @@ const PAIRS: Pair[] = [
   { name: 'Deployability "Yes" status dot (gold fill) on panel', fg: COLORS.gold, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold fill', fg: COLORS.goldTextOn, bg: COLORS.gold, requirement: 'text' },
   { name: 'Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold-strong hover fill', fg: COLORS.goldTextOn, bg: COLORS.goldStrong, requirement: 'text' },
+  // v4b darker-base pass (2026-09-20) -- palette swap to the mockup's darker base (see
+  // theme.css :root comment) plus the pre-fetch "Fetch report" outline button
+  // (transparent fill over its parent .run-settings-panel, which is --bg-panel).
+  { name: 'Outline "Fetch report" button label (enabled) on panel', fg: COLORS.text, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Outline "Fetch report" button border (enabled) on panel', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Outline "Fetch report" button label (disabled) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
 ]
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather
@@ -230,6 +236,12 @@ const CHANGES: Array<{ what: string; before: string; after: string; why: string 
     before: '#d4af37 on #121f42, 7.68:1',
     after: 'unchanged -- already passing',
     why: 'audited because the brief called it out explicitly, but it already clears both the 4.5:1 text and 3:1 border floors with margin to spare',
+  },
+  {
+    what: 'v4b darker-base palette swap (--bg-base/--bg-panel/--bg-panel-alt/--bg-hover/--border/--border-strong/--text/--text-secondary/--text-muted)',
+    before: '#0b1530 / #121f42 / #16264c / #1b2c56 / #5870aa / #647aad / #f5f3ec / #b7bdda / #858fb0',
+    after: '#06101f / #0b1426 / #0f1a33 / #12203c / #6b7a9c / #6b7a9c / #eef1f7 / #a3afca / #a3afca',
+    why: 'adopted the darker base palette from the "GallagioLoot UI Redesign v4" mockup; re-ran every pair against the new values, all pass (see table below) with no further nudging needed',
   },
 ]
 

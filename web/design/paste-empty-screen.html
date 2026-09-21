@@ -5,20 +5,26 @@
 <title>GallagioLoot -- Paste screen (empty)</title>
 <style>
 :root {
-  --bg-base: #0b1530;
-  --bg-panel: #121f42;
-  --bg-panel-alt: #16264c;
-  --bg-hover: #1b2c56;
-  /* Lightened from #26355e/#34467a: the originals measured ~1.2-2.0:1 against every
-     panel background in the app, well under the 3:1 WCAG 1.4.11 floor for borders
-     and focus rings. Same hue, raised lightness + a touch less saturation so they
-     read as a lighter steel-blue rather than a saturated accent. */
-  --border: #5870aa;
-  --border-strong: #647aad;
-  --text: #f5f3ec;
-  --text-secondary: #b7bdda;
-  /* Lightened from #7c86aa (4.13:1 against --bg-panel-alt, under the 4.5:1 text floor). */
-  --text-muted: #858fb0;
+  /* v4b darker-base pass (2026-09-20): tokens swapped to the darker palette from the
+     "GallagioLoot UI Redesign v4" mockup (GallagioLoot Redesign.dc.html / RecoCard.dc.html).
+     --bg-panel-alt maps to the mockup's input/select fill (#0F1A33, no separate "panel-alt"
+     swatch shown). --bg-hover has no mockup equivalent (no hover state shown) -- derived by
+     keeping the same lightness delta above the new --bg-panel that the old --bg-hover had
+     above the old --bg-panel (~+5.7 L in HSL), landing on #12203c. --border-strong defaults
+     to the mockup's single hairline hex (#6B7A9C, same value used for border/hairline/divider
+     throughout the mockup) since it still clears the 3:1 UI floor against every background
+     (4.02-4.44:1, see design/contrast.mts). --text-secondary and --text-muted collapse to the
+     mockup's single gray (#A3AFCA, used pervasively for both roles) since that still clears
+     4.5:1 text against every background (7.85-8.66:1) -- no need to keep them apart. */
+  --bg-base: #06101f;
+  --bg-panel: #0b1426;
+  --bg-panel-alt: #0f1a33;
+  --bg-hover: #12203c;
+  --border: #6b7a9c;
+  --border-strong: #6b7a9c;
+  --text: #eef1f7;
+  --text-secondary: #a3afca;
+  --text-muted: #a3afca;
   --gold: #d4af37;
   --gold-strong: #e4c158;
   --gold-text-on: #17110a;
@@ -1168,6 +1174,39 @@ select:disabled {
   cursor: not-allowed;
 }
 
+/* Pre-fetch "Fetch report" state (v4 mockup "3a", the only state the mockup shows for
+   this button: disabled, background:transparent, color:#A3AFCA, border:1px solid #6B7A9C).
+   The mockup never shows this button enabled, so the enabled look here is inferred:
+   same transparent fill, but full --text/--border (not muted) once a URL is entered,
+   matching how every other enabled/disabled pair in this file differentiates (muted+opacity
+   only once disabled). Kept as a separate class from .btn-light (gold) rather than a
+   variant, since .btn-light's post-fetch "Price my roll" gold fill (mockup #E3B94A) must
+   stay exactly as-is. */
+.btn-light--outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: var(--space-6) var(--space-9);
+  cursor: pointer;
+  font-size: var(--text-body);
+  font-weight: 600;
+  min-height: 44px;
+  width: 100%;
+}
+
+.btn-light--outline:hover {
+  background: var(--bg-panel-alt);
+}
+
+.btn-light--outline:disabled {
+  background: transparent;
+  color: var(--text-muted);
+  border-color: var(--border);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Loot table: a "Bosses · kill order" list left, the selected boss's stat trio + item
    table right -- matches v2's 2c layout (one boss at a time, replacing the old stacked
    accordion). The boss list collapses to a <select> under 700px, per v2's phone variant. */
@@ -1298,7 +1337,7 @@ select:disabled {
 <div class="app-shell">
 <header class="app-header"><span class="app-header__brand">GallagioLoot</span><nav class="app-nav" aria-label="Screens"><button type="button" class="app-nav__item" aria-current="page">Paste</button><button type="button" class="app-nav__item">Reconcile</button><button type="button" class="app-nav__item">Loot table</button><button type="button" class="app-nav__item">Recommendation</button></nav><div class="app-header__controls"><div style="display:flex;align-items:center;gap:12px"><label class="voidcore-pill" aria-label="Voidcores held: 2"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-pill__input num" aria-label="Voidcore count" value="2"/><span class="voidcore-pill__label" aria-hidden="true">Voidcores<br/>held</span></label></div></div></header>
 <main class="app-main app-main--wide">
-<div class="paste-grid"><div><div class="panel"><p class="field-hint" style="margin-top:0">Run this before you open the vault. If a vault item looks good, sim it and enter its gain below; GallagioLoot prices it against the Voidcore.</p><div class="screen-header" style="margin-bottom:6px"><div class="screen-header__title-group"><h3>Sim report</h3></div><div class="screen-header__meta">Raidbots or QE Live report URL</div></div><div class="field"><label for="report-url" class="sr-only">Report URL</label><input id="report-url" type="text" placeholder="https://www.raidbots.com/reports/... or https://questionablyepic.com/..." value=""/><div class="field-hint" style="margin-bottom:0">Paste a Raidbots or QE Live report URL</div></div><div class="field"><label for="vault-item-gain">Best vault item gain % (optional)</label><input id="vault-item-gain" type="number" step="0.01" value=""/><div class="field-hint" style="margin-bottom:0">From a Top Gear sim of the vault item. Leave blank if nothing in the vault is tempting.</div></div><div class="paste-empty-state"><div class="paste-empty-state__title">Paste a report to begin</div><div class="paste-empty-state__desc">Loot spec, difficulty and the boss list fill in from the report. The recommendation card and deployability table appear here.</div></div></div></div><div class="run-settings-panel"><div style="font-size:var(--text-section-title);font-weight:700">Run settings</div><div class="run-settings-row"><div class="field" style="margin-bottom:0"><span class="field-label-text">Loot spec</span><select disabled="" aria-label="Loot spec"><option>From report</option></select></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Difficulty</span><select disabled="" aria-label="Difficulty"><option>From report</option></select></div></div><div class="field" style="margin-bottom:0"><label for="rolls-available">Rolls available</label><select id="rolls-available"><option value="1" selected="">1</option><option value="2">2</option></select></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Voidcores held</span><div class="voidcore-field"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-field__input num" aria-label="Voidcores held" value="2"/></div></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Expected kills this week</span><div class="checklist checklist--empty">Bosses appear after you fetch a report</div></div><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Great Vault item (optional)</summary><div class="field" style="margin-top:10px"><label for="vault-item-name">Vault item name</label><input id="vault-item-name" type="text" value=""/></div><div class="field"><label for="vault-boss">Boss (optional)</label><select id="vault-boss"><option value="" selected="">Not specified</option></select></div></details><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Advanced</summary><div class="field" style="margin-top:10px;margin-bottom:0"><label for="threshold"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Threshold %<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></label><input id="threshold" type="number" step="0.01" value="0.2"/></div></details><div class="fetch-button-group"><button type="button" class="btn-light" disabled="">Fetch report</button><div class="btn-hint">Needs a report URL</div></div></div></div>
+<div class="paste-grid"><div><div class="panel"><p class="field-hint" style="margin-top:0">Run this before you open the vault. If a vault item looks good, sim it and enter its gain below; GallagioLoot prices it against the Voidcore.</p><div class="screen-header" style="margin-bottom:6px"><div class="screen-header__title-group"><h3>Sim report</h3></div><div class="screen-header__meta">Raidbots or QE Live report URL</div></div><div class="field"><label for="report-url" class="sr-only">Report URL</label><input id="report-url" type="text" placeholder="https://www.raidbots.com/reports/... or https://questionablyepic.com/..." value=""/><div class="field-hint" style="margin-bottom:0">Paste a Raidbots or QE Live report URL</div></div><div class="field"><label for="vault-item-gain">Best vault item gain % (optional)</label><input id="vault-item-gain" type="number" step="0.01" value=""/><div class="field-hint" style="margin-bottom:0">From a Top Gear sim of the vault item. Leave blank if nothing in the vault is tempting.</div></div><div class="paste-empty-state"><div class="paste-empty-state__title">Paste a report to begin</div><div class="paste-empty-state__desc">Loot spec, difficulty and the boss list fill in from the report. The recommendation card and deployability table appear here.</div></div></div></div><div class="run-settings-panel"><div style="font-size:var(--text-section-title);font-weight:700">Run settings</div><div class="run-settings-row"><div class="field" style="margin-bottom:0"><span class="field-label-text">Loot spec</span><select disabled="" aria-label="Loot spec"><option>From report</option></select></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Difficulty</span><select disabled="" aria-label="Difficulty"><option>From report</option></select></div></div><div class="field" style="margin-bottom:0"><label for="rolls-available">Rolls available</label><select id="rolls-available"><option value="1" selected="">1</option><option value="2">2</option></select></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Voidcores held</span><div class="voidcore-field"><svg width="22" height="18" viewBox="0 0 22 18" xmlns="http://www.w3.org/2000/svg" aria-label="2 Voidcores"><rect x="1" y="11" width="20" height="5" rx="2.5" class="chip-stack__bar"></rect><rect x="3" y="6" width="16" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--mid"></rect><rect x="5" y="1" width="12" height="5" rx="2.5" class="chip-stack__bar chip-stack__bar--top"></rect></svg><input type="number" min="0" class="voidcore-field__input num" aria-label="Voidcores held" value="2"/></div></div><div class="field" style="margin-bottom:0"><span class="field-label-text">Expected kills this week</span><div class="checklist checklist--empty">Bosses appear after you fetch a report</div></div><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Great Vault item (optional)</summary><div class="field" style="margin-top:10px"><label for="vault-item-name">Vault item name</label><input id="vault-item-name" type="text" value=""/></div><div class="field"><label for="vault-boss">Boss (optional)</label><select id="vault-boss"><option value="" selected="">Not specified</option></select></div></details><details><summary style="cursor:pointer;color:var(--text-secondary);font-size:13px">Advanced</summary><div class="field" style="margin-top:10px;margin-bottom:0"><label for="threshold"><span class="tooltip-wrap"><button type="button" class="tooltip-trigger">Threshold %<span class="tooltip-icon" aria-hidden="true">ⓘ</span></button></span></label><input id="threshold" type="number" step="0.01" value="0.2"/></div></details><div class="fetch-button-group"><button type="button" class="btn-light--outline" disabled="">Fetch report</button><div class="btn-hint">Needs a report URL</div></div></div></div>
 <footer class="app-footer panel"><div class="app-footer__columns"><div class="app-footer__col app-footer__col--main"><p>GallagioLoot prices your bonus roll. It does not know your guild&#x27;s kill order, your luck, or Blizzard&#x27;s undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted.</p><details class="app-footer__assumptions"><summary>Show assumptions</summary><ul><li>Uniform draw over the remaining pool for each boss.</li><li>Knockout state is shared across specs at a given difficulty except for spec-specific drops (community-reported, unverified).</li><li>Knockout state is not shared across difficulties.</li><li>Rolls award at Great Vault item level, as reflected by the source report.</li><li>Delves and Prey Hunts are not simmed and are excluded from consideration.</li><li>A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.</li><li>Ranking is limited to bosses you expect to kill this week.</li></ul></details></div><div class="app-footer__col app-footer__col--aside"><p>Delves and Prey Hunts are bonus roll targets but are not simmed; only worth a roll if that is the only content you run.</p></div></div></footer>
 </main>
 </div>
