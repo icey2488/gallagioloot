@@ -57,8 +57,6 @@ export default function App() {
   const [thresholdPct, setThresholdPct] = useState(0.2)
   const [expectedKillIds, setExpectedKillIds] = useState<Set<number>>(new Set())
 
-  const [vaultItemName, setVaultItemName] = useState('')
-  const [vaultBossId, setVaultBossId] = useState<number | null>(null)
   const [manualVaultGainPct, setManualVaultGainPct] = useState('')
 
   const [topGearUrl, setTopGearUrl] = useState('')
@@ -119,12 +117,12 @@ export default function App() {
     if (!hasManualGain && !topGearVaultItem) return null
 
     return {
-      name: vaultItemName || topGearVaultItem?.name || 'Vault item',
+      name: topGearVaultItem?.name ?? 'Manual vault gain',
       gainPct: hasManualGain ? manualGain! : topGearVaultItem!.gainPct,
       itemId: topGearVaultItem?.itemId,
-      encounterId: vaultBossId ?? topGearVaultItem?.encounterId,
+      encounterId: topGearVaultItem?.encounterId,
     }
-  }, [vaultItemName, vaultBossId, manualVaultGainPct, topGearVaultItem])
+  }, [manualVaultGainPct, topGearVaultItem])
 
   const vaultDecision = useMemo(() => {
     if (!report || !recommendation || !vaultItemInput) return null
@@ -264,9 +262,7 @@ export default function App() {
         if (!seen.has(item.encounterId)) seen.set(item.encounterId, item.encounterName)
       }
       setExpectedKillIds(new Set(seen.keys()))
-      setVaultItemName('')
       setManualVaultGainPct('')
-      setVaultBossId(null)
 
       // Only restore the character's saved Top Gear URL when the field is currently
       // empty -- the user may have already typed one in this same Paste flow (its
@@ -416,10 +412,6 @@ export default function App() {
             bossList={bossList}
             expectedKillIds={expectedKillIds}
             onToggleExpectedKill={toggleExpectedKill}
-            vaultItemName={vaultItemName}
-            onVaultItemNameChange={setVaultItemName}
-            vaultBossId={vaultBossId}
-            onVaultBossIdChange={setVaultBossId}
             topGearUrl={topGearUrl}
             onTopGearUrlChange={setTopGearUrl}
             topGearStatus={topGearStatus}

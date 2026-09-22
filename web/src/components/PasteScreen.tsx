@@ -22,10 +22,6 @@ export function PasteScreen(props: {
   bossList: BossOption[]
   expectedKillIds: Set<number>
   onToggleExpectedKill: (encounterId: number) => void
-  vaultItemName: string
-  onVaultItemNameChange: (name: string) => void
-  vaultBossId: number | null
-  onVaultBossIdChange: (id: number | null) => void
   topGearUrl: string
   onTopGearUrlChange: (url: string) => void
   topGearStatus: 'idle' | 'loading' | 'error'
@@ -56,10 +52,6 @@ export function PasteScreen(props: {
     bossList,
     expectedKillIds,
     onToggleExpectedKill,
-    vaultItemName,
-    onVaultItemNameChange,
-    vaultBossId,
-    onVaultBossIdChange,
     topGearUrl,
     onTopGearUrlChange,
     topGearStatus,
@@ -93,7 +85,7 @@ export function PasteScreen(props: {
       <div>
         <div className="panel">
           <p className="field-hint" style={{ marginTop: 0 }}>
-            Run this before you open the vault. If a vault item looks good, sim it and enter its gain below; GallagioLoot prices it against the Voidcore.
+            Run this before picking your vault choice. If a vault item looks good, run a Top Gear with it and paste that report below; GallagioLoot prices it against the Voidcore.
           </p>
           <div className="screen-header" style={{ marginBottom: 6 }}>
             <div className="screen-header__title-group">
@@ -269,25 +261,6 @@ export function PasteScreen(props: {
             <div className="checklist checklist--empty">Bosses appear after you fetch a report</div>
           )}
         </div>
-
-        <details>
-          <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13 }}>Great Vault item (optional)</summary>
-          <div className="field" style={{ marginTop: 10 }}>
-            <label htmlFor="vault-item-name">Vault item name</label>
-            <input id="vault-item-name" type="text" value={vaultItemName} onChange={(e) => onVaultItemNameChange(e.target.value)} />
-          </div>
-          <div className="field">
-            <label htmlFor="vault-boss">Boss (optional)</label>
-            <select id="vault-boss" value={vaultBossId ?? ''} onChange={(e) => onVaultBossIdChange(e.target.value ? Number(e.target.value) : null)}>
-              <option value="">Not specified</option>
-              {bossList.map((b) => (
-                <option key={b.encounterId} value={b.encounterId}>
-                  {b.encounterName}
-                </option>
-              ))}
-            </select>
-          </div>
-        </details>
 
         <details>
           <summary style={{ cursor: 'pointer', color: 'var(--text-secondary)', fontSize: 13 }}>Advanced</summary>
