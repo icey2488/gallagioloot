@@ -93,3 +93,33 @@ vault-first faster in 58% of seasons). A prior version of that variant, which dr
 only from dungeons the player had farmed that week, was wrong — vault doors always draw from
 the full seasonal pool, not just farmed content — and has been superseded by the full-pool
 model above.
+
+## Practical BIS variant
+
+`season_sim_practical.py` relaxes the strict-BIS model: the four catalyzed tier slots (shoulder,
+chest, hands, legs) are satisfied by ANY eligible item in that slot from ANY pool, since the
+Catalyst keeps the donor item's stats and a player will catalyze a well-statted piece rather than
+wait for the one perfect item for that slot. The head cowl stays an exact item, since the
+Venomcursed cowl's cantrip is unique and isn't reproduced by catalyzing another piece. The
+per-pool slot counts (`tools/pools/arcane-mage-s2-practical.json`) come from the proxy's
+`/loot-table/{id}?lootSpec=62` endpoint, with `viaCurio` rows excluded and items assigned to a
+slot by `inventoryType`: 3 = shoulder, 5/20 = chest, 10 = hands, 7 = legs.
+
+Run it with:
+
+```
+python tools/season_sim_practical.py tools/pools/arcane-mage-s2-practical.json
+```
+
+Reference result (50,000 runs, seed 17): vault-first 16.6 weeks mean (p10 13, p90 21) vs
+roll-first 20.3 weeks (p10 16, p90 25); raid BIS done 13.1 vs 14.5 weeks; M+ BIS done 16.0 vs
+20.3 weeks; delta 3.8 weeks; vault-first faster in 78% of seasons, tie in 6%.
+
+| Model | Vault-first mean | Roll-first mean | Delta | Vault-first win rate |
+|---|---|---|---|---|
+| Strict perfect BIS | 18.9 | 24.8 | +5.9 | 87% |
+| Practical BIS | 16.6 | 20.3 | +3.8 | 78% |
+
+Reading: relaxing the tier slots saves both players two to four weeks and narrows the gap,
+because slot pieces are common (legs items exist in five pools), so roll-first stops getting
+stuck on them. Vault-first still wins clearly, and the whole remaining gap is on the M+ side.
