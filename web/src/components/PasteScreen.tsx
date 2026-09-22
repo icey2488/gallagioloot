@@ -1,7 +1,7 @@
 import type { NormalizedReport, NormalizedTopGear } from '@engine/types'
 import type { ReportSource } from '../lib/urlDetect'
 import { SOURCE_LABELS } from '../lib/urlDetect'
-import { formatDifficulty } from '../lib/format'
+import { formatDifficulty, isRecognizedDifficulty } from '../lib/format'
 import { Tooltip } from './Tooltip'
 import { ChipStack } from './ChipStack'
 import { LootSpecPicker } from './LootSpecPicker'
@@ -209,7 +209,7 @@ export function PasteScreen(props: {
             <span className="field-label-text">Difficulty</span>
             {report ? (
               <div className="select-readonly" role="textbox" aria-readonly="true" aria-label="Difficulty">
-                {formatDifficulty(report.difficulty)}
+                {formatDifficulty(report.difficulty, report.contentType)}
               </div>
             ) : (
               <select disabled aria-label="Difficulty">
@@ -218,6 +218,10 @@ export function PasteScreen(props: {
             )}
           </div>
         </div>
+
+        {report && !isRecognizedDifficulty(report.difficulty, report.contentType) && (
+          <p className="warning-banner">Unrecognized difficulty ("{report.difficulty}") — treating as Unknown.</p>
+        )}
 
         {/* Rolls available: app-specific setting not present in the v2 mockup -- kept
             alongside the mockup's Loot spec/Difficulty row, same documented-adaptation

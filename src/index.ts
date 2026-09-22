@@ -5,6 +5,7 @@ import { buildLootTable } from './lookup/lootTable'
 import { normalizeRaidbotsReport, UnsupportedReportError, type RaidbotsRawReport } from './normalize/raidbots'
 import { normalizeQELiveReport, parseQELiveResponseBody } from './normalize/qelive'
 import { normalizeTopGearReport, UnsupportedTopGearReportError, type RaidbotsTopGearRawReport } from './normalize/topgear'
+import { UnsupportedContentError, unsupportedContentResponseBody } from './normalize/contentType'
 import type { EncounterItemsLookup, LootTable, NormalizedReport, NormalizedTopGear } from './types'
 
 const VERSION = '0.1.0'
@@ -133,6 +134,9 @@ async function handleRaidbots(
     const lookup = await getEncounterItemsLookup(env)
     normalized = normalizeRaidbotsReport(id, raw, lookup)
   } catch (e) {
+    if (e instanceof UnsupportedContentError) {
+      return jsonResponse(unsupportedContentResponseBody(e), 422, allowedOrigin)
+    }
     if (e instanceof UnsupportedReportError) {
       return jsonResponse({ error: 'unsupported_report', detail: e.message }, 400, allowedOrigin)
     }
@@ -185,7 +189,16 @@ async function handleQELive(
 
   const lookup = await getEncounterItemsLookup(env)
   const learnedByInstance = await getAllLearnedTierData(env, getAllSeedInstanceIds())
-  const normalized = normalizeQELiveReport(id, raw, lookup, learnedByInstance)
+
+  let normalized: NormalizedReport
+  try {
+    normalized = normalizeQELiveReport(id, raw, lookup, learnedByInstance)
+  } catch (e) {
+    if (e instanceof UnsupportedContentError) {
+      return jsonResponse(unsupportedContentResponseBody(e), 422, allowedOrigin)
+    }
+    throw e
+  }
 
   return respondAndCache(normalized, cacheKey, ctx, allowedOrigin)
 }

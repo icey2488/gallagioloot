@@ -1,4 +1,5 @@
 import { resolveTierEncounters } from '../lookup/tierResolve'
+import { assertSupportedContentType, type DetectedContentType } from './contentType'
 import type { EncounterItemsLookup, NormalizedItem, NormalizedReport, Role } from '../types'
 
 export class UnsupportedReportError extends Error {}
@@ -24,6 +25,8 @@ export type RaidbotsItemLibraryEntry = {
 export type RaidbotsInstanceLibraryEntry = {
   id: number
   name: string
+  /** e.g. "raid", "dungeon", "professionMidnightEpic", "pvp-honor", "delve-mid1" -- see contentType.ts. */
+  type?: string
   encounters: Array<{ id: number; name: string }>
 }
 
@@ -67,7 +70,24 @@ function roleForSpec(spec: string): Role {
   return TANK_SPECS.has(spec.toLowerCase()) ? 'tank' : 'dps'
 }
 
-function contentTypeFromDifficulty(difficulty: string): 'raid' | 'dungeon' | 'other' {
+function classifyInstanceType(type: string | undefined): DetectedContentType {
+  if (!type) return 'other'
+  if (type === 'raid') return 'raid'
+  if (type === 'dungeon') return 'dungeon'
+  if (type.startsWith('profession')) return 'crafted'
+  if (type.startsWith('pvp')) return 'pvp'
+  if (type.startsWith('delve')) return 'delve'
+  return 'other'
+}
+
+/**
+ * Primary signal is `instanceLibrary[].type` (see contentType.ts). Falls back to the
+ * difficulty string's prefix (observed live: "raid-vault-heroic", "professionMidnightEpic-331")
+ * only when the instance entry carries no `type` at all.
+ */
+function detectRaidbotsContentType(instanceType: string | undefined, difficulty: string): DetectedContentType {
+  const fromType = classifyInstanceType(instanceType)
+  if (fromType !== 'other') return fromType
   if (difficulty.startsWith('raid')) return 'raid'
   if (difficulty.startsWith('dungeon')) return 'dungeon'
   return 'other'
@@ -112,8 +132,13 @@ export function normalizeRaidbotsReport(
   const baseline = raw.sim.players[0].collected_data.dps.mean
   const spec = raw.simbot.spec.toLowerCase()
   const difficulty = raw.simbot.meta.rawFormData.droptimizer.difficulty
-  const contentType = contentTypeFromDifficulty(difficulty)
   const instanceId = raw.simbot.meta.rawFormData.droptimizer.instance
+
+  const instanceEntry = raw.simbot.meta.instanceLibrary.find((i) => i.id === instanceId)
+  const instanceType = instanceEntry?.type ?? fallbackLookup?.instanceTypes.get(instanceId)
+  const detectedContentType = detectRaidbotsContentType(instanceType, difficulty)
+  assertSupportedContentType(detectedContentType)
+  const contentType = detectedContentType
 
   const itemLibraryById = new Map(raw.simbot.meta.itemLibrary.map((entry) => [entry.id, entry]))
 
@@ -124,9 +149,7 @@ export function normalizeRaidbotsReport(
     }
   }
 
-  const instanceName =
-    raw.simbot.meta.instanceLibrary.find((i) => i.id === instanceId)?.name ??
-    fallbackLookup?.instanceNames.get(instanceId)
+  const instanceName = instanceEntry?.name ?? fallbackLookup?.instanceNames.get(instanceId)
 
   let trashExcluded = 0
   let unmappedCount = 0

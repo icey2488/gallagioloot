@@ -121,7 +121,7 @@ export function LootTableScreen(props: {
               <h3 style={{ marginBottom: 4 }}>{activeEnc.encounterName}</h3>
               <span className="screen-header__meta">
                 {activeRank != null ? `${ORDINALS[activeRank] ?? `${activeRank + 1}th`} kill · ` : ''}
-                {report ? `${formatDifficulty(report.difficulty)} · ` : ''}
+                {report ? `${formatDifficulty(report.difficulty, report.contentType)} · ` : ''}
                 {specName} loot spec
               </span>
             </div>

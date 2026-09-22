@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeRaidbotsReport, UnsupportedReportError, type RaidbotsRawReport } from '../src/normalize/raidbots'
+import { UnsupportedContentError } from '../src/normalize/contentType'
 
 const BASELINE = 100000
 
@@ -245,5 +246,83 @@ describe('normalizeRaidbotsReport', () => {
     const tankResult = normalizeRaidbotsReport('abc', tankReport)
     expect(tankResult.role).toBe('tank')
     expect(tankResult.spec).toBe('protection')
+  })
+
+  it('rejects a crafted-gear droptimizer (Epic Profession Items), trimmed from a real report', () => {
+    // Trimmed from a live Raidbots droptimizer run against "Epic Profession Items"
+    // (report id 9QDMaj22bvRDSvbCzjsHfQ): instanceLibrary[0].type is "professionMidnightEpic",
+    // matching the instance's own instances.json type, and the difficulty string is
+    // "professionMidnightEpic-331" (same "{type}-{qualifier}" shape as the raid's "raid-vault-heroic").
+    const report: RaidbotsRawReport = {
+      sim: {
+        players: [{ collected_data: { dps: { mean: 559933.1277614484 } } }],
+        profilesets: {
+          metric: 'Damage per Second',
+          results: [{ name: '-88/-34/professionMidnightEpic-331/244179/331/8039/main_hand////', mean: 543918.03 }],
+        },
+      },
+      simbot: {
+        simType: 'droptimizer',
+        player: 'Icemagus',
+        charClass: 'mage',
+        spec: 'arcane',
+        meta: {
+          rawFormData: { droptimizer: { instance: -88, difficulty: 'professionMidnightEpic-331' } },
+          itemLibrary: [{ id: 244179, name: 'Martyr\'s Crown' }],
+          instanceLibrary: [
+            {
+              id: -88,
+              name: 'Epic Profession Items',
+              type: 'professionMidnightEpic',
+              encounters: [
+                { id: -34, name: 'Enchanting' },
+                { id: -33, name: 'Blacksmithing' },
+              ],
+            },
+          ],
+        },
+      },
+    }
+
+    let error: unknown
+    try {
+      normalizeRaidbotsReport('9QDMaj22bvRDSvbCzjsHfQ', report)
+    } catch (e) {
+      error = e
+    }
+    expect(error).toBeInstanceOf(UnsupportedContentError)
+    expect((error as UnsupportedContentError).contentType).toBe('crafted')
+  })
+
+  it('accepts a Mythic+ dungeon droptimizer (dungeon instance type) and reports contentType "dungeon"', () => {
+    const report = makeReport({
+      sim: {
+        players: [{ collected_data: { dps: { mean: BASELINE } } }],
+        profilesets: {
+          metric: 'Damage per Second',
+          results: [{ name: '1322/2960/dungeon-mythic-10/230000/340/0/waist////', mean: 108000 }],
+        },
+      },
+      simbot: {
+        ...makeReport().simbot,
+        meta: {
+          ...makeReport().simbot.meta,
+          rawFormData: { droptimizer: { instance: 1322, difficulty: 'dungeon-mythic-10' } },
+          itemLibrary: [{ id: 230000, name: 'Belt of the Altar' }],
+          instanceLibrary: [
+            {
+              id: 1322,
+              name: 'Altar of Fangs',
+              type: 'dungeon',
+              encounters: [{ id: 2960, name: 'Kagani Skysworn' }],
+            },
+          ],
+        },
+      },
+    })
+    const result = normalizeRaidbotsReport('abc', report)
+    expect(result.contentType).toBe('dungeon')
+    expect(result.items).toHaveLength(1)
+    expect(result.items[0].encounterName).toBe('Kagani Skysworn')
   })
 })

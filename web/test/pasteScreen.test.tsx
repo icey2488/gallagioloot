@@ -139,6 +139,26 @@ describe('PasteScreen -- Top Gear field', () => {
   })
 })
 
+describe('PasteScreen -- unsupported content (422)', () => {
+  it('renders the friendly unsupported-content error under the URL field, keeps the field value, and does not render the Report panel', () => {
+    const el = render(
+      baseProps({
+        reportUrl: 'https://www.raidbots.com/reports/9QDMaj22bvRDSvbCzjsHfQ',
+        loadStatus: 'error',
+        loadError:
+          "This droptimizer is for crafted gear. GallagioLoot only prices raid and Mythic+ bonus rolls. Run the droptimizer for The Venomous Abyss or a Season 2 dungeon and paste that.",
+        report: null,
+      })
+    )
+    const input = el.querySelector('#report-url') as HTMLInputElement
+    expect(input.value).toBe('https://www.raidbots.com/reports/9QDMaj22bvRDSvbCzjsHfQ')
+    expect(el.querySelector('.warning-banner')?.textContent).toContain('This droptimizer is for crafted gear')
+    expect([...el.querySelectorAll('h3')].map((h) => h.textContent)).not.toContain('Report')
+    const button = el.querySelector('button.btn-light, button.btn-light--outline') as HTMLButtonElement
+    expect(button.textContent).toBe('Fetch report')
+  })
+})
+
 describe('PasteScreen -- Advanced manual override', () => {
   it('renders the manual vault gain % input inside the Advanced details, labeled as an override', () => {
     const el = render(baseProps())

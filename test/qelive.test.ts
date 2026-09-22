@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { normalizeQELiveReport, parseQELiveResponseBody, INVENTORY_TYPE_TO_SLOT, type QELiveRawReport } from '../src/normalize/qelive'
+import { UnsupportedContentError } from '../src/normalize/contentType'
 import type { LearnedTierData } from '../src/lookup/tierLearned'
 import type { EncounterItemsLookup } from '../src/types'
 
@@ -111,6 +112,21 @@ describe('normalizeQELiveReport', () => {
     const result = normalizeQELiveReport('wzfyzqxqjqej', report, makeLookup())
     expect(result.items.find((i) => i.itemId === 555555)).toBeUndefined()
     expect(result.warnings).toContain('Item 555555 had no encounter mapping')
+  })
+
+  it('rejects a report whose top-level contentType is Crafted', () => {
+    const report = makeReport({
+      contentType: 'Crafted',
+      results: [{ item: 999001, dropLoc: 'Crafted', dropType: 'bonus', dropDifficulty: '', level: 320, score: 0, rawDiff: 0, percDiff: 0 }],
+    })
+    let error: unknown
+    try {
+      normalizeQELiveReport('wzfyzqxqjqej', report, makeLookup())
+    } catch (e) {
+      error = e
+    }
+    expect(error).toBeInstanceOf(UnsupportedContentError)
+    expect((error as UnsupportedContentError).contentType).toBe('crafted')
   })
 
   it('maps dropDifficulty 3 to "heroic" for a raid report and sets role/metric for healers', () => {

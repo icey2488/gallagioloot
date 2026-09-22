@@ -1,8 +1,9 @@
 import { pickBestSource } from '../lookup/encounterItems'
 import { resolveTierEncounters } from '../lookup/tierResolve'
 import { getSpecByName } from '../lookup/specs'
+import { assertSupportedContentType, type DetectedContentType } from './contentType'
 import type { LearnedTierData } from '../lookup/tierLearned'
-import type { ContentType, EncounterItemsLookup, NormalizedItem, NormalizedReport } from '../types'
+import type { EncounterItemsLookup, NormalizedItem, NormalizedReport } from '../types'
 
 export type QELiveResult = {
   item: number
@@ -64,16 +65,19 @@ export const INVENTORY_TYPE_TO_SLOT: Record<number, string> = {
   23: 'holdable',
 }
 
-function mapDifficulty(dropDifficulty: number | '', contentType: ContentType): string {
+function mapDifficulty(dropDifficulty: number | '', contentType: 'raid' | 'dungeon'): string {
   if (dropDifficulty === '') return 'unknown'
   if (contentType === 'raid') return RAID_DIFFICULTY_NAMES[dropDifficulty] ?? String(dropDifficulty)
   return String(dropDifficulty)
 }
 
-function mapContentType(raw: string): ContentType {
+function classifyQELiveContentType(raw: string): DetectedContentType {
   const lower = raw.toLowerCase()
   if (lower === 'raid') return 'raid'
   if (lower === 'dungeon') return 'dungeon'
+  if (lower === 'crafted') return 'crafted'
+  if (lower === 'delves') return 'delve'
+  if (lower === 'pvp') return 'pvp'
   return 'other'
 }
 
@@ -90,8 +94,10 @@ export function normalizeQELiveReport(
   learnedByInstance?: Map<number, LearnedTierData>
 ): NormalizedReport {
   const warnings: string[] = []
-  const contentType = mapContentType(raw.contentType)
-  const keptDropLoc = contentType === 'raid' ? 'Raid' : contentType === 'dungeon' ? 'Dungeon' : null
+  const detectedContentType = classifyQELiveContentType(raw.contentType)
+  assertSupportedContentType(detectedContentType)
+  const contentType = detectedContentType
+  const keptDropLoc = contentType === 'raid' ? 'Raid' : 'Dungeon'
 
   const bonusRows = raw.results.filter((r) => r.dropType === 'bonus')
   const kept = keptDropLoc ? bonusRows.filter((r) => r.dropLoc === keptDropLoc) : []

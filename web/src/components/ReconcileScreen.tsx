@@ -69,7 +69,7 @@ export function ReconcileScreen(props: {
             <h3>I rolled {bossName} and got:</h3>
           </div>
           <span className="screen-header__meta">
-            {report.character} · {formatDifficulty(report.difficulty)}
+            {report.character} · {formatDifficulty(report.difficulty, report.contentType)}
           </span>
         </div>
         <div className="field">

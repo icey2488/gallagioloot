@@ -16,6 +16,10 @@ const RUN_LIVE = process.env.RUN_LIVE === '1'
 const RAIDBOTS_REPORT_ID = 'jk6WmLFEnBpEqWueDkyRqA'
 const QELIVE_REPORT_ID = 'wzfyzqxqjqej'
 const TOPGEAR_REPORT_ID = 'miriTcb27bfGDYmV6JjvD1'
+// A live droptimizer run against "Epic Profession Items" (crafted gear) -- see
+// "Content-type classification" in README.md. Bonus rolls don't apply to crafted gear.
+const CRAFTED_REPORT_ID = '9QDMaj22bvRDSvbCzjsHfQ'
+const PROXY_BASE_URL = process.env.PROXY_BASE_URL || 'https://gallagioloot-proxy.icehunter.net'
 
 async function fetchLiveLookup() {
   const homepage = await fetch('https://www.raidbots.com/')
@@ -156,5 +160,20 @@ describe.skipIf(!RUN_LIVE)('live integration', () => {
     const lightspireCore = result.candidates.find((c) => c.itemId === 250214)!
     expect(lightspireCore.encounterId).toBeDefined()
     expect(lightspireCore.encounterName).toBeDefined()
+  })
+
+  it('rejects a crafted-gear droptimizer with 422 unsupported_content on the deployed proxy, while a raid droptimizer still returns 200', async () => {
+    const craftedRes = await fetch(`${PROXY_BASE_URL}/raidbots/${CRAFTED_REPORT_ID}`)
+    console.log('[proxy] crafted report status:', craftedRes.status)
+    expect(craftedRes.status).toBe(422)
+    const craftedBody = (await craftedRes.json()) as { error: string; contentType: string }
+    expect(craftedBody.error).toBe('unsupported_content')
+    expect(craftedBody.contentType).toBe('crafted')
+
+    const raidRes = await fetch(`${PROXY_BASE_URL}/raidbots/${RAIDBOTS_REPORT_ID}`)
+    console.log('[proxy] raid report status:', raidRes.status)
+    expect(raidRes.status).toBe(200)
+    const raidBody = (await raidRes.json()) as { items: unknown[] }
+    expect(raidBody.items.length).toBe(51)
   })
 })

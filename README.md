@@ -18,11 +18,15 @@ Fetches `https://www.raidbots.com/reports/{id}/data.json`, normalizes it, and re
 
 Rejects with `400 unsupported_report` if the report's `simbot.simType` isn't `"droptimizer"` (e.g. raid-summary reports).
 
+Rejects with `422 unsupported_content` if the droptimizer isn't for a raid boss or a Mythic+ dungeon (e.g. Epic Profession Items, PvP gear, Delves) — bonus rolls only exist for those two sources. See "Content-type classification" below.
+
 ### `GET /qelive/:id`
 
 Fetches `https://questionablyepic.com/api/getUpgradeReport.php?reportID={id}`, normalizes it, and returns a `NormalizedReport`.
 
 `:id` accepts a bare 12-lowercase-letter QE Live id (`wzfyzqxqjqej`) or a full report URL, same extraction rules as above.
+
+Rejects with `422 unsupported_content` on the same basis as `/raidbots/:id`, using the report's own top-level `contentType` field (`"Crafted"`/`"Delves"`/etc.) instead of an instance-type lookup.
 
 ### `GET /topgear/:id`
 
@@ -128,6 +132,56 @@ If a cached hash's static-data files start 404ing (Raidbots rotated the hash sin
 ### Caching
 
 Normalized reports are cached in the Cloudflare Cache API for ~10 minutes, keyed by `source + id`. The Raidbots static-data lookup and the loot table (see below) are cached separately for 24 hours, keyed by the data hash — in Workers KV if an `ENCOUNTER_ITEMS_KV` binding is configured, otherwise via the Cache API so everything still works under `wrangler dev` with no KV setup.
+
+---
+
+## Content-type classification
+
+Bonus rolls only exist for raid bosses and Mythic+ dungeons, so a droptimizer/report for anything
+else is rejected with `422 unsupported_content` rather than silently normalized into an empty or
+garbage report. This was found live: a droptimizer run against "Epic Profession Items" (crafted
+gear, report id `9QDMaj22bvRDSvbCzjsHfQ`) came back with 0 items, spec `arcane`, and
+`difficulty: "professionMidnightEpic-331"` — the UI showed the raw string "331" in the Difficulty
+box.
+
+**Raidbots** (`src/normalize/raidbots.ts`): classified from `simbot.meta.instanceLibrary[].type`,
+the same instance-type field Raidbots' own `instances.json` static data uses. Values seen live:
+
+| `type` | classified as |
+| --- | --- |
+| `raid` | raid |
+| `dungeon` | dungeon |
+| `professionMidnightEpic` / `professionMidnightPvp` / `professionMidnightRare` | crafted |
+| `pvp-honor` / `pvp-world` / `pvp-conquest` | pvp |
+| `delve-mid1` / `delve-mid2` | delve |
+| anything else (e.g. `expansion-dungeon`, `mplus-chest`, `catalyst`, `bonus-roll` — container types that never appear as a droptimizer's own instance) | other |
+
+Verified against three live reports: the crafted report above (`instanceLibrary[0].type ===
+"professionMidnightEpic"`, `difficulty: "professionMidnightEpic-331"`); the known-good raid report
+`jk6WmLFEnBpEqWueDkyRqA` (`instanceLibrary[0].type === "raid"`, `instance: 1320`, `difficulty:
+"raid-vault-heroic"`); and `instances.json` itself, which confirms the `raid`/`dungeon` type values
+independently of any single report. Old Mythic+ droptimizer report links found for cross-reference
+(e.g. `simbot/report/2aqK5obaaRHgFKsNLe1iA1`) had already expired (Raidbots purges old report JSON
+from S3), so the dungeon path is additionally backed by a difficulty-string fallback: if
+`instanceLibrary[].type` is absent, the report's `difficulty` string is checked for a `"raid"` or
+`"dungeon"` prefix (both Raidbots difficulty strings observed live follow a `"{type}-{qualifier}"`
+shape, e.g. `"raid-vault-heroic"`, `"professionMidnightEpic-331"`).
+
+**QE Live** (`src/normalize/qelive.ts`): classified directly from the report's own top-level
+`contentType` field (`"Raid"` / `"Dungeon"` / `"Crafted"` / `"Delves"`, case-insensitive) — no
+instance-type lookup needed since QE Live reports carry it already.
+
+Either normalizer throws `UnsupportedContentError` (`src/normalize/contentType.ts`) for anything
+that isn't raid or dungeon; `src/index.ts` catches it and returns:
+
+```json
+{
+  "error": "unsupported_content",
+  "contentType": "crafted",
+  "detail": "This droptimizer is for crafted gear, not a raid boss or Mythic+ dungeon.",
+  "hint": "Run the droptimizer for a raid or a Mythic+ dungeon; bonus rolls only apply there."
+}
+```
 
 ---
 

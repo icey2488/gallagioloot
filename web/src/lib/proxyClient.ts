@@ -10,7 +10,9 @@ export function getProxyBaseUrl(): string {
 export class ProxyRequestError extends Error {
   constructor(
     message: string,
-    public status?: number
+    public status?: number,
+    public code?: string,
+    public contentType?: string
   ) {
     super(message)
     this.name = 'ProxyRequestError'
@@ -22,8 +24,8 @@ export async function fetchReport(source: ReportSource, urlOrId: string, baseUrl
   const res = await fetch(`${baseUrl}/${path}/${encodeURIComponent(urlOrId)}`)
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}) as { error?: string; detail?: string })
-    throw new ProxyRequestError(body.detail || body.error || `Report fetch failed: HTTP ${res.status}`, res.status)
+    const body = await res.json().catch(() => ({}) as { error?: string; detail?: string; contentType?: string })
+    throw new ProxyRequestError(body.detail || body.error || `Report fetch failed: HTTP ${res.status}`, res.status, body.error, body.contentType)
   }
 
   return (await res.json()) as NormalizedReport

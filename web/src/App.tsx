@@ -5,7 +5,7 @@ import { buildBossPools } from '@engine/core/pool'
 import { recommend } from '@engine/core/rank'
 import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
 import type { KnockoutState, Settings, VaultItemInput } from '@engine/core/types'
-import { detectSource, friendlyReportMismatch, type ReportSource } from './lib/urlDetect'
+import { detectSource, friendlyReportMismatch, friendlyUnsupportedContent, type ReportSource } from './lib/urlDetect'
 import { fetchLootTable, fetchReport, fetchTopGear, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData } from './lib/cardData'
 import {
@@ -282,6 +282,11 @@ export default function App() {
       setLoadStatus('idle')
       return true
     } catch (e) {
+      if (e instanceof ProxyRequestError && e.code === 'unsupported_content') {
+        setLoadError(friendlyUnsupportedContent(e.contentType))
+        setLoadStatus('error')
+        return false
+      }
       const message = e instanceof ProxyRequestError ? e.message : (e as Error).message
       setLoadError((e instanceof ProxyRequestError && friendlyReportMismatch(message, 'sim')) || message)
       setLoadStatus('error')

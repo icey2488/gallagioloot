@@ -44,3 +44,19 @@ export function friendlyReportMismatch(detail: string, expected: 'sim' | 'topgea
   if (expected === 'topgear' && simType === 'droptimizer') return "That's a droptimizer; paste a Top Gear report."
   return null
 }
+
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  crafted: 'crafted gear',
+  pvp: 'PvP',
+  delve: 'delves',
+  other: 'content GallagioLoot doesn\'t recognize',
+}
+
+/**
+ * The proxy's `unsupported_content` error carries a `contentType` (crafted/pvp/delve/other)
+ * for a droptimizer that isn't a raid boss or Mythic+ dungeon -- bonus rolls only apply there.
+ */
+export function friendlyUnsupportedContent(contentType: string | undefined): string {
+  const label = (contentType && CONTENT_TYPE_LABELS[contentType]) || 'content that is not a raid or dungeon'
+  return `This droptimizer is for ${label}. GallagioLoot only prices raid and Mythic+ bonus rolls. Run the droptimizer for The Venomous Abyss or a Season 2 dungeon and paste that.`
+}

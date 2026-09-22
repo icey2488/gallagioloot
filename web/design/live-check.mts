@@ -9,6 +9,10 @@ import { chromium } from 'playwright'
 
 const APP_URL = 'https://gallagioloot.icehunter.net'
 const REPORT_URL = 'https://www.raidbots.com/reports/jk6WmLFEnBpEqWueDkyRqA'
+// A live droptimizer run against "Epic Profession Items" (crafted gear) -- bonus rolls
+// don't apply there, so this must show the inline unsupported_content error instead of
+// advancing to the Report panel. See README.md's "Content-type classification".
+const CRAFTED_REPORT_URL = 'https://www.raidbots.com/reports/9QDMaj22bvRDSvbCzjsHfQ'
 const SITE_IP = '104.21.45.45'
 
 async function main() {
@@ -29,6 +33,22 @@ async function main() {
   const bodyBg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor)
   console.log('Body background-color:', bodyBg)
   if (bodyBg !== 'rgb(6, 16, 31)') throw new Error(`expected the darker --bg-base fill (rgb(6, 16, 31)), got ${bodyBg}`)
+
+  // Crafted-gear droptimizer: proxy returns 422 unsupported_content -- assert the inline
+  // error under the URL field and that the Report panel never appears.
+  await page.fill('#report-url', CRAFTED_REPORT_URL)
+  await page.waitForSelector('text=Detected:')
+  await page.click('text=Fetch report')
+  await page.waitForSelector('.warning-banner', { timeout: 20000 })
+  const craftedError = await page.locator('.warning-banner').first().innerText()
+  console.log('crafted-report inline error:', JSON.stringify(craftedError))
+  if (!craftedError.includes('This droptimizer is for crafted gear')) {
+    throw new Error(`expected the crafted-content inline error, got ${JSON.stringify(craftedError)}`)
+  }
+  const reportPanelHeading = await page.locator('h3', { hasText: 'Report' }).count()
+  if (reportPanelHeading !== 0) throw new Error('expected the Report panel not to render for an unsupported-content report')
+  const fieldValue = await page.inputValue('#report-url')
+  if (fieldValue !== CRAFTED_REPORT_URL) throw new Error(`expected the URL field to keep its value, got ${JSON.stringify(fieldValue)}`)
 
   await page.fill('#report-url', REPORT_URL)
   await page.waitForSelector('text=Detected:')
