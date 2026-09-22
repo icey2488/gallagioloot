@@ -45,7 +45,7 @@ async function main() {
   if (!craftedError.includes('This droptimizer is for crafted gear')) {
     throw new Error(`expected the crafted-content inline error, got ${JSON.stringify(craftedError)}`)
   }
-  const reportPanelHeading = await page.locator('h3', { hasText: 'Report' }).count()
+  const reportPanelHeading = await page.locator('h3:text-is("Report")').count()
   if (reportPanelHeading !== 0) throw new Error('expected the Report panel not to render for an unsupported-content report')
   const fieldValue = await page.inputValue('#report-url')
   if (fieldValue !== CRAFTED_REPORT_URL) throw new Error(`expected the URL field to keep its value, got ${JSON.stringify(fieldValue)}`)
