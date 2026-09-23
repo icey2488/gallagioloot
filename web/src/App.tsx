@@ -626,12 +626,12 @@ export default function App() {
             <button type="button" className="btn btn-gold price-action__btn" disabled={!cardData} onClick={handlePrice}>
               Price my roll
             </button>
-            {stale && <div className="reprice-note">Settings changed — press “Price my roll” to update.</div>}
+            {stale && <div className="warning-banner reprice-note">Settings changed. Press Price my roll to update.</div>}
           </div>
 
           {priced && (
             <div className={`priced-section${stale ? ' priced-section--stale' : ''}`} aria-live="polite">
-              <RecommendationCard card={priced.card} />
+              <RecommendationCard card={priced.card} stale={stale} />
               <div style={{ marginTop: 16 }}>
                 <PricedDetail bossEvals={priced.bossEvals} thresholdPct={thresholdPct} />
               </div>

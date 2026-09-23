@@ -751,6 +751,29 @@ tr.excluded .deploy-table__ev {
   white-space: nowrap;
 }
 
+.rec-card__top-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+/* Reuses the warning-banner fill/border/text combo (already contrast-verified against
+   its own background) as a compact pill -- same visible-warning language as the
+   reprice note below the button, just badge-shaped. */
+.rec-card__badge--stale {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #3a2a12;
+  border: 1px solid #996f2b;
+  color: #e8c98a;
+  white-space: nowrap;
+}
+
 .rec-card__headline {
   font-family: var(--font-display);
   font-size: var(--text-headline);
@@ -1603,10 +1626,11 @@ select:disabled {
   min-width: 220px;
 }
 
+/* Reuses .warning-banner's visible-warning treatment -- just adds top spacing under
+   the button instead of the banner's usual bottom-of-panel margin. */
 .reprice-note {
-  color: var(--gold);
-  font-size: var(--text-meta);
-  font-weight: 600;
+  margin-top: var(--space-8);
+  margin-bottom: 0;
 }
 
 /* Stale dim: the snapshot is intentionally de-emphasized (not hidden) until re-priced.

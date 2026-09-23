@@ -1,7 +1,7 @@
 import type { CardData } from '../lib/cardData'
 import { Tooltip } from './Tooltip'
 
-export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; onPrimaryAction?: () => void }) {
+export function RecommendationCard({ card, onPrimaryAction, stale }: { card: CardData; onPrimaryAction?: () => void; stale?: boolean }) {
   const actionLabel = card.verdict === 'vault' ? 'Take vault item' : card.verdict === 'tokens' ? 'Mark tokens taken' : 'Mark as rolled'
   const kicker = card.vaultCompare ? 'Great Vault vs Voidcore' : 'GallagioLoot recommends'
   const meta = `${card.rollsAvailable} Voidcore${card.rollsAvailable === 1 ? '' : 's'}`
@@ -16,7 +16,10 @@ export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; 
     <section className="rec-card" aria-label="Bonus roll recommendation">
       <div className="rec-card__top">
         <div className="rec-card__eyebrow">{kicker}</div>
-        <div className="rec-card__meta num">{meta}</div>
+        <div className="rec-card__top-right">
+          {stale && <span className="rec-card__badge--stale">Out of date</span>}
+          <span className="rec-card__meta num">{meta}</span>
+        </div>
       </div>
 
       {tossUpPair ? (
