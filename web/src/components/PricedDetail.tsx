@@ -1,4 +1,4 @@
-import type { BossEval, VaultDecision } from '@engine/core/types'
+import type { BossEval } from '@engine/core/types'
 import { Tooltip } from './Tooltip'
 
 function exclusionReason(b: BossEval, thresholdPct: number): string | null {
@@ -9,17 +9,11 @@ function exclusionReason(b: BossEval, thresholdPct: number): string | null {
   return 'Excluded'
 }
 
-const VERDICT_LABEL: Record<VaultDecision['verdict'], string> = {
-  voidcore: 'Spend the Voidcore',
-  vault: 'Take the vault item',
-  'toss-up': 'Toss-up',
-  tokens: 'Take the tokens',
-}
-
-/** The detail shown below the recommendation card once priced: the vault-vs-Voidcore
- *  comparison, then the full ranked boss list (EV, rolls to target, best-case item). */
-export function PricedDetail(props: { bossEvals: BossEval[]; thresholdPct: number; vaultDecision: VaultDecision | null; vaultItemName?: string }) {
-  const { bossEvals, thresholdPct, vaultDecision, vaultItemName } = props
+/** The detail shown below the recommendation card once priced: the full ranked boss list
+ *  (EV, rolls to target, best-case item). The vault-vs-Voidcore comparison itself lives
+ *  only in the card above -- see cardData.ts, the single source of truth for that verdict. */
+export function PricedDetail(props: { bossEvals: BossEval[]; thresholdPct: number }) {
+  const { bossEvals, thresholdPct } = props
 
   // Deployable bosses first, then by EV descending; keeps the ranked order the card used.
   const ranked = [...bossEvals].sort((a, b) => {
@@ -29,36 +23,6 @@ export function PricedDetail(props: { bossEvals: BossEval[]; thresholdPct: numbe
 
   return (
     <div>
-      {vaultDecision && (
-        <div className="panel">
-          <div className="screen-header" style={{ marginBottom: 12 }}>
-            <div className="screen-header__title-group">
-              <h3>Great Vault vs Voidcore</h3>
-              <span className="screen-header__meta">{VERDICT_LABEL[vaultDecision.verdict]}</span>
-            </div>
-          </div>
-          <div className="rec-card__compare">
-            <div className={`rec-card__compare-option${vaultDecision.verdict !== 'vault' ? ' rec-card__compare-option--win' : ''}`}>
-              <div className="rec-card__compare-label">Voidcore roll</div>
-              <div className="rec-card__compare-value num">{vaultDecision.voidcoreGainPct.toFixed(2)}%</div>
-            </div>
-            <div className={`rec-card__compare-option${vaultDecision.verdict === 'vault' ? ' rec-card__compare-option--win' : ''}`}>
-              <div className="rec-card__compare-label">{vaultItemName ?? 'Vault item'}</div>
-              <div className="rec-card__compare-value num">{vaultDecision.vaultItemGainPct.toFixed(2)}%</div>
-            </div>
-          </div>
-          <p className="rec-card__note--strong">{vaultDecision.explanation}</p>
-          {vaultDecision.savedRolls > 0 && (
-            <p className="note-line">Saved rolls credited to the next-best boss: {vaultDecision.savedRolls.toFixed(2)}</p>
-          )}
-          {vaultDecision.notes.map((n, i) => (
-            <p key={i} className="note-line">
-              {n}
-            </p>
-          ))}
-        </div>
-      )}
-
       <div className="panel">
         <div className="screen-header" style={{ marginBottom: 12 }}>
           <div className="screen-header__title-group">

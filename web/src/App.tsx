@@ -4,7 +4,7 @@ import { addEntry, createState, deserialize, removeEntry, serialize, setRollsSpe
 import { buildBossPools } from '@engine/core/pool'
 import { recommend } from '@engine/core/rank'
 import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
-import type { BossEval, KnockoutState, Settings, VaultDecision, VaultItemInput } from '@engine/core/types'
+import type { BossEval, KnockoutState, Settings, VaultItemInput } from '@engine/core/types'
 import { detectSource, friendlyReportMismatch, friendlyUnsupportedContent, SOURCE_LABELS, type ReportSource } from './lib/urlDetect'
 import { fetchLootTable, fetchReport, fetchTopGear, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData, type CardData } from './lib/cardData'
@@ -35,8 +35,6 @@ const storageAdapter = new LocalStorageAdapter()
 type PricedSnapshot = {
   card: CardData
   bossEvals: BossEval[]
-  vaultDecision: VaultDecision | null
-  vaultItemName?: string
 }
 
 export default function App() {
@@ -130,8 +128,14 @@ export default function App() {
 
   const cardData = useMemo(() => {
     if (!recommendation) return null
-    return buildCardData({ recommendation, bossEvals, vaultDecision, vaultItemName: vaultItemInput?.name })
-  }, [recommendation, bossEvals, vaultDecision, vaultItemInput])
+    return buildCardData({
+      recommendation,
+      bossEvals,
+      vaultDecision,
+      vaultItemName: vaultItemInput?.name,
+      isManualVaultGain: !!vaultItemInput && !topGearVaultItem,
+    })
+  }, [recommendation, bossEvals, vaultDecision, vaultItemInput, topGearVaultItem])
 
   const notInReportCount = useMemo(() => {
     if (!report || !lootTable) return null
@@ -340,7 +344,7 @@ export default function App() {
 
   function handlePrice() {
     if (!cardData) return
-    setPriced({ card: cardData, bossEvals, vaultDecision, vaultItemName: vaultItemInput?.name })
+    setPriced({ card: cardData, bossEvals })
     hasPricedRef.current = true
     setStale(false)
   }
@@ -629,12 +633,7 @@ export default function App() {
             <div className={`priced-section${stale ? ' priced-section--stale' : ''}`} aria-live="polite">
               <RecommendationCard card={priced.card} />
               <div style={{ marginTop: 16 }}>
-                <PricedDetail
-                  bossEvals={priced.bossEvals}
-                  thresholdPct={thresholdPct}
-                  vaultDecision={priced.vaultDecision}
-                  vaultItemName={priced.vaultItemName}
-                />
+                <PricedDetail bossEvals={priced.bossEvals} thresholdPct={thresholdPct} />
               </div>
             </div>
           )}
