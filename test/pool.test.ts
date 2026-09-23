@@ -37,7 +37,7 @@ function makeReport(items: NormalizedItem[], overrides: Partial<NormalizedReport
 }
 
 function makeKnockout(overrides: Partial<KnockoutState> = {}): KnockoutState {
-  return { character: 'Iceshaman', difficulty: 'raid-vault-heroic', entries: [], version: 1, ...overrides }
+  return { character: 'Iceshaman', difficulty: 'raid-vault-heroic', entries: [], version: 2, ...overrides }
 }
 
 const SETTINGS: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
@@ -83,7 +83,7 @@ describe('buildBossPools', () => {
   it('knocks out the right entry and shifts ev accordingly', () => {
     const report = makeReport([item({ itemId: 100, delta: 1000 }), item({ itemId: 200, delta: 2000 })])
     const knockout = makeKnockout({
-      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll' }],
+      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', state: 'rolled' }],
     })
     const [boss] = buildBossPools(report, knockout, SETTINGS)
     expect(boss.pool.find((p) => p.itemIds[0] === 100)?.knockedOut).toBe(true)
@@ -104,6 +104,7 @@ describe('buildBossPools', () => {
           source: 'roll',
           specSpecific: true,
           spec: 'restoration',
+          state: 'rolled',
         },
       ],
     })
@@ -120,7 +121,7 @@ describe('buildBossPools', () => {
     const report = makeReport([item({ itemId: 100, delta: 1000 })])
     const knockout = makeKnockout({
       difficulty: 'raid-vault-normal',
-      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll' }],
+      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', state: 'rolled' }],
     })
     const [boss] = buildBossPools(report, knockout, SETTINGS)
     expect(boss.pool[0].knockedOut).toBe(false)
@@ -154,7 +155,7 @@ describe('buildBossPools', () => {
   it('reports "pool exhausted" once every entry is knocked out', () => {
     const report = makeReport([item({ itemId: 100, delta: 1000 })])
     const knockout = makeKnockout({
-      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll' }],
+      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', state: 'rolled' }],
     })
     const [boss] = buildBossPools(report, knockout, SETTINGS)
     expect(boss.remaining).toBe(0)
@@ -197,7 +198,7 @@ describe('buildBossPools', () => {
       item({ itemId: 300, delta: 3000 }),
     ])
     const knockout = makeKnockout({
-      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll' }],
+      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', state: 'rolled' }],
     })
     const [boss] = buildBossPools(report, knockout, SETTINGS)
 
@@ -233,6 +234,83 @@ describe('buildBossPools', () => {
     const report = makeReport([item({ itemId: 100, delta: 1000 })])
     const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
     expect(boss.pool[0].specSpecific).toBe(false)
+  })
+})
+
+describe('buildBossPools -- roll-only knockout (owned vs rolled)', () => {
+  const knock = (itemId: number, state: 'owned' | 'rolled') =>
+    makeKnockout({ entries: [{ itemId, itemName: `Item ${itemId}`, encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'manual', state }] })
+
+  it('keeps an owned (non-roll) item in the pool as a value-0 dud, still counted in the denominator', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 }), item({ itemId: 200, delta: 3000 })])
+    const [boss] = buildBossPools(report, knock(100, 'owned'), SETTINGS)
+
+    const dud = boss.pool.find((p) => p.itemIds[0] === 100)!
+    expect(dud.ownership).toBe('owned')
+    expect(dud.isDud).toBe(true)
+    expect(dud.knockedOut).toBe(false)
+    // Denominator still 2 (dud stays), numerator only the 3000 upgrade -> EV = 3000/2 = 1500.
+    expect(boss.remaining).toBe(2)
+    expect(boss.ev).toBe(1500)
+    expect(boss.bestCase?.itemIds).toEqual([200])
+    expect(boss.notes.some((n) => n.includes('owned dud'))).toBe(true)
+  })
+
+  it('gives a lower EV for an owned dud than the same item rolled (removed) -- the roll-only correction', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 }), item({ itemId: 200, delta: 3000 })])
+    const owned = buildBossPools(report, knock(100, 'owned'), SETTINGS)[0]
+    const rolled = buildBossPools(report, knock(100, 'rolled'), SETTINGS)[0]
+
+    // Rolled: item removed -> EV over the single 3000 upgrade = 3000. Owned dud: 3000/2 = 1500.
+    expect(rolled.ev).toBe(3000)
+    expect(owned.ev).toBe(1500)
+    expect(owned.ev).toBeLessThan(rolled.ev)
+  })
+
+  it('removes one unknown (lowest-value) item per unattributed roll, and reports rolls spent/attributed', () => {
+    const report = makeReport([
+      item({ itemId: 100, delta: 500 }),
+      item({ itemId: 200, delta: 1000 }),
+      item({ itemId: 300, delta: 3000 }),
+    ])
+    // 2 rolls spent on this boss, none attributed to a specific rolled item.
+    const knockout = makeKnockout({ rollsSpent: { 2888: 2 } })
+    const [boss] = buildBossPools(report, knockout, SETTINGS)
+
+    expect(boss.rollsSpent).toBe(2)
+    expect(boss.rollsAttributed).toBe(0)
+    expect(boss.rollsUnattributed).toBe(2)
+    // The two lowest (500, 1000) are removed; only the 3000 upgrade remains.
+    expect(boss.remaining).toBe(1)
+    expect(boss.ev).toBe(3000)
+    expect(boss.pool.filter((p) => p.removedAsUnattributed).map((p) => p.itemIds[0]).sort((a, b) => a - b)).toEqual([100, 200])
+  })
+
+  it('clamps the effective rolls-spent counter up to the count of rolled (attributed) items', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000 }), item({ itemId: 200, delta: 2000 })])
+    // Two items rolled, but rollsSpent stored as 1 -- effective counter clamps up to 2, so no
+    // extra unattributed removal happens.
+    const knockout = makeKnockout({
+      rollsSpent: { 2888: 1 },
+      entries: [
+        { itemId: 100, itemName: 'A', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', state: 'rolled' },
+        { itemId: 200, itemName: 'B', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', state: 'rolled' },
+      ],
+    })
+    const [boss] = buildBossPools(report, knockout, SETTINGS)
+    expect(boss.rollsAttributed).toBe(2)
+    expect(boss.rollsSpent).toBe(2)
+    expect(boss.rollsUnattributed).toBe(0)
+    expect(boss.remaining).toBe(0)
+  })
+
+  it('never removes the BIS (highest-value) item to model an unattributed roll -- only unknown non-BIS items', () => {
+    const report = makeReport([item({ itemId: 100, delta: 500 }), item({ itemId: 999, delta: 9000 })])
+    const [boss] = buildBossPools(report, makeKnockout({ rollsSpent: { 2888: 1 } }), SETTINGS)
+    // One unattributed roll removes the lowest (500); the 9000 BIS survives.
+    expect(boss.remaining).toBe(1)
+    expect(boss.pool.find((p) => p.itemIds[0] === 999)?.knockedOut).toBe(false)
+    expect(boss.pool.find((p) => p.itemIds[0] === 100)?.removedAsUnattributed).toBe(true)
   })
 })
 
@@ -295,7 +373,7 @@ describe('buildBossPools with a loot table (full pool denominator)', () => {
       { encounterId: 2888, encounterName: "Nek'zali the Soulcoiler", items: [lootItem({ itemId: 100, specSpecific: true })] },
     ]
     const knockout = makeKnockout({
-      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', lootSpecId: 262 }],
+      entries: [{ itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'roll', lootSpecId: 262, state: 'rolled' }],
     })
 
     const differentSpec = buildBossPools(report, knockout, { ...SETTINGS, lootSpecId: 264 }, lootTable)
@@ -313,7 +391,7 @@ describe('buildBossPools with a loot table (full pool denominator)', () => {
     ]
     const knockout = makeKnockout({
       entries: [
-        { itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'manual', specSpecific: true, spec: 'restoration' },
+        { itemId: 100, itemName: 'Test Item', encounterId: 2888, receivedAt: '2026-09-01T00:00:00Z', source: 'manual', specSpecific: true, spec: 'restoration', state: 'rolled' },
       ],
     })
 

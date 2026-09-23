@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { compareVault, rollsToTarget, vaultItemFromTopGear } from '../src/core/vault'
-import type { BossEval, PoolEntry, Recommendation, Settings } from '../src/core/types'
-import type { NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../src/types'
+import { buildBossPools } from '../src/core/pool'
+import type { BossEval, KnockoutState, PoolEntry, Recommendation, Settings } from '../src/core/types'
+import type { NormalizedItem, NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../src/types'
 
 const BASELINE = 100000
 
@@ -15,6 +16,8 @@ function makeEntry(key: string, value: number, overrides: Partial<PoolEntry> = {
     pct: (value / BASELINE) * 100,
     kind: 'item',
     specSpecific: false,
+    ownership: 'none',
+    isDud: false,
     knockedOut: false,
     ...overrides,
   }
@@ -105,6 +108,9 @@ function makeBoss(encounterId: number, encounterName: string, pool: PoolEntry[],
     instanceId: 1320,
     pool,
     remaining,
+    rollsSpent: pool.filter((p) => p.ownership === 'rolled').length,
+    rollsAttributed: pool.filter((p) => p.ownership === 'rolled').length,
+    rollsUnattributed: 0,
     ev,
     evPct,
     bestCase,
@@ -231,6 +237,76 @@ describe('compareVault', () => {
     expect(decision.savedRolls).toBe(0)
     expect(decision.notes.some((n) => n.includes('Could not identify the loot pool'))).toBe(true)
     expect(decision.vaultItemGainPct).toBe(2.0)
+  })
+})
+
+// Canonical roll-only-knockout case (operator ruling): taking a raid vault item X does NOT
+// knock X out of its boss's roll pool; X becomes a value-0 dud there, so next week's roll on
+// that boss is DILUTED, not shrunk. Modeled via a KnockoutEntry with state 'owned'.
+describe('compareVault -- roll-only knockout: a taken vault item is a dud, not a removal', () => {
+  const WEAPON_ID = 271700 // a weapon that drops from Ula'tek (encounter 2895)
+  const ULATEK = 2895
+
+  function ulatekReport(): NormalizedReport {
+    const item = (overrides: Partial<NormalizedItem>): NormalizedItem => ({
+      itemId: 0,
+      name: 'Item',
+      encounterId: ULATEK,
+      encounterName: "Ula'tek",
+      instanceId: 1320,
+      ilvl: 334,
+      delta: 0,
+      pct: 0,
+      ...overrides,
+    })
+    return makeReport({
+      items: [
+        item({ itemId: WEAPON_ID, name: 'Coilfang Cleaver', delta: 4000 }),
+        item({ itemId: 500, name: 'Ring of Depths', delta: 1000 }),
+        item({ itemId: 600, name: 'Cloak of Silt', delta: 500 }),
+      ],
+    })
+  }
+
+  const knock = (state: 'owned' | 'rolled'): KnockoutState => ({
+    character: 'Iceshaman',
+    difficulty: 'raid-vault-heroic',
+    version: 2,
+    rollsSpent: {},
+    entries: [{ itemId: WEAPON_ID, itemName: 'Coilfang Cleaver', encounterId: ULATEK, receivedAt: '2026-09-08T00:00:00Z', source: 'manual', state }],
+  })
+
+  it("next week's Ula'tek roll EV reflects the taken weapon as a dud -- lower than the old knockout-removal behavior", () => {
+    const report = ulatekReport()
+    const asDud = buildBossPools(report, knock('owned'), SETTINGS)[0]
+    const asRemoved = buildBossPools(report, knock('rolled'), SETTINGS)[0]
+
+    // Old (knockout-removal) behavior: weapon gone -> EV over {1000, 500} = 750.
+    expect(asRemoved.remaining).toBe(2)
+    expect(asRemoved.ev).toBe(750)
+
+    // Roll-only behavior: weapon stays as a value-0 dud -> EV over {0, 1000, 500}/3 = 500.
+    expect(asDud.remaining).toBe(3)
+    expect(asDud.ev).toBeCloseTo(500, 10)
+    expect(asDud.ev).toBeLessThan(asRemoved.ev)
+
+    const weaponEntry = asDud.pool.find((p) => p.itemIds[0] === WEAPON_ID)!
+    expect(weaponEntry.isDud).toBe(true)
+    expect(weaponEntry.knockedOut).toBe(false)
+  })
+
+  it('compareVault notes that taking the vault item leaves it in the pool as a value-0 dud', () => {
+    const report = ulatekReport()
+    const emptyKnockout: KnockoutState = { character: 'Iceshaman', difficulty: 'raid-vault-heroic', version: 2, rollsSpent: {}, entries: [] }
+    const bossEvals = buildBossPools(report, emptyKnockout, SETTINGS)
+    const decision = compareVault({
+      vaultItem: { name: 'Coilfang Cleaver', gainPct: 4.0, itemId: WEAPON_ID },
+      bossEvals,
+      recommendation: makeRecommendation(2.0),
+      settings: SETTINGS,
+      report,
+    })
+    expect(decision.notes.some((n) => n.includes('value-0 dud'))).toBe(true)
   })
 })
 

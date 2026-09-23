@@ -21,6 +21,8 @@ function toEntry(key: string, itemIds: number[], best: NormalizedItem, kind: Poo
     kind,
     tierSlot: best.tierSlot,
     specSpecific,
+    ownership: 'none',
+    isDud: false,
     knockedOut: false,
     errorPct: best.meanError !== undefined && baseline > 0 ? (best.meanError / baseline) * 100 : undefined,
   }
@@ -38,9 +40,16 @@ function phantomEntry(key: string, itemIds: number[], name: string, kind: PoolEn
     kind,
     tierSlot,
     specSpecific,
+    ownership: 'none',
+    isDud: false,
     knockedOut: false,
     notInSimReport: true,
   }
+}
+
+/** The value an entry contributes to EV: a dud (owned, not rolled) is worth 0 even though it stays in the pool. */
+function effectiveValue(entry: PoolEntry): number {
+  return entry.isDud ? 0 : entry.value
 }
 
 /** Mean of the remaining pool's `errorPct` values, or undefined if none carry one (e.g. QE Live). */
@@ -51,28 +60,45 @@ function meanErrorPct(entries: PoolEntry[]): number | undefined {
 }
 
 /**
- * An entry is knocked out if some knockout entry matches one of its item ids AND
- * (it isn't spec-specific, or it's spec-specific for the loot spec currently in
- * effect). "Spec-specific" is automatic from the matching PoolEntry (derived from
- * the loot table) unless the KnockoutEntry itself sets `specSpecific` explicitly --
- * that's the manual override for a spec-restriction the loot table doesn't know
- * about yet. When both sides carry a numeric loot spec id, that's compared directly;
- * otherwise this falls back to the legacy string `spec` comparison for older data.
+ * Resolves the roll-only ownership state for a pool entry: the state of the matching
+ * knockout entry (`'owned'` or `'rolled'`), or `'none'` when no entry matches. A match
+ * requires the item id AND that the spec-specific gate passes: an entry isn't spec-specific,
+ * or it's spec-specific for the loot spec currently in effect. "Spec-specific" is automatic
+ * from the PoolEntry (derived from the loot table) unless the KnockoutEntry sets `specSpecific`
+ * explicitly -- the manual override for a spec restriction the loot table doesn't know yet.
+ * When both sides carry a numeric loot spec id, that's compared directly; otherwise this falls
+ * back to the legacy string `spec` comparison for older data.
  */
-function isKnockedOut(
+function resolveOwnership(
   itemIds: number[],
   poolEntrySpecSpecific: boolean,
   entries: KnockoutState['entries'],
   reportSpec: string,
   currentLootSpecId: number | undefined
-): boolean {
-  return entries.some((entry) => {
-    if (!itemIds.includes(entry.itemId)) return false
+): 'none' | 'owned' | 'rolled' {
+  let result: 'none' | 'owned' | 'rolled' = 'none'
+  for (const entry of entries) {
+    if (!itemIds.includes(entry.itemId)) continue
     const specSpecific = entry.specSpecific ?? poolEntrySpecSpecific
-    if (!specSpecific) return true
-    if (entry.lootSpecId !== undefined && currentLootSpecId !== undefined) return entry.lootSpecId === currentLootSpecId
-    return entry.spec === reportSpec
-  })
+    if (specSpecific) {
+      const matches =
+        entry.lootSpecId !== undefined && currentLootSpecId !== undefined
+          ? entry.lootSpecId === currentLootSpecId
+          : entry.spec === reportSpec
+      if (!matches) continue
+    }
+    // 'rolled' wins over 'owned' if the same item somehow carries both (rolled implies owned).
+    if (entry.state === 'rolled') return 'rolled'
+    result = 'owned'
+  }
+  return result
+}
+
+/** Stamps a pool entry with its ownership state: a dud stays in the pool at value 0; a rolled item is knocked out. */
+function applyOwnership(entry: PoolEntry, ownership: 'none' | 'owned' | 'rolled'): void {
+  entry.ownership = ownership
+  entry.isDud = ownership === 'owned'
+  entry.knockedOut = ownership === 'rolled'
 }
 
 /**
@@ -164,7 +190,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
         notInSimReportCount++
         entry = phantomEntry(`item:${itemId}`, [itemId], lootRow!.name, lootRow!.isTier ? 'tier-token' : 'item', lootRow!.tierSlot, specSpecific)
       }
-      entry.knockedOut = isKnockedOut(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId)
+      applyOwnership(entry, resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId))
       pool.push(entry)
     }
 
@@ -179,16 +205,37 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
         ? toEntry(`curio:${encounterId}`, [...curioItemIds], { ...best, name: CURIO_NAME }, 'curio', report.baseline, false)
         : phantomEntry(`curio:${encounterId}`, [...curioItemIds], lootCurioById.values().next().value?.name ?? CURIO_NAME, 'curio', undefined, false)
       entry.tierSlot = undefined
-      entry.knockedOut = isKnockedOut(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId)
+      applyOwnership(entry, resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId))
       pool.push(entry)
       notes.push(CURIO_NOTE)
     }
 
+    // Unattributed bonus rolls: a roll counted against this boss but not tied to a
+    // specific 'rolled' entry still removed one item from the pool. It can't have been
+    // the player's BIS (they'd have marked that), so model it as removing the lowest-value
+    // remaining "none" (unknown) entry -- never a dud (already known) and never below the
+    // count of attributed rolls (the effective counter is clamped up to it).
+    const rolledCount = pool.filter((p) => p.ownership === 'rolled').length
+    const storedRollsSpent = difficultyMismatch ? 0 : knockout.rollsSpent?.[encounterId] ?? 0
+    const effectiveRollsSpent = Math.max(storedRollsSpent, rolledCount)
+    let unattributed = effectiveRollsSpent - rolledCount
+    if (unattributed > 0) {
+      const unknownRemaining = pool
+        .filter((p) => p.ownership === 'none' && !p.knockedOut)
+        .sort((a, b) => effectiveValue(a) - effectiveValue(b))
+      for (const entry of unknownRemaining) {
+        if (unattributed <= 0) break
+        entry.knockedOut = true
+        entry.removedAsUnattributed = true
+        unattributed--
+      }
+    }
+
     const remainingEntries = pool.filter((p) => !p.knockedOut)
     const remaining = remainingEntries.length
-    const ev = remaining > 0 ? remainingEntries.reduce((sum, p) => sum + p.value, 0) / remaining : 0
+    const ev = remaining > 0 ? remainingEntries.reduce((sum, p) => sum + effectiveValue(p), 0) / remaining : 0
     const evPct = report.baseline > 0 ? (ev / report.baseline) * 100 : 0
-    const bestCase = remaining > 0 ? remainingEntries.reduce((a, b) => (b.value > a.value ? b : a)) : null
+    const bestCase = remaining > 0 ? remainingEntries.reduce((a, b) => (effectiveValue(b) > effectiveValue(a) ? b : a)) : null
 
     const thresholdValue = (settings.thresholdPct / 100) * report.baseline
     for (const entry of remainingEntries) {
@@ -198,8 +245,14 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       entry.rollsToTargetTruncated = expectedTruncated
     }
 
-    const knockedOutCount = pool.length - remaining
-    if (knockedOutCount > 0) notes.push(`${knockedOutCount} item${knockedOutCount === 1 ? '' : 's'} knocked out`)
+    const knockedOutCount = pool.filter((p) => p.ownership === 'rolled').length
+    if (knockedOutCount > 0) notes.push(`${knockedOutCount} item${knockedOutCount === 1 ? '' : 's'} rolled (knocked out)`)
+    const dudCount = pool.filter((p) => p.isDud).length
+    if (dudCount > 0) notes.push(`${dudCount} owned dud${dudCount === 1 ? '' : 's'} in pool (value 0)`)
+    const rollsUnattributed = effectiveRollsSpent - rolledCount
+    if (rollsUnattributed > 0) {
+      notes.push(`${rollsUnattributed} unattributed roll${rollsUnattributed === 1 ? '' : 's'} removed an unknown item from the pool`)
+    }
     if (remaining === 0) notes.push('pool exhausted')
 
     if (notInSimReportCount > 0) {
@@ -218,6 +271,9 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       instanceId: items[0]?.instanceId ?? report.instanceId ?? 0,
       pool,
       remaining,
+      rollsSpent: effectiveRollsSpent,
+      rollsAttributed: rolledCount,
+      rollsUnattributed,
       ev,
       evPct,
       bestCase,

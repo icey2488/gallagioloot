@@ -1,6 +1,17 @@
 // Decision-engine types. Pure data -- no Worker/runtime dependencies, importable
 // by a future frontend as-is.
 
+/**
+ * How the player obtained an item, under the roll-only knockout model (operator ruling):
+ * - `'rolled'`: received FROM A BONUS ROLL. Removed from that boss's roll pool -- a true
+ *   knockout, it can no longer be drawn.
+ * - `'owned'`: obtained any OTHER way (regular drop, Great Vault, trade). Stays in the pool
+ *   as a value-0 "dud": still counted in the EV denominator, but worth nothing if drawn.
+ * The absence of a KnockoutEntry for an item is the implicit third state, "none".
+ * `'rolled'` implies `'owned'`.
+ */
+export type ItemOwnership = 'owned' | 'rolled'
+
 export type KnockoutEntry = {
   itemId: number
   itemName: string
@@ -17,6 +28,11 @@ export type KnockoutEntry = {
   /** The loot spec this item was received/recorded under. Recorded on every entry going forward. */
   lootSpecId?: number
   source: 'roll' | 'manual'
+  /**
+   * Roll-only knockout state (see ItemOwnership). A pre-v2 entry has no `state`; it meant
+   * "removed from the pool", i.e. `'rolled'` -- `deserialize()` migrates it to that.
+   */
+  state: ItemOwnership
 }
 
 export type KnockoutState = {
@@ -25,7 +41,15 @@ export type KnockoutState = {
   region?: string
   difficulty: string
   entries: KnockoutEntry[]
-  version: 1
+  /**
+   * Bonus rolls spent per boss (encounterId -> count), for the unattributed-rolls model.
+   * A roll not attributed to a specific `'rolled'` entry still removes one unknown, non-BIS
+   * item from that boss's pool (had it been a BIS hit, the player would have marked it).
+   * The effective counter is never below the boss's count of `'rolled'` entries (buildBossPools
+   * clamps it up); an absent/missing key means no unattributed rolls for that boss.
+   */
+  rollsSpent?: Record<number, number>
+  version: 2
 }
 
 export type Settings = {
@@ -75,6 +99,18 @@ export type PoolEntry = {
   specSpecific: boolean
   /** True for a PoolEntry synthesized from the loot table with no matching report item -- see buildBossPools. */
   notInSimReport?: boolean
+  /**
+   * Roll-only ownership state from the knockout state:
+   * - `'none'`: no knockout entry -- a normal, full-value pool member.
+   * - `'owned'`: owned from a non-roll source -- a value-0 dud that stays in the pool (`isDud: true`, `knockedOut: false`).
+   * - `'rolled'`: received via a bonus roll -- removed from the pool (`knockedOut: true`).
+   */
+  ownership: 'none' | 'owned' | 'rolled'
+  /** True when this entry is a dud (owned but not rolled): kept in the pool denominator, but contributes 0 to EV. */
+  isDud: boolean
+  /** True when this entry was removed to model an unattributed bonus roll (rollsSpent exceeding the count of `'rolled'` entries), not by an explicit rolled knockout. */
+  removedAsUnattributed?: boolean
+  /** True when the entry is out of the remaining roll pool: either `'rolled'`, or removed to model an unattributed roll. Duds are NOT knocked out. */
   knockedOut: boolean
   /** Expected rolls to land this entry via uniform sampling without replacement: (n+1)/2 for a remaining pool of size n. Set only for non-knocked-out entries. */
   rollsToTargetExpected?: number
@@ -92,6 +128,12 @@ export type BossEval = {
   instanceId: number
   pool: PoolEntry[]
   remaining: number
+  /** Bonus rolls spent on this boss: the effective counter, max(stored rollsSpent, count of `'rolled'` entries). */
+  rollsSpent: number
+  /** How many of `rollsSpent` are attributed to a specific `'rolled'` pool entry. */
+  rollsAttributed: number
+  /** `rollsSpent - rollsAttributed`: rolls that each removed one unknown, non-BIS item from the pool. */
+  rollsUnattributed: number
   ev: number
   evPct: number
   bestCase: PoolEntry | null

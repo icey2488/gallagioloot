@@ -1,11 +1,12 @@
-import { beforeEach, describe, expect, it } from 'vitest'
-import { createState, storageKey } from '@engine/core/knockout'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { createState, serialize, storageKey } from '@engine/core/knockout'
 import {
   LocalStorageAdapter,
   loadLastReportUrl,
   loadLastTopGearUrl,
   loadSettings,
   loadVoidcoreCount,
+  migrateLegacyLocationKey,
   saveLastReportUrl,
   saveLastTopGearUrl,
   saveSettings,
@@ -74,6 +75,68 @@ describe('LocalStorageAdapter', () => {
     const adapter = new LocalStorageAdapter()
     localStorage.setItem('gallagioloot:knockout:broken', '{not json')
     expect(await adapter.load('broken')).toBeNull()
+  })
+})
+
+describe('migrateLegacyLocationKey (empty region/realm -> resolved key)', () => {
+  const KNOCKOUT_PREFIX = 'gallagioloot:knockout:'
+
+  it('migrates a single legacy (empty region/realm) key to the resolved key, filling in region/realm', () => {
+    // Legacy key written before region/realm were resolved: "::icemagus:raid-vault-mythic".
+    const legacy = createState('icemagus', 'raid-vault-mythic') // no realm/region -> "::icemagus:raid-vault-mythic"
+    const legacyKey = storageKey(legacy)
+    localStorage.setItem(KNOCKOUT_PREFIX + legacyKey, serialize(legacy))
+
+    const resolvedKey = storageKey({ character: 'icemagus', realm: 'hyjal', region: 'us', difficulty: 'raid-vault-mythic' })
+    const migrated = migrateLegacyLocationKey(resolvedKey)
+
+    expect(migrated).not.toBeNull()
+    expect(migrated!.region).toBe('us')
+    expect(migrated!.realm).toBe('hyjal')
+    // Legacy key removed, resolved key now holds the data.
+    expect(localStorage.getItem(KNOCKOUT_PREFIX + legacyKey)).toBeNull()
+    expect(localStorage.getItem(KNOCKOUT_PREFIX + resolvedKey)).not.toBeNull()
+  })
+
+  it('does not migrate (and logs) when more than one legacy key matches the same character+difficulty', () => {
+    // Two differently-shaped legacy keys for the same character+difficulty: both empty, and
+    // realm-only-missing. Ambiguous -- leave both, warn.
+    const bothEmpty = storageKey({ character: 'icemagus', difficulty: 'raid-vault-mythic' })
+    const realmMissing = storageKey({ character: 'icemagus', region: 'us', difficulty: 'raid-vault-mythic' })
+    localStorage.setItem(KNOCKOUT_PREFIX + bothEmpty, serialize(createState('icemagus', 'raid-vault-mythic')))
+    localStorage.setItem(KNOCKOUT_PREFIX + realmMissing, serialize(createState('icemagus', 'raid-vault-mythic', undefined, 'us')))
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const resolvedKey = storageKey({ character: 'icemagus', realm: 'hyjal', region: 'us', difficulty: 'raid-vault-mythic' })
+    const migrated = migrateLegacyLocationKey(resolvedKey)
+
+    expect(migrated).toBeNull()
+    expect(warn).toHaveBeenCalled()
+    expect(localStorage.getItem(KNOCKOUT_PREFIX + bothEmpty)).not.toBeNull()
+    expect(localStorage.getItem(KNOCKOUT_PREFIX + realmMissing)).not.toBeNull()
+    warn.mockRestore()
+  })
+
+  it('never clobbers an existing resolved key', () => {
+    const resolvedKey = storageKey({ character: 'icemagus', realm: 'hyjal', region: 'us', difficulty: 'raid-vault-mythic' })
+    localStorage.setItem(KNOCKOUT_PREFIX + resolvedKey, serialize(createState('icemagus', 'raid-vault-mythic', 'hyjal', 'us')))
+    localStorage.setItem(KNOCKOUT_PREFIX + storageKey(createState('icemagus', 'raid-vault-mythic')), serialize(createState('icemagus', 'raid-vault-mythic')))
+
+    expect(migrateLegacyLocationKey(resolvedKey)).toBeNull()
+  })
+
+  it('is a no-op when the resolved key is itself legacy-shaped (empty region/realm)', () => {
+    localStorage.setItem(KNOCKOUT_PREFIX + '::icemagus:raid-vault-mythic', serialize(createState('icemagus', 'raid-vault-mythic')))
+    expect(migrateLegacyLocationKey('::icemagus:raid-vault-mythic')).toBeNull()
+  })
+
+  it('leaves a legacy key for a different character untouched', () => {
+    const other = storageKey({ character: 'bravechar', difficulty: 'raid-vault-mythic' })
+    localStorage.setItem(KNOCKOUT_PREFIX + other, serialize(createState('bravechar', 'raid-vault-mythic')))
+    const resolvedKey = storageKey({ character: 'icemagus', realm: 'hyjal', region: 'us', difficulty: 'raid-vault-mythic' })
+
+    expect(migrateLegacyLocationKey(resolvedKey)).toBeNull()
+    expect(localStorage.getItem(KNOCKOUT_PREFIX + other)).not.toBeNull()
   })
 })
 

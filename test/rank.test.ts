@@ -15,6 +15,8 @@ function pool(values: number[]): PoolEntry[] {
     pct: (value / BASELINE) * 100,
     kind: 'item',
     specSpecific: false,
+    ownership: 'none',
+    isDud: false,
     knockedOut: false,
   }))
 }
@@ -28,6 +30,9 @@ function makeBoss(encounterId: number, encounterName: string, values: number[], 
     instanceId: 1320,
     pool: pool(values),
     remaining: values.length,
+    rollsSpent: 0,
+    rollsAttributed: 0,
+    rollsUnattributed: 0,
     ev,
     evPct,
     bestCase: values.length > 0 ? pool(values).reduce((a, b) => (b.value > a.value ? b : a)) : null,

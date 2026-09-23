@@ -6,6 +6,11 @@ function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length
 }
 
+/** EV-contributing value of a pool entry: a dud (owned, not rolled) is worth 0 while still occupying the pool. */
+function poolValue(entry: PoolEntry): number {
+  return entry.isDud ? 0 : entry.value
+}
+
 /**
  * Exact expected/worst-case/threshold-truncated roll counts to land one specific pool
  * entry via uniform sampling without replacement (knockout: each roll permanently
@@ -49,7 +54,7 @@ export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValu
         continue
       }
       const after = remaining.filter((p) => p.key !== drawn.key)
-      const keepsHunting = mean(after.map((p) => p.value)) >= thresholdValue
+      const keepsHunting = mean(after.map((p) => poolValue(p))) >= thresholdValue
       total += 1 + (keepsHunting ? expectedRemainingRolls(after) : 0)
     }
 
@@ -110,11 +115,18 @@ export function compareVault(input: {
 
   const thresholdValue = (settings.thresholdPct / 100) * report.baseline
 
+  // Roll-only knockout: taking the vault item X does NOT remove X from its boss's roll
+  // pool -- X becomes a value-0 dud there, so next week's roll on that boss is diluted, not
+  // shrunk (see buildBossPools' `owned` handling). The saved-rolls credit is kept as-is: it
+  // stands for the bonus rolls you'd otherwise spend hunting X, freed to spend on the best
+  // OTHER boss (altRollEvPct below already excludes X's own boss, so X's post-vault dud state
+  // doesn't feed back into this figure).
   let savedRolls = 0
   if (found) {
     const remainingPool = found.boss.pool.filter((p) => !p.knockedOut)
     const { expectedTruncated } = rollsToTarget(remainingPool, found.target.key, thresholdValue)
     savedRolls = Math.min(expectedTruncated, remainingPool.length)
+    notes.push(`Taking "${vaultItem!.name}" leaves it in ${found.boss.encounterName}'s roll pool as a value-0 dud (roll-only knockout).`)
   }
 
   const excludeEncounterId = found?.boss.encounterId
