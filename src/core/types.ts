@@ -108,9 +108,13 @@ export type PoolEntry = {
   ownership: 'none' | 'owned' | 'rolled'
   /** True when this entry is a dud (owned but not rolled): kept in the pool denominator, but contributes 0 to EV. */
   isDud: boolean
-  /** True when this entry was removed to model an unattributed bonus roll (rollsSpent exceeding the count of `'rolled'` entries), not by an explicit rolled knockout. */
-  removedAsUnattributed?: boolean
-  /** True when the entry is out of the remaining roll pool: either `'rolled'`, or removed to model an unattributed roll. Duds are NOT knocked out. */
+  /**
+   * True only for a `'rolled'` entry. Unattributed bonus rolls (rollsSpent exceeding the
+   * count of `'rolled'` entries) do NOT knock out any specific entry -- a forgotten roll
+   * carries no information about what it gave, so it's modeled as a fractional mean draw
+   * against the boss's whole remaining "unknown" pool instead (see `BossEval.remaining`,
+   * which is reduced by that fraction, and `buildBossPools`' `unattributedAdjustment`).
+   */
   knockedOut: boolean
   /** Expected rolls to land this entry via uniform sampling without replacement: (n+1)/2 for a remaining pool of size n. Set only for non-knocked-out entries. */
   rollsToTargetExpected?: number
@@ -134,6 +138,13 @@ export type BossEval = {
   encounterName: string
   instanceId: number
   pool: PoolEntry[]
+  /**
+   * Count of non-knocked-out pool entries, minus the fractional denominator taken by any
+   * unattributed bonus rolls (see `unattributedAdjustment` in pool.ts) -- so this can be
+   * less than the number of entries actually still present in `pool` with `knockedOut:
+   * false`. Not necessarily an integer number of *entries* conceptually, but always an
+   * integer value: each unattributed roll subtracts exactly 1.
+   */
   remaining: number
   /** Bonus rolls spent on this boss: the effective counter, max(stored rollsSpent, count of `'rolled'` entries). */
   rollsSpent: number

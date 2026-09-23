@@ -375,7 +375,7 @@ describe('buildBossPools -- roll-only knockout (owned vs rolled)', () => {
     expect(owned.ev).toBeLessThan(rolled.ev)
   })
 
-  it('removes one unknown (lowest-value) item per unattributed roll, and reports rolls spent/attributed', () => {
+  it('models unattributed rolls as a fractional uniform draw, not a physical removal, and reports rolls spent/attributed', () => {
     const report = makeReport([
       item({ itemId: 100, delta: 500 }),
       item({ itemId: 200, delta: 1000 }),
@@ -388,10 +388,33 @@ describe('buildBossPools -- roll-only knockout (owned vs rolled)', () => {
     expect(boss.rollsSpent).toBe(2)
     expect(boss.rollsAttributed).toBe(0)
     expect(boss.rollsUnattributed).toBe(2)
-    // The two lowest (500, 1000) are removed; only the 3000 upgrade remains.
+    // Denominator: 3 - 2 = 1. Numerator: mean(500,1000,3000)=1500, minus 2*1500=3000 -> (4500-3000)/1 = 1500.
     expect(boss.remaining).toBe(1)
-    expect(boss.ev).toBe(3000)
-    expect(boss.pool.filter((p) => p.removedAsUnattributed).map((p) => p.itemIds[0]).sort((a, b) => a - b)).toEqual([100, 200])
+    expect(boss.ev).toBe(1500)
+    // No entry is actually knocked out -- all three are still real, interactable pool members.
+    expect(boss.pool.every((p) => !p.knockedOut)).toBe(true)
+    expect(boss.pool).toHaveLength(3)
+  })
+
+  it('EV with 2 unattributed rolls on a known pool: unbiased mean-based model vs. the old lowest-value-removal model', () => {
+    const report = makeReport([
+      item({ itemId: 100, delta: 100 }),
+      item({ itemId: 200, delta: 500 }),
+      item({ itemId: 300, delta: 1000 }),
+      item({ itemId: 400, delta: 5000 }),
+    ])
+    const knockout = makeKnockout({ rollsSpent: { 2888: 2 } })
+    const [boss] = buildBossPools(report, knockout, SETTINGS)
+
+    // Old approach: physically remove the 2 lowest-value entries (100, 500), leaving
+    // [1000, 5000] as the "remaining" pool -> EV = (1000 + 5000) / 2 = 3000. That biases EV
+    // upward, since it always strips the worst performers rather than an average draw.
+    const oldApproachEv = 3000
+    // New approach: mean of the full unknown pool (100+500+1000+5000)/4 = 1650, remove 2
+    // roll-equivalents' worth of that mean from both sides -> ((100+500+1000+5000) - 2*1650) / (4-2) = 1650.
+    const newApproachEv = 1650
+    expect(boss.ev).toBe(newApproachEv)
+    expect(boss.ev).toBeLessThan(oldApproachEv)
   })
 
   it('clamps the effective rolls-spent counter up to the count of rolled (attributed) items', () => {
@@ -412,13 +435,14 @@ describe('buildBossPools -- roll-only knockout (owned vs rolled)', () => {
     expect(boss.remaining).toBe(0)
   })
 
-  it('never removes the BIS (highest-value) item to model an unattributed roll -- only unknown non-BIS items', () => {
+  it('never knocks out the BIS (or any specific item) to model an unattributed roll -- the whole unknown pool absorbs it as a fractional mean draw', () => {
     const report = makeReport([item({ itemId: 100, delta: 500 }), item({ itemId: 999, delta: 9000 })])
     const [boss] = buildBossPools(report, makeKnockout({ rollsSpent: { 2888: 1 } }), SETTINGS)
-    // One unattributed roll removes the lowest (500); the 9000 BIS survives.
+    // Denominator: 2 - 1 = 1. Numerator: mean(500,9000)=4750, minus 1*4750 -> (9500-4750)/1 = 4750.
     expect(boss.remaining).toBe(1)
+    expect(boss.ev).toBe(4750)
     expect(boss.pool.find((p) => p.itemIds[0] === 999)?.knockedOut).toBe(false)
-    expect(boss.pool.find((p) => p.itemIds[0] === 100)?.removedAsUnattributed).toBe(true)
+    expect(boss.pool.find((p) => p.itemIds[0] === 100)?.knockedOut).toBe(false)
   })
 })
 

@@ -52,6 +52,32 @@ function effectiveValue(entry: PoolEntry): number {
   return entry.isDud ? 0 : entry.value
 }
 
+/**
+ * Models `unattributedCount` unattributed bonus rolls (rollsSpent beyond the count of
+ * attributed 'rolled' entries) as uniform, information-free draws from the boss's
+ * remaining "unknown" pool (ownership 'none' -- never a dud, already known to be owned;
+ * never rolled, those are excluded from `remainingEntries` already since they're knocked
+ * out). A forgotten roll's result is unknown, so the unbiased estimate of what it took is
+ * the MEAN of that unknown subset -- returned as a fractional adjustment to subtract from
+ * the boss's raw EV sum/count, rather than physically removing a specific entry (which
+ * would bias the remaining mean upward if it always removed the worst item, as the old
+ * "remove the lowest-value none entry" approach did). Clamped so denominatorDelta never
+ * exceeds the unknown subset's own size.
+ */
+function unattributedAdjustment(remainingEntries: PoolEntry[], unattributedCount: number): { numeratorDelta: number; denominatorDelta: number } {
+  const unknownEntries = remainingEntries.filter((e) => e.ownership === 'none')
+  const unknownCount = unknownEntries.length
+
+  if (unattributedCount <= 0 || unknownCount === 0) {
+    return { numeratorDelta: 0, denominatorDelta: 0 }
+  }
+
+  const n = Math.min(unattributedCount, unknownCount)
+  const meanValue = unknownEntries.reduce((acc, e) => acc + effectiveValue(e), 0) / unknownCount
+
+  return { numeratorDelta: meanValue * n, denominatorDelta: n }
+}
+
 /** Mean of the remaining pool's `errorPct` values, or undefined if none carry one (e.g. QE Live). */
 function meanErrorPct(entries: PoolEntry[]): number | undefined {
   const known = entries.map((e) => e.errorPct).filter((e): e is number => e !== undefined)
@@ -241,36 +267,28 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       notes.push(CURIO_NOTE)
     }
 
-    // Unattributed bonus rolls: a roll counted against this boss but not tied to a
-    // specific 'rolled' entry still removed one item from the pool. It can't have been
-    // the player's BIS (they'd have marked that), so model it as removing the lowest-value
-    // remaining "none" (unknown) entry -- never a dud (already known) and never below the
-    // count of attributed rolls (the effective counter is clamped up to it).
+    // Unattributed bonus rolls: a roll counted against this boss but not tied to a specific
+    // 'rolled' entry still happened, but a forgotten roll carries no information about what
+    // it gave -- so rather than removing a specific (and therefore biased-toward-worst)
+    // entry, it's modeled as a fractional uniform draw from the remaining unknown pool (see
+    // unattributedAdjustment): the EV numerator/denominator both shrink by the unknown
+    // subset's mean/count, but no PoolEntry is actually knocked out.
     const rolledCount = pool.filter((p) => p.ownership === 'rolled').length
     const storedRollsSpent = difficultyMismatch ? 0 : knockout.rollsSpent?.[encounterId] ?? 0
     const effectiveRollsSpent = Math.max(storedRollsSpent, rolledCount)
-    let unattributed = effectiveRollsSpent - rolledCount
-    if (unattributed > 0) {
-      const unknownRemaining = pool
-        .filter((p) => p.ownership === 'none' && !p.knockedOut)
-        .sort((a, b) => effectiveValue(a) - effectiveValue(b))
-      for (const entry of unknownRemaining) {
-        if (unattributed <= 0) break
-        entry.knockedOut = true
-        entry.removedAsUnattributed = true
-        unattributed--
-      }
-    }
+    const rollsUnattributed = effectiveRollsSpent - rolledCount
 
     const remainingEntries = pool.filter((p) => !p.knockedOut)
-    const remaining = remainingEntries.length
-    const ev = remaining > 0 ? remainingEntries.reduce((sum, p) => sum + effectiveValue(p), 0) / remaining : 0
+    const { numeratorDelta, denominatorDelta } = unattributedAdjustment(remainingEntries, rollsUnattributed)
+    const remaining = remainingEntries.length - denominatorDelta
+    const rawSum = remainingEntries.reduce((sum, p) => sum + effectiveValue(p), 0)
+    const ev = remaining > 0 ? (rawSum - numeratorDelta) / remaining : 0
     const evPct = report.baseline > 0 ? (ev / report.baseline) * 100 : 0
-    const bestCase = remaining > 0 ? remainingEntries.reduce((a, b) => (effectiveValue(b) > effectiveValue(a) ? b : a)) : null
+    const bestCase = remainingEntries.length > 0 ? remainingEntries.reduce((a, b) => (effectiveValue(b) > effectiveValue(a) ? b : a)) : null
 
     const thresholdValue = (settings.thresholdPct / 100) * report.baseline
     for (const entry of remainingEntries) {
-      const { expected, worstCase, expectedTruncated } = rollsToTarget(remainingEntries, entry.key, thresholdValue)
+      const { expected, worstCase, expectedTruncated } = rollsToTarget(remainingEntries, entry.key, thresholdValue, remaining)
       entry.rollsToTargetExpected = expected
       entry.rollsToTargetWorst = worstCase
       entry.rollsToTargetTruncated = expectedTruncated
@@ -280,9 +298,8 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     if (knockedOutCount > 0) notes.push(`${knockedOutCount} item${knockedOutCount === 1 ? '' : 's'} rolled (knocked out)`)
     const dudCount = pool.filter((p) => p.isDud).length
     if (dudCount > 0) notes.push(`${dudCount} owned dud${dudCount === 1 ? '' : 's'} in pool (value 0)`)
-    const rollsUnattributed = effectiveRollsSpent - rolledCount
     if (rollsUnattributed > 0) {
-      notes.push(`${rollsUnattributed} unattributed roll${rollsUnattributed === 1 ? '' : 's'} removed an unknown item from the pool`)
+      notes.push(`${rollsUnattributed} unattributed roll${rollsUnattributed === 1 ? '' : 's'} modeled as a uniform draw from the unknown pool (mean value, fractional denominator)`)
     }
     if (remaining === 0) notes.push('pool exhausted')
 

@@ -23,9 +23,18 @@ function poolValue(entry: PoolEntry): number {
  * rather than simulation: each state's continuation depends only on which entries remain,
  * not the order they were drawn in, so this is provably exact, not an approximation.
  */
-export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValue: number): RollsToTarget {
-  const n = pool.length
-  if (n === 0) return { expected: 0, worstCase: 0, expectedTruncated: 0 }
+/**
+ * `denominatorOverride`, when given, replaces `pool.length` for the two closed-form
+ * figures (`expected`, `worstCase`) only -- used when unattributed bonus rolls have
+ * fractionally shrunk the boss's effective remaining pool size (see buildBossPools'
+ * `unattributedAdjustment`) without removing any specific entry from `pool` itself.
+ * `expectedTruncated`'s recursion still runs over the real entries: there's no principled
+ * fractional analog for "abandon the hunt once the mean value drops below threshold"
+ * that doesn't invent a valuation for a nonexistent entry.
+ */
+export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValue: number, denominatorOverride?: number): RollsToTarget {
+  const n = denominatorOverride ?? pool.length
+  if (pool.length === 0) return { expected: 0, worstCase: 0, expectedTruncated: 0 }
 
   const expected = (n + 1) / 2
   const worstCase = n
