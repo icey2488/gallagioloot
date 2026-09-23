@@ -90,10 +90,15 @@ function BossRow(props: {
         <button type="button" className="boss-row__summary" aria-expanded={expanded} onClick={onToggleExpand}>
           <span className="boss-row__rank num">{index + 1}</span>
           <span className="boss-row__name">{boss.encounterName}</span>
-          <span className="boss-row__remaining num">
-            {boss.remaining} / {boss.pool.length} <span className="boss-row__remaining-label">remaining</span>
+          {/* Grouped so mobile can drop it to its own full-width line below the name
+              (see .boss-row__meta at max-width: 640px) instead of squeezing the name's
+              grid column down to a sliver next to it. */}
+          <span className="boss-row__meta">
+            <span className="boss-row__remaining num">
+              {boss.remaining} / {boss.pool.length} <span className="boss-row__remaining-label">remaining</span>
+            </span>
+            <span className="boss-row__ev num">{boss.evPct.toFixed(2)}%</span>
           </span>
-          <span className="boss-row__ev num">{boss.evPct.toFixed(2)}%</span>
           <span className="boss-row__chevron" aria-hidden="true">
             {expanded ? '−' : '+'}
           </span>

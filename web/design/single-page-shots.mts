@@ -1,6 +1,6 @@
-// One-off script (not part of the test suite): captures the single-page flow's four
-// states (empty / loaded+one-boss-expanded / priced / stale) plus a 390px mobile check,
-// against the LOCAL fixtures (no network). Run from web/ with:
+// One-off script (not part of the test suite): captures the single-page flow's states
+// (empty / loaded+one-boss-expanded / priced / stale) at 1280px, plus 390px mobile
+// (loaded and priced), against the LOCAL fixtures (no network). Run from web/ with:
 //   npx vite preview --port 4180 --strictPort   (in one shell), then
 //   npx tsx design/single-page-shots.mts
 // or just `npx tsx design/single-page-shots.mts` which spawns the preview itself.
@@ -47,6 +47,70 @@ async function loadReport(page: Page) {
   await page.waitForSelector('.boss-row', { timeout: 15000 })
 }
 
+/**
+ * Real layout assertions (replacing a bare "no horizontal scroll" check): every state
+ * button's bounding box sits inside both the viewport and its own card, boss-name
+ * elements never overflow their own box (they should wrap, not clip/truncate), and no
+ * element inside the run-settings panel exceeds that panel's edges. Throws with every
+ * violation listed when any check fails.
+ */
+async function assertLayout(page: Page, label: string) {
+  const result = await page.evaluate(() => {
+    const problems: string[] = []
+    const viewportW = window.innerWidth
+    const EPS = 0.5
+
+    document.querySelectorAll('.state-seg__btn').forEach((btn) => {
+      const rect = btn.getBoundingClientRect()
+      if (rect.right > viewportW + EPS || rect.left < -EPS) {
+        problems.push(`state button outside viewport: left=${rect.left.toFixed(1)} right=${rect.right.toFixed(1)} viewport=${viewportW}`)
+      }
+      const card = btn.closest('.panel')
+      if (card) {
+        const cardRect = card.getBoundingClientRect()
+        if (rect.right > cardRect.right + EPS || rect.left < cardRect.left - EPS) {
+          problems.push(`state button outside its card: btn=[${rect.left.toFixed(1)},${rect.right.toFixed(1)}] card=[${cardRect.left.toFixed(1)},${cardRect.right.toFixed(1)}]`)
+        }
+      }
+    })
+
+    document.querySelectorAll('.boss-row__name').forEach((el) => {
+      if (el.scrollWidth > el.clientWidth + EPS) {
+        problems.push(`boss name overflows instead of wrapping: "${el.textContent}" scrollWidth=${el.scrollWidth} clientWidth=${el.clientWidth}`)
+      }
+    })
+
+    const runSettingsPanel = document.querySelector('.run-settings-row')?.closest('.panel')
+    if (runSettingsPanel) {
+      const panelRect = runSettingsPanel.getBoundingClientRect()
+      runSettingsPanel.querySelectorAll('*').forEach((el) => {
+        const rect = el.getBoundingClientRect()
+        if (rect.width === 0 && rect.height === 0) return
+        if (rect.right > panelRect.right + EPS || rect.left < panelRect.left - EPS) {
+          problems.push(`run-settings element exceeds its card: <${el.tagName.toLowerCase()}> right=${rect.right.toFixed(1)} panelRight=${panelRect.right.toFixed(1)}`)
+        }
+      })
+    }
+
+    return { problems, docWidth: document.documentElement.scrollWidth, winWidth: window.innerWidth }
+  })
+
+  if (result.docWidth > result.winWidth) {
+    result.problems.push(`horizontal scroll: scrollWidth ${result.docWidth} > innerWidth ${result.winWidth}`)
+  }
+  if (result.problems.length > 0) {
+    throw new Error(`layout assertions failed (${label}):\n${result.problems.join('\n')}`)
+  }
+  console.log(`layout assertions passed (${label}) ✓`)
+}
+
+async function priceTheRoll(page: Page) {
+  await page.click('summary:has-text("Advanced")')
+  await page.fill('#manual-vault-gain', '2.4')
+  await page.click('text=Price my roll')
+  await page.waitForSelector('.rec-card', { timeout: 10000 })
+}
+
 async function shootDesktop(page: Page) {
   await page.setViewportSize({ width: 1280, height: 1000 })
   await page.route((url) => url.href.includes('/raidbots/') || url.href.includes('/loot-table/') || url.href.includes('/topgear/'), fulfillFromFixtures)
@@ -60,16 +124,14 @@ async function shootDesktop(page: Page) {
   // Expand the first boss row so its inline loot table + state controls show.
   await page.locator('.boss-row__summary').first().click()
   await page.waitForSelector('.boss-row--open .loot-item-table tbody tr', { timeout: 10000 })
+  await assertLayout(page, '1280px, loaded')
   await page.screenshot({ path: 'design/single-page-loaded.png', fullPage: true })
   console.log('captured: single-page-loaded.png')
 
   // Give the vault comparison something to price against via a manual vault gain.
-  await page.click('summary:has-text("Advanced")')
-  await page.fill('#manual-vault-gain', '2.4')
-
-  await page.click('text=Price my roll')
-  await page.waitForSelector('.rec-card', { timeout: 10000 })
+  await priceTheRoll(page)
   await page.waitForSelector('.priced-section .deploy-table tbody tr')
+  await assertLayout(page, '1280px, priced')
   await page.screenshot({ path: 'design/single-page-priced.png', fullPage: true })
   console.log('captured: single-page-priced.png')
 
@@ -89,17 +151,15 @@ async function shootMobile(page: Page) {
   await loadReport(page)
   await page.locator('.boss-row__summary').first().click()
   await page.waitForSelector('.boss-row--open')
+  await assertLayout(page, '390px, loaded')
   await page.screenshot({ path: 'design/single-page-mobile-390.png', fullPage: true })
+  console.log('captured: single-page-mobile-390.png')
 
-  const overflow = await page.evaluate(() => ({
-    docWidth: document.documentElement.scrollWidth,
-    winWidth: window.innerWidth,
-  }))
-  console.log('captured: single-page-mobile-390.png', overflow)
-  if (overflow.docWidth > overflow.winWidth) {
-    throw new Error(`horizontal scroll at 390px: scrollWidth ${overflow.docWidth} > innerWidth ${overflow.winWidth}`)
-  }
-  console.log('mobile 390px: no horizontal scroll ✓')
+  await priceTheRoll(page)
+  await page.waitForSelector('.priced-section .deploy-table tbody tr')
+  await assertLayout(page, '390px, priced')
+  await page.screenshot({ path: 'design/single-page-priced-mobile-390.png', fullPage: true })
+  console.log('captured: single-page-priced-mobile-390.png')
 }
 
 async function main() {

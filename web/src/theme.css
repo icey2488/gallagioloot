@@ -529,6 +529,75 @@ tr.excluded .deploy-table__ev {
   .fold-table td[data-label='Item']::before {
     content: none;
   }
+
+  /* .loot-item-table's desktop per-column percent/px widths (needed for its
+     table-layout: fixed) outrank the generic .fold-table td { width: 100% } rule on
+     specificity alone -- so every folded cell (not just State) was still boxed to its
+     desktop column width, just invisibly, since only .state-seg (below) actually
+     clips overflow instead of letting text spill past an invisible boundary. Two
+     classes beats one, clearing every column back to the full fold-row width. */
+  .loot-item-table.fold-table tbody td {
+    width: 100%;
+  }
+
+  /* The State cell holds a 3-button control, not a short value -- stack the label
+     above it and let the control use the full row width instead of squeezing it into
+     the value half of a label/value split (which is how it got clipped to "No..."). */
+  .fold-table td[data-label='State'] {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  /* Real touch target height at phone width. */
+  .state-seg__btn {
+    min-height: 44px;
+  }
+
+  /* Boss row header: the name gets its own full-width line (so it can wrap instead of
+     truncating) with remaining/EV dropped to a second line below it, rather than
+     squeezing the name's grid column down to a sliver next to those two auto-width
+     columns (which is how it got truncated to "Ula'..." in the first place). */
+  .boss-row__summary {
+    grid-template-columns: 20px 1fr 20px;
+    grid-template-areas:
+      'rank name chevron'
+      'meta meta meta';
+    row-gap: 4px;
+  }
+
+  .boss-row__rank {
+    grid-area: rank;
+  }
+
+  .boss-row__name {
+    grid-area: name;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .boss-row__chevron {
+    grid-area: chevron;
+  }
+
+  .boss-row__meta {
+    grid-area: meta;
+  }
+
+  /* The Loot spec/Difficulty and Voidcores/Rolls-available field pairs go full width
+     instead of squeezing two selects/inputs side by side (where the second one clips). */
+  .run-settings-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A <select>'s min-content width (driven by its option text) can't shrink below its
+   content -- as a grid item with the default min-width:auto, that floor forces the
+   whole run-settings-row grid track wider than its 1fr share, overflowing the panel.
+   min-width: 0 lets the field (and its select/input) actually shrink to the track. */
+.run-settings-row > .field {
+  min-width: 0;
 }
 
 /* Fixed layout with an explicit Item-column share -- an auto table layout squeezes
@@ -540,17 +609,17 @@ tr.excluded .deploy-table__ev {
 
 .loot-item-table th:first-child,
 .loot-item-table td:first-child {
-  width: 34%;
+  width: 26%;
 }
 
 .loot-item-table th:nth-child(2),
 .loot-item-table td:nth-child(2) {
-  width: 14%;
+  width: 12%;
 }
 
 .loot-item-table th:nth-child(3),
 .loot-item-table td:nth-child(3) {
-  width: 16%;
+  width: 14%;
 }
 
 .loot-item-table th:nth-child(3),
@@ -562,14 +631,16 @@ tr.excluded .deploy-table__ev {
 
 .loot-item-table th:nth-child(4),
 .loot-item-table td:nth-child(4) {
-  width: 26%;
+  width: 22%;
 }
 
-/* Fixed-width checkbox column so knockout controls line up in a column instead of
-   drifting with item-name length. */
+/* The STATE column holds a 3-button segmented control (None/Owned/Rolled), not a
+   checkbox -- it needs real room, in percent so it scales down (rather than overflowing
+   its cell, and the card's right edge with it) at any width down to the fold-table
+   breakpoint, where it switches to a full-width block below the item name instead. */
 .loot-item-table th:last-child,
 .loot-item-table td:last-child {
-  width: 72px;
+  width: 26%;
   text-align: center;
 }
 
@@ -1381,7 +1452,7 @@ select:disabled {
 .boss-row__summary {
   flex: 1;
   display: grid;
-  grid-template-columns: 20px minmax(0, 1fr) auto auto 20px;
+  grid-template-columns: 20px minmax(0, 1fr) auto 20px;
   align-items: center;
   gap: var(--space-5);
   background: none;
@@ -1391,6 +1462,12 @@ select:disabled {
   cursor: pointer;
   padding: var(--space-5) var(--space-2);
   font-size: var(--text-body);
+}
+
+.boss-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
 }
 
 .boss-row__summary:hover {
@@ -1474,20 +1551,25 @@ select:disabled {
 }
 
 /* Per-item ownership control: None / Owned / Rolled. Selected segment gets a neutral
-   highlight (no gold -- the recommendation card keeps the heaviest treatment). */
+   highlight (no gold -- the recommendation card keeps the heaviest treatment). Always
+   full width of its cell with three equal-share buttons, so it fits the STATE column at
+   any width instead of overflowing it (and, at the fold-table breakpoint, the row). */
 .state-seg {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
 }
 
 .state-seg__btn {
+  flex: 1 1 0;
+  min-width: 0;
   background: var(--bg-panel-alt);
   border: none;
   border-right: 1px solid var(--border);
   color: var(--text-secondary);
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-2);
   font-size: var(--text-eyebrow);
   cursor: pointer;
   min-height: 32px;
