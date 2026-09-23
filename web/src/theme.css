@@ -621,6 +621,26 @@ tr.excluded .deploy-table__ev {
   margin-top: 8px;
 }
 
+/* One merged curio pool entry, several tier pieces listed inside it -- one state control
+   and one "X / Y remaining" count for the whole group (see buildBossPools' curio merge). */
+.curio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.curio-group__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.curio-group__pct {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 /* Recommendation card: the strongest gold treatment on any screen (2px gold border +
    gold headline + gold primary button, all at once) -- everywhere else in the app gold
    is accent-weight only (see the CLAUDE.md "Design (web/)" gold-accent rule).

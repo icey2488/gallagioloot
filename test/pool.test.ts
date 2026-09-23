@@ -73,6 +73,114 @@ describe('buildBossPools', () => {
     expect(boss.notes).toContain('Curio counts as one item; value assumes you pick your best missing tier slot')
   })
 
+  it('collapses tier pieces into a single curio entry when only the loot table (not the report) marks them viaCurio', () => {
+    // Mirrors live Raidbots season data: a catalyst-converted tier piece keeps a normal
+    // encounter id and marks the conversion via catalystSourceId, not item.viaCurio -- so
+    // classification must come from the loot table when one is supplied (regression test
+    // for the double-count bug: each tier piece landing in the pool as both its own
+    // full-value 'item' entry AND folded into the merged curio entry).
+    const report = makeReport([
+      item({ itemId: 300, name: 'Tier Head Token', encounterId: 2895, encounterName: "Ula'tek", delta: 1100, tierSlot: 'head' }),
+      item({ itemId: 301, name: 'Tier Shoulder Token', encounterId: 2895, encounterName: "Ula'tek", delta: 900, tierSlot: 'shoulder' }),
+      item({ itemId: 302, name: 'Neck of Testing', encounterId: 2895, encounterName: "Ula'tek", delta: 500 }),
+    ])
+    const lootTable: LootTableEncounter[] = [
+      {
+        encounterId: 2895,
+        encounterName: "Ula'tek",
+        items: [
+          { itemId: 300, name: 'Tier Head Token', specSpecific: false, uniqueEquipped: false, onUseTrinket: false, isTier: true, viaCurio: true, tierSlot: 'head' },
+          {
+            itemId: 301,
+            name: 'Tier Shoulder Token',
+            specSpecific: false,
+            uniqueEquipped: false,
+            onUseTrinket: false,
+            isTier: true,
+            viaCurio: true,
+            tierSlot: 'shoulder',
+          },
+          { itemId: 302, name: 'Neck of Testing', specSpecific: false, uniqueEquipped: false, onUseTrinket: false, isTier: false, viaCurio: false },
+        ],
+      },
+    ]
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS, lootTable)
+    // 1 direct item (neck) + 1 merged curio entry -- NOT 1 + 2 + 1 (double-counted tier pieces).
+    expect(boss.pool).toHaveLength(2)
+    const curio = boss.pool.find((p) => p.kind === 'curio')
+    expect(curio?.value).toBe(1100)
+    expect(curio?.itemIds.sort()).toEqual([300, 301])
+    expect(curio?.curioItems?.map((c) => c.itemId).sort()).toEqual([300, 301])
+    expect(boss.remaining).toBe(2)
+  })
+
+  it('pins Ula\'tek pool size for the Iceshaman (elemental heroic) fixture: 6, not 11', () => {
+    const report = makeReport(
+      [
+        item({ itemId: 268265, name: 'Aqirbane Reliquary', encounterId: 2895, encounterName: "Ula'tek", delta: 3223 }),
+        item({ itemId: 271876, name: 'Awoken Dreadfang Cuirass', encounterId: 2895, encounterName: "Ula'tek", delta: 0 }),
+        item({ itemId: 271092, name: "Jan'thrazet, the Soul Fang", encounterId: 2895, encounterName: "Ula'tek", delta: 5182 }),
+        item({ itemId: 270168, name: 'Font of Venomous Rage', encounterId: 2895, encounterName: "Ula'tek", delta: 10095 }),
+        item({ itemId: 271093, name: "Zatha'tek, Breath of Corruption", encounterId: 2895, encounterName: "Ula'tek", delta: 0 }),
+        // Five Ophidian Oracle tier pieces -- simmed as plain rows (no item.viaCurio), same as live data.
+        item({ itemId: 271484, name: 'Hexing Grips of the Ophidian Oracle', encounterId: 2895, encounterName: "Ula'tek", delta: 3135, tierSlot: 'hands' }),
+        item({ itemId: 271483, name: 'Serpent Crown of the Ophidian Oracle', encounterId: 2895, encounterName: "Ula'tek", delta: 2913, tierSlot: 'head' }),
+        item({ itemId: 271482, name: 'Leggings of the Ophidian Oracle', encounterId: 2895, encounterName: "Ula'tek", delta: 662, tierSlot: 'legs' }),
+        item({ itemId: 271481, name: 'Hissing Mantle of the Ophidian Oracle', encounterId: 2895, encounterName: "Ula'tek", delta: 3340, tierSlot: 'shoulder' }),
+        item({ itemId: 271486, name: 'Fanged Raiment of the Ophidian Oracle', encounterId: 2895, encounterName: "Ula'tek", delta: 4367, tierSlot: 'chest' }),
+      ],
+      { baseline: 161000 }
+    )
+    const tierPiece = (itemId: number, name: string, tierSlot: string): LootTableItem => ({
+      itemId,
+      name,
+      specSpecific: false,
+      uniqueEquipped: false,
+      onUseTrinket: false,
+      isTier: true,
+      viaCurio: true,
+      tierSlot,
+    })
+    const lootTable: LootTableEncounter[] = [
+      {
+        encounterId: 2895,
+        encounterName: "Ula'tek",
+        items: [
+          { itemId: 268265, name: 'Aqirbane Reliquary', specSpecific: false, uniqueEquipped: false, onUseTrinket: false, isTier: false, viaCurio: false },
+          {
+            itemId: 270168,
+            name: 'Font of Venomous Rage',
+            specSpecific: true,
+            uniqueEquipped: true,
+            onUseTrinket: true,
+            isTier: false,
+            viaCurio: false,
+          },
+          { itemId: 271092, name: "Jan'thrazet, the Soul Fang", specSpecific: false, uniqueEquipped: true, onUseTrinket: false, isTier: false, viaCurio: false },
+          {
+            itemId: 271093,
+            name: "Zatha'tek, Breath of Corruption",
+            specSpecific: false,
+            uniqueEquipped: true,
+            onUseTrinket: false,
+            isTier: false,
+            viaCurio: false,
+          },
+          { itemId: 271876, name: 'Awoken Dreadfang Cuirass', specSpecific: false, uniqueEquipped: false, onUseTrinket: false, isTier: false, viaCurio: false },
+          tierPiece(271486, 'Fanged Raiment of the Ophidian Oracle', 'chest'),
+          tierPiece(271484, 'Hexing Grips of the Ophidian Oracle', 'hands'),
+          tierPiece(271483, 'Serpent Crown of the Ophidian Oracle', 'head'),
+          tierPiece(271482, 'Leggings of the Ophidian Oracle', 'legs'),
+          tierPiece(271481, 'Hissing Mantle of the Ophidian Oracle', 'shoulder'),
+        ],
+      },
+    ]
+    const [boss] = buildBossPools(report, makeKnockout(), { ...SETTINGS, lootSpecId: 262 }, lootTable)
+    expect(boss.pool).toHaveLength(6)
+    expect(boss.remaining).toBe(6)
+    expect(boss.pool.filter((p) => p.kind === 'curio')).toHaveLength(1)
+  })
+
   it('marks a tier-token row (has tierSlot, not viaCurio) with kind tier-token', () => {
     const report = makeReport([item({ itemId: 400, encounterId: 2887, encounterName: 'The Twin Fangs', delta: 1200, tierSlot: 'head' })])
     const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)

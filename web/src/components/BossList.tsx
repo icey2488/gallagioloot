@@ -58,9 +58,28 @@ function BossRow(props: {
 
   // Rows come from the full loot table when available (the true pool), else from what the
   // report simmed (the pool entries directly) so the control still works without a loot table.
-  const rows: Array<{ key: string; itemId: number; name: string; slot?: string; entry: PoolEntry | undefined; item?: LootTableItem }> = lootItems
-    ? lootItems.map((item) => ({ key: `l:${item.itemId}`, itemId: item.itemId, name: item.name, slot: item.slot, entry: findPoolEntry(boss, item.itemId), item }))
-    : boss.pool.map((entry) => ({ key: entry.key, itemId: entry.itemIds[0], name: entry.name, slot: entry.tierSlot, entry }))
+  // Loot-table rows that resolve to the SAME pool entry (the curio's several tier pieces all
+  // collapse to one merged entry -- see buildBossPools) are grouped into a single row: one
+  // state control, counted once, with the underlying tier pieces listed inside it.
+  type Row = { key: string; itemId: number; name: string; slot?: string; entry: PoolEntry | undefined; item?: LootTableItem; group?: LootTableItem[] }
+  const rows: Row[] = []
+  if (lootItems) {
+    const byEntryKey = new Map<string, Row>()
+    for (const lootItem of lootItems) {
+      const entry = findPoolEntry(boss, lootItem.itemId)
+      const key = entry?.key ?? `l:${lootItem.itemId}`
+      const existing = byEntryKey.get(key)
+      if (existing) {
+        existing.group = [...(existing.group ?? [existing.item!]), lootItem]
+      } else {
+        const row: Row = { key, itemId: lootItem.itemId, name: lootItem.name, slot: lootItem.slot, entry, item: lootItem }
+        byEntryKey.set(key, row)
+        rows.push(row)
+      }
+    }
+  } else {
+    for (const entry of boss.pool) rows.push({ key: entry.key, itemId: entry.itemIds[0], name: entry.name, slot: entry.tierSlot, entry })
+  }
 
   return (
     <div className={`boss-row${expanded ? ' boss-row--open' : ''}${boss.deployable ? '' : ' boss-row--excluded'}`}>
@@ -119,26 +138,46 @@ function BossRow(props: {
               {rows.map((row) => {
                 const entry = row.entry
                 const current = ownershipOf(entry)
+                // A merged curio entry: several tier pieces share one pool entry (one state
+                // control, counted once) -- still list each piece's own name/slot/sim value.
+                const curioList = entry?.kind === 'curio' ? entry.curioItems : undefined
                 return (
                   <tr key={row.key} className={current === 'rolled' ? 'boss-row__item--rolled' : current === 'owned' ? 'boss-row__item--owned' : undefined}>
                     <td data-label="Item">
-                      {row.name}
-                      {row.item?.isTier && !row.item?.viaCurio && <span className="item-tag">Tier</span>}
-                      {row.item?.viaCurio && <span className="item-tag">Curio</span>}
-                      {row.item?.specSpecific && specName && (
+                      {curioList && curioList.length > 0 ? (
+                        <div className="curio-group">
+                          {curioList.map((ci) => (
+                            <div className="curio-group__item" key={ci.itemId}>
+                              <span>
+                                {ci.name}
+                                {ci.tierSlot ? ` (${ci.tierSlot})` : ''}
+                                <span className="item-tag">Curio</span>
+                              </span>
+                              <span className="curio-group__pct num">{ci.notInSimReport ? 'not simmed' : `${ci.pct.toFixed(2)}%`}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
                         <>
-                          {' '}
-                          <span className="badge">
-                            <Tooltip term="specSpecific">spec-specific</Tooltip>
-                          </span>
-                          <div className="note-line" style={{ marginTop: 2 }}>
-                            counts only for {specName}
-                          </div>
+                          {row.name}
+                          {row.item?.isTier && !row.item?.viaCurio && <span className="item-tag">Tier</span>}
+                          {row.item?.viaCurio && <span className="item-tag">Curio</span>}
+                          {row.item?.specSpecific && specName && (
+                            <>
+                              {' '}
+                              <span className="badge">
+                                <Tooltip term="specSpecific">spec-specific</Tooltip>
+                              </span>
+                              <div className="note-line" style={{ marginTop: 2 }}>
+                                counts only for {specName}
+                              </div>
+                            </>
+                          )}
                         </>
                       )}
                     </td>
                     <td className="num" data-label="Slot">
-                      {row.slot ?? '—'}
+                      {curioList && curioList.length > 0 ? 'any' : row.slot ?? '—'}
                     </td>
                     <td className="num" data-label="Sim gain">
                       {entry ? (entry.isDud ? `${entry.pct.toFixed(2)}% (dud)` : `${entry.pct.toFixed(2)}%`) : 'not simmed'}
