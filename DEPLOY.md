@@ -1,6 +1,6 @@
 # Deployment
 
-Two independent Cloudflare Workers, both in this repo, both deployed with the Wrangler CLI directly (no Git integration is wired up — this repo has no git remote). Account: `Theicehunter@proton.me's Account` (`0e326de3f6a9e1ed9b068f05948bd302`). Zone: `icehunter.net`.
+Two independent Cloudflare Workers, both in this repo, both deployed with the Wrangler CLI directly (no Git integration is wired up — git remote `origin` is https://github.com/icey2488/gallagioloot.git, but nothing deploys from it). Account: `Theicehunter@proton.me's Account` (`0e326de3f6a9e1ed9b068f05948bd302`). Zone: `icehunter.net`.
 
 ## Proxy — `gallagioloot-proxy.icehunter.net`
 
