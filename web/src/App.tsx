@@ -142,10 +142,6 @@ export default function App() {
     return bossEvals.reduce((sum, b) => sum + b.pool.filter((p) => p.notInSimReport).length, 0)
   }, [report, lootTable, bossEvals])
 
-  useEffect(() => {
-    storageAdapter.list().then(setCharacterKeys)
-  }, [knockoutState])
-
   // Mark the priced snapshot stale whenever the live pricing inputs change (after the first
   // price). The button press itself changes none of these deps, so it never trips this.
   useEffect(() => {
@@ -228,6 +224,12 @@ export default function App() {
   useEffect(() => {
     if (!currentKey || !knockoutState) return
     storageAdapter.save(currentKey, knockoutState)
+  }, [currentKey, knockoutState])
+
+  // Must stay after the save effect above: list() reads what save() just wrote, so the
+  // first-loaded character shows up in the switcher immediately.
+  useEffect(() => {
+    storageAdapter.list().then(setCharacterKeys)
   }, [currentKey, knockoutState])
 
   async function loadReport(url: string, source: ReportSource) {
