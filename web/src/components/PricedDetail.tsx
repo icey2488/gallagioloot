@@ -9,36 +9,30 @@ function exclusionReason(b: BossEval, thresholdPct: number): string | null {
   return 'Excluded'
 }
 
-export function DeployabilityScreen(props: {
-  bossEvals: BossEval[]
-  thresholdPct: number
-  onViewRecommendation: () => void
-  onSelectBoss?: (encounterId: number) => void
-}) {
-  const { bossEvals, thresholdPct, onViewRecommendation, onSelectBoss } = props
+/** The detail shown below the recommendation card once priced: the full ranked boss list
+ *  (EV, rolls to target, best-case item). The vault-vs-Voidcore comparison itself lives
+ *  only in the card above -- see cardData.ts, the single source of truth for that verdict. */
+export function PricedDetail(props: { bossEvals: BossEval[]; thresholdPct: number }) {
+  const { bossEvals, thresholdPct } = props
+
+  // Deployable bosses first, then by EV descending; keeps the ranked order the card used.
+  const ranked = [...bossEvals].sort((a, b) => {
+    if (a.deployable !== b.deployable) return a.deployable ? -1 : 1
+    return b.evPct - a.evPct
+  })
 
   return (
     <div>
       <div className="panel">
-        <div className="screen-header">
+        <div className="screen-header" style={{ marginBottom: 12 }}>
           <div className="screen-header__title-group">
             <h3>
               <span className="heading-gold-bar" aria-hidden="true" />
-              Rollable Bosses
+              Ranked bosses
             </h3>
-            <span className="screen-header__meta">Bosses in kill order · threshold {thresholdPct.toFixed(2)}%</span>
+            <span className="screen-header__meta">Kill-order pool, ranked by EV · threshold {thresholdPct.toFixed(2)}%</span>
           </div>
-          {/* v4a gold-accent pass (2026-09-20, full mockup parity): this screen's primary
-              action now goes gold too (beyond the single heading-bar touch shipped in the
-              prior pass) -- still one button, still accent-weight, well under the
-              recommendation card's border+headline+button treatment. */}
-          <button type="button" className="btn btn-gold" onClick={onViewRecommendation}>
-            Roll this boss
-          </button>
         </div>
-      </div>
-
-      <div className="panel">
         <table className="deploy-table fold-table">
           <thead>
             <tr>
@@ -55,26 +49,17 @@ export function DeployabilityScreen(props: {
               <th>
                 <Tooltip term="deployable">Rollable</Tooltip>
               </th>
-              <th>Notes</th>
             </tr>
           </thead>
           <tbody>
-            {bossEvals.map((b, i) => {
+            {ranked.map((b, i) => {
               const reason = exclusionReason(b, thresholdPct)
               return (
                 <tr key={b.encounterId} className={b.deployable ? undefined : 'excluded'}>
                   <td className="deploy-table__rank" data-label="#">
                     {i + 1}
                   </td>
-                  <td data-label="Boss">
-                    {onSelectBoss ? (
-                      <button type="button" className="btn-link" style={{ fontSize: 14, textDecoration: 'none' }} onClick={() => onSelectBoss(b.encounterId)}>
-                        {b.encounterName}
-                      </button>
-                    ) : (
-                      b.encounterName
-                    )}
-                  </td>
+                  <td data-label="Boss">{b.encounterName}</td>
                   <td className="num" data-label="Remaining">
                     {b.remaining} / {b.pool.length}
                   </td>
@@ -84,7 +69,8 @@ export function DeployabilityScreen(props: {
                   <td data-label="Best case">
                     {b.bestCase ? (
                       <>
-                        {b.bestCase.name} <span className="num" style={{ fontWeight: 600 }}>
+                        {b.bestCase.name}{' '}
+                        <span className="num" style={{ fontWeight: 600 }}>
                           ({b.bestCase.pct.toFixed(2)}%)
                         </span>
                       </>
@@ -100,14 +86,9 @@ export function DeployabilityScreen(props: {
                   <td data-label="Rollable">
                     <span className="deploy-indicator">
                       <span className={b.deployable ? 'deploy-dot deploy-dot--yes' : 'deploy-dot deploy-dot--no'} aria-hidden="true" />
-                      {b.deployable ? 'Yes' : (
-                        <>
-                          No{reason ? <span className="deploy-indicator__reason"> — {reason}</span> : null}
-                        </>
-                      )}
+                      {b.deployable ? 'Yes' : <>No{reason ? <span className="deploy-indicator__reason"> — {reason}</span> : null}</>}
                     </span>
                   </td>
-                  <td data-label="Notes">{b.notes.join('; ')}</td>
                 </tr>
               )
             })}

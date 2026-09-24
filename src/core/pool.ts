@@ -21,6 +21,8 @@ function toEntry(key: string, itemIds: number[], best: NormalizedItem, kind: Poo
     kind,
     tierSlot: best.tierSlot,
     specSpecific,
+    ownership: 'none',
+    isDud: false,
     knockedOut: false,
     errorPct: best.meanError !== undefined && baseline > 0 ? (best.meanError / baseline) * 100 : undefined,
   }
@@ -38,9 +40,42 @@ function phantomEntry(key: string, itemIds: number[], name: string, kind: PoolEn
     kind,
     tierSlot,
     specSpecific,
+    ownership: 'none',
+    isDud: false,
     knockedOut: false,
     notInSimReport: true,
   }
+}
+
+/** The value an entry contributes to EV: a dud (owned, not rolled) is worth 0 even though it stays in the pool. */
+function effectiveValue(entry: PoolEntry): number {
+  return entry.isDud ? 0 : entry.value
+}
+
+/**
+ * Models `unattributedCount` unattributed bonus rolls (rollsSpent beyond the count of
+ * attributed 'rolled' entries) as uniform, information-free draws from the boss's
+ * remaining "unknown" pool (ownership 'none' -- never a dud, already known to be owned;
+ * never rolled, those are excluded from `remainingEntries` already since they're knocked
+ * out). A forgotten roll's result is unknown, so the unbiased estimate of what it took is
+ * the MEAN of that unknown subset -- returned as a fractional adjustment to subtract from
+ * the boss's raw EV sum/count, rather than physically removing a specific entry (which
+ * would bias the remaining mean upward if it always removed the worst item, as the old
+ * "remove the lowest-value none entry" approach did). Clamped so denominatorDelta never
+ * exceeds the unknown subset's own size.
+ */
+function unattributedAdjustment(remainingEntries: PoolEntry[], unattributedCount: number): { numeratorDelta: number; denominatorDelta: number } {
+  const unknownEntries = remainingEntries.filter((e) => e.ownership === 'none')
+  const unknownCount = unknownEntries.length
+
+  if (unattributedCount <= 0 || unknownCount === 0) {
+    return { numeratorDelta: 0, denominatorDelta: 0 }
+  }
+
+  const n = Math.min(unattributedCount, unknownCount)
+  const meanValue = unknownEntries.reduce((acc, e) => acc + effectiveValue(e), 0) / unknownCount
+
+  return { numeratorDelta: meanValue * n, denominatorDelta: n }
 }
 
 /** Mean of the remaining pool's `errorPct` values, or undefined if none carry one (e.g. QE Live). */
@@ -51,28 +86,45 @@ function meanErrorPct(entries: PoolEntry[]): number | undefined {
 }
 
 /**
- * An entry is knocked out if some knockout entry matches one of its item ids AND
- * (it isn't spec-specific, or it's spec-specific for the loot spec currently in
- * effect). "Spec-specific" is automatic from the matching PoolEntry (derived from
- * the loot table) unless the KnockoutEntry itself sets `specSpecific` explicitly --
- * that's the manual override for a spec-restriction the loot table doesn't know
- * about yet. When both sides carry a numeric loot spec id, that's compared directly;
- * otherwise this falls back to the legacy string `spec` comparison for older data.
+ * Resolves the roll-only ownership state for a pool entry: the state of the matching
+ * knockout entry (`'owned'` or `'rolled'`), or `'none'` when no entry matches. A match
+ * requires the item id AND that the spec-specific gate passes: an entry isn't spec-specific,
+ * or it's spec-specific for the loot spec currently in effect. "Spec-specific" is automatic
+ * from the PoolEntry (derived from the loot table) unless the KnockoutEntry sets `specSpecific`
+ * explicitly -- the manual override for a spec restriction the loot table doesn't know yet.
+ * When both sides carry a numeric loot spec id, that's compared directly; otherwise this falls
+ * back to the legacy string `spec` comparison for older data.
  */
-function isKnockedOut(
+function resolveOwnership(
   itemIds: number[],
   poolEntrySpecSpecific: boolean,
   entries: KnockoutState['entries'],
   reportSpec: string,
   currentLootSpecId: number | undefined
-): boolean {
-  return entries.some((entry) => {
-    if (!itemIds.includes(entry.itemId)) return false
+): 'none' | 'owned' | 'rolled' {
+  let result: 'none' | 'owned' | 'rolled' = 'none'
+  for (const entry of entries) {
+    if (!itemIds.includes(entry.itemId)) continue
     const specSpecific = entry.specSpecific ?? poolEntrySpecSpecific
-    if (!specSpecific) return true
-    if (entry.lootSpecId !== undefined && currentLootSpecId !== undefined) return entry.lootSpecId === currentLootSpecId
-    return entry.spec === reportSpec
-  })
+    if (specSpecific) {
+      const matches =
+        entry.lootSpecId !== undefined && currentLootSpecId !== undefined
+          ? entry.lootSpecId === currentLootSpecId
+          : entry.spec === reportSpec
+      if (!matches) continue
+    }
+    // 'rolled' wins over 'owned' if the same item somehow carries both (rolled implies owned).
+    if (entry.state === 'rolled') return 'rolled'
+    result = 'owned'
+  }
+  return result
+}
+
+/** Stamps a pool entry with its ownership state: a dud stays in the pool at value 0; a rolled item is knocked out. */
+function applyOwnership(entry: PoolEntry, ownership: 'none' | 'owned' | 'rolled'): void {
+  entry.ownership = ownership
+  entry.isDud = ownership === 'owned'
+  entry.knockedOut = ownership === 'rolled'
 }
 
 /**
@@ -126,23 +178,31 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
 
     const pool: PoolEntry[] = []
 
+    const lootDirectById = new Map<number, LootTableItem>()
+    const lootCurioById = new Map<number, LootTableItem>()
+    for (const row of lootItems) {
+      if (row.viaCurio) lootCurioById.set(row.itemId, row)
+      else lootDirectById.set(row.itemId, row)
+    }
+
+    // Curio-ness (catalyst-converted tier pieces that count as ONE roll-pool entry) is
+    // determined from the loot table's `viaCurio` flag when one is supplied -- it's the
+    // authoritative, hand/statically-maintained source. The report's own `item.viaCurio`
+    // is only a fallback for callers with no loot table: live Raidbots profileset rows
+    // mark a catalyst conversion via `catalystSourceId` on an otherwise-normal row rather
+    // than `viaCurio` (see normalize/raidbots.ts), so without a loot table there is no way
+    // to tell a tier piece is one of several curio options rather than a direct drop.
     const directByItemId = new Map<number, NormalizedItem[]>()
     const curioRows: NormalizedItem[] = []
     for (const item of items) {
-      if (item.viaCurio) {
+      const isCurio = lootTable ? lootCurioById.has(item.itemId) : item.viaCurio
+      if (isCurio) {
         curioRows.push(item)
         continue
       }
       const list = directByItemId.get(item.itemId)
       if (list) list.push(item)
       else directByItemId.set(item.itemId, [item])
-    }
-
-    const lootDirectById = new Map<number, LootTableItem>()
-    const lootCurioById = new Map<number, LootTableItem>()
-    for (const row of lootItems) {
-      if (row.viaCurio) lootCurioById.set(row.itemId, row)
-      else lootDirectById.set(row.itemId, row)
     }
 
     let notInSimReportCount = 0
@@ -164,7 +224,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
         notInSimReportCount++
         entry = phantomEntry(`item:${itemId}`, [itemId], lootRow!.name, lootRow!.isTier ? 'tier-token' : 'item', lootRow!.tierSlot, specSpecific)
       }
-      entry.knockedOut = isKnockedOut(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId)
+      applyOwnership(entry, resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId))
       pool.push(entry)
     }
 
@@ -179,27 +239,68 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
         ? toEntry(`curio:${encounterId}`, [...curioItemIds], { ...best, name: CURIO_NAME }, 'curio', report.baseline, false)
         : phantomEntry(`curio:${encounterId}`, [...curioItemIds], lootCurioById.values().next().value?.name ?? CURIO_NAME, 'curio', undefined, false)
       entry.tierSlot = undefined
-      entry.knockedOut = isKnockedOut(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId)
+
+      // Per-tier-piece sim value, for display only -- the entry's own `value`/`pct` (the
+      // best missing slot) is what counts for EV math; this just lets the UI show which
+      // slot is actually the best one instead of collapsing that information.
+      const bestByItemId = new Map<number, NormalizedItem>()
+      for (const row of curioRows) {
+        const existing = bestByItemId.get(row.itemId)
+        if (!existing || row.delta > existing.delta) bestByItemId.set(row.itemId, row)
+      }
+      entry.curioItems = [...curioItemIds]
+        .map((itemId) => {
+          const row = bestByItemId.get(itemId)
+          const lootRow = lootCurioById.get(itemId)
+          return {
+            itemId,
+            name: row?.name ?? lootRow?.name ?? CURIO_NAME,
+            tierSlot: row?.tierSlot ?? lootRow?.tierSlot,
+            pct: row ? (Math.max(row.delta, 0) / report.baseline) * 100 : 0,
+            notInSimReport: !row,
+          }
+        })
+        .sort((a, b) => b.pct - a.pct)
+
+      applyOwnership(entry, resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId))
       pool.push(entry)
       notes.push(CURIO_NOTE)
     }
 
+    // Unattributed bonus rolls: a roll counted against this boss but not tied to a specific
+    // 'rolled' entry still happened, but a forgotten roll carries no information about what
+    // it gave -- so rather than removing a specific (and therefore biased-toward-worst)
+    // entry, it's modeled as a fractional uniform draw from the remaining unknown pool (see
+    // unattributedAdjustment): the EV numerator/denominator both shrink by the unknown
+    // subset's mean/count, but no PoolEntry is actually knocked out.
+    const rolledCount = pool.filter((p) => p.ownership === 'rolled').length
+    const storedRollsSpent = difficultyMismatch ? 0 : knockout.rollsSpent?.[encounterId] ?? 0
+    const effectiveRollsSpent = Math.max(storedRollsSpent, rolledCount)
+    const rollsUnattributed = effectiveRollsSpent - rolledCount
+
     const remainingEntries = pool.filter((p) => !p.knockedOut)
-    const remaining = remainingEntries.length
-    const ev = remaining > 0 ? remainingEntries.reduce((sum, p) => sum + p.value, 0) / remaining : 0
+    const { numeratorDelta, denominatorDelta } = unattributedAdjustment(remainingEntries, rollsUnattributed)
+    const remaining = remainingEntries.length - denominatorDelta
+    const rawSum = remainingEntries.reduce((sum, p) => sum + effectiveValue(p), 0)
+    const ev = remaining > 0 ? (rawSum - numeratorDelta) / remaining : 0
     const evPct = report.baseline > 0 ? (ev / report.baseline) * 100 : 0
-    const bestCase = remaining > 0 ? remainingEntries.reduce((a, b) => (b.value > a.value ? b : a)) : null
+    const bestCase = remainingEntries.length > 0 ? remainingEntries.reduce((a, b) => (effectiveValue(b) > effectiveValue(a) ? b : a)) : null
 
     const thresholdValue = (settings.thresholdPct / 100) * report.baseline
     for (const entry of remainingEntries) {
-      const { expected, worstCase, expectedTruncated } = rollsToTarget(remainingEntries, entry.key, thresholdValue)
+      const { expected, worstCase, expectedTruncated } = rollsToTarget(remainingEntries, entry.key, thresholdValue, remaining)
       entry.rollsToTargetExpected = expected
       entry.rollsToTargetWorst = worstCase
       entry.rollsToTargetTruncated = expectedTruncated
     }
 
-    const knockedOutCount = pool.length - remaining
-    if (knockedOutCount > 0) notes.push(`${knockedOutCount} item${knockedOutCount === 1 ? '' : 's'} knocked out`)
+    const knockedOutCount = pool.filter((p) => p.ownership === 'rolled').length
+    if (knockedOutCount > 0) notes.push(`${knockedOutCount} item${knockedOutCount === 1 ? '' : 's'} rolled (knocked out)`)
+    const dudCount = pool.filter((p) => p.isDud).length
+    if (dudCount > 0) notes.push(`${dudCount} owned dud${dudCount === 1 ? '' : 's'} in pool (value 0)`)
+    if (rollsUnattributed > 0) {
+      notes.push(`${rollsUnattributed} unattributed roll${rollsUnattributed === 1 ? '' : 's'} modeled as a uniform draw from the unknown pool (mean value, fractional denominator)`)
+    }
     if (remaining === 0) notes.push('pool exhausted')
 
     if (notInSimReportCount > 0) {
@@ -218,6 +319,9 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       instanceId: items[0]?.instanceId ?? report.instanceId ?? 0,
       pool,
       remaining,
+      rollsSpent: effectiveRollsSpent,
+      rollsAttributed: rolledCount,
+      rollsUnattributed,
       ev,
       evPct,
       bestCase,

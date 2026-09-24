@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS } from './types'
 import type { BossEval, KnockoutEntry, KnockoutState, Recommendation, Settings } from './types'
 
 export function createState(character: string, difficulty: string, realm?: string, region?: string): KnockoutState {
-  return { character, realm, region, difficulty, entries: [], version: 1 }
+  return { character, realm, region, difficulty, entries: [], rollsSpent: {}, version: 2 }
 }
 
 /** Upserts by itemId -- adding the same itemId twice replaces the earlier entry rather than duplicating it. */
@@ -15,6 +15,25 @@ export function addEntry(state: KnockoutState, entry: KnockoutEntry): KnockoutSt
 
 export function removeEntry(state: KnockoutState, itemId: number): KnockoutState {
   return { ...state, entries: state.entries.filter((e) => e.itemId !== itemId) }
+}
+
+/**
+ * Sets the per-boss bonus-rolls-spent counter (roll-only knockout: rolls beyond the ones
+ * attributed to a specific 'rolled' item still remove one unknown item from the pool). A
+ * count of 0 clears the entry. buildBossPools clamps the effective counter up to the boss's
+ * attributed ('rolled') count, so this never has to be raised manually to stay consistent.
+ */
+export function setRollsSpent(state: KnockoutState, encounterId: number, count: number): KnockoutState {
+  const rollsSpent = { ...(state.rollsSpent ?? {}) }
+  if (count > 0) rollsSpent[encounterId] = Math.floor(count)
+  else delete rollsSpent[encounterId]
+  return { ...state, rollsSpent }
+}
+
+/** Adds 1 to the per-boss bonus-rolls-spent counter (used when a roll is recorded). */
+export function incrementRollsSpent(state: KnockoutState, encounterId: number): KnockoutState {
+  const current = state.rollsSpent?.[encounterId] ?? 0
+  return setRollsSpent(state, encounterId, current + 1)
 }
 
 export function markSpecSpecific(state: KnockoutState, itemId: number, spec: string, lootSpecId?: number): KnockoutState {
@@ -28,7 +47,11 @@ export function serialize(state: KnockoutState): string {
   return JSON.stringify(state)
 }
 
-/** Tolerant of unknown/missing fields -- old or partially-written state should still load. */
+/**
+ * Tolerant of unknown/missing fields -- old or partially-written state should still load.
+ * Migrates v1 (pre roll-only knockout) state: a v1 entry has no `state` and meant "removed
+ * from the pool", i.e. `'rolled'` under the new model.
+ */
 export function deserialize(raw: string): KnockoutState {
   const parsed = JSON.parse(raw) as Partial<KnockoutState> | null
   if (!parsed || typeof parsed !== 'object') {
@@ -46,15 +69,25 @@ export function deserialize(raw: string): KnockoutState {
           specSpecific: typeof e.specSpecific === 'boolean' ? e.specSpecific : undefined,
           lootSpecId: typeof e.lootSpecId === 'number' ? e.lootSpecId : undefined,
           source: e.source === 'manual' ? 'manual' : 'roll',
+          // Migration: a v1 checkbox meant "knocked out" -> 'rolled'. Only an explicit 'owned' stays owned.
+          state: e.state === 'owned' ? 'owned' : 'rolled',
         }))
     : []
+  const rollsSpent: Record<number, number> = {}
+  if (parsed.rollsSpent && typeof parsed.rollsSpent === 'object') {
+    for (const [k, v] of Object.entries(parsed.rollsSpent)) {
+      const id = Number(k)
+      if (Number.isFinite(id) && typeof v === 'number' && v > 0) rollsSpent[id] = Math.floor(v)
+    }
+  }
   return {
     character: typeof parsed.character === 'string' ? parsed.character : '',
     realm: typeof parsed.realm === 'string' ? parsed.realm : undefined,
     region: typeof parsed.region === 'string' ? parsed.region : undefined,
     difficulty: typeof parsed.difficulty === 'string' ? parsed.difficulty : '',
     entries,
-    version: 1,
+    rollsSpent,
+    version: 2,
   }
 }
 
@@ -107,9 +140,15 @@ export function reconcile(
     receivedAt: outcome.receivedAt,
     lootSpecId: settings.lootSpecId,
     source: 'roll',
+    // A bonus-roll outcome removes the item from the pool -- 'rolled'.
+    state: 'rolled',
   }
 
-  const nextState = addEntry(state, entry)
+  // Every reconcile is one bonus roll spent on this boss. Bumping the counter alongside the
+  // 'rolled' entry keeps them in step for a fresh item (attributed, unattributed stays 0) and
+  // correctly turns a repeat/already-recorded item into an unattributed roll (counter up,
+  // attributed count unchanged) -- see buildBossPools.
+  const nextState = incrementRollsSpent(addEntry(state, entry), outcome.encounterId)
   const bossEvals = buildBossPools(report, nextState, settings, lootTable)
   const recommendation = recommend(bossEvals, settings, report)
 

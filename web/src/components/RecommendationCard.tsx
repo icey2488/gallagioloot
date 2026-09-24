@@ -1,24 +1,25 @@
 import type { CardData } from '../lib/cardData'
 import { Tooltip } from './Tooltip'
 
-export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; onPrimaryAction?: () => void }) {
-  const actionLabel = card.verdict === 'roll' ? 'Mark as rolled' : card.verdict === 'vault' ? 'Take vault item' : 'Mark tokens taken'
+export function RecommendationCard({ card, onPrimaryAction, stale }: { card: CardData; onPrimaryAction?: () => void; stale?: boolean }) {
+  const actionLabel = card.verdict === 'vault' ? 'Take vault item' : card.verdict === 'tokens' ? 'Mark tokens taken' : 'Mark as rolled'
   const kicker = card.vaultCompare ? 'Great Vault vs Voidcore' : 'GallagioLoot recommends'
   const meta = `${card.rollsAvailable} Voidcore${card.rollsAvailable === 1 ? '' : 's'}`
-  const tossUpPair = card.tossUp && card.tossUpBosses ? card.tossUpBosses : null
 
-  // The card's dominant "name" element: boss name for a roll, the actual vault item's
-  // name for a vault win (more specific than the generic card.headline string), nothing
-  // for tokens -- card.headline ("Take the tokens") is used as-is in that case.
-  const heroVerb = card.verdict === 'roll' ? 'Roll' : card.verdict === 'vault' ? 'Take' : null
-  const heroName = card.verdict === 'vault' ? card.vaultCompare?.vaultItemName : card.bossName
-  const vaultMarginPct = card.vaultCompare ? Math.abs(card.vaultCompare.voidcorePct - card.vaultCompare.vaultPct) : null
+  // The bold "verb + boss name" headline split only applies to the plain "Roll <boss>" /
+  // "Roll <boss> or <boss>" headlines -- once a vault comparison is in play the headline is
+  // rendered as complete text (see cardData.ts), since it's a full sentence, not a template.
+  const tossUpPair = !card.vaultCompare && card.tossUp && card.tossUpBosses ? card.tossUpBosses : null
+  const heroVerb = card.bossName ? 'Roll' : null
 
   return (
     <section className="rec-card" aria-label="Bonus roll recommendation">
       <div className="rec-card__top">
         <div className="rec-card__eyebrow">{kicker}</div>
-        <div className="rec-card__meta num">{meta}</div>
+        <div className="rec-card__top-right">
+          {stale && <span className="rec-card__badge--stale">Out of date</span>}
+          <span className="rec-card__meta num">{meta}</span>
+        </div>
       </div>
 
       {tossUpPair ? (
@@ -28,12 +29,12 @@ export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; 
             {tossUpPair[0].name} <span className="rec-card__or">or</span> {tossUpPair[1].name}
           </span>
         </h2>
-      ) : (
+      ) : heroVerb && card.bossName ? (
         <h2 className="rec-card__headline">
-          {heroVerb && <span className="rec-card__verb">{heroVerb}</span>}
-          {heroVerb ? ' ' : ''}
-          <span className="rec-card__boss">{heroName ?? card.headline}</span>
+          <span className="rec-card__verb">{heroVerb}</span> <span className="rec-card__boss">{card.bossName}</span>
         </h2>
+      ) : (
+        <h2 className="rec-card__headline">{card.headline}</h2>
       )}
 
       {tossUpPair ? (
@@ -55,7 +56,7 @@ export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; 
         </div>
       )}
 
-      {card.secondBest && !tossUpPair && card.verdict !== 'tokens' && (
+      {card.secondBest && !tossUpPair && card.verdict === 'roll' && (
         <div className="rec-card__second">
           Next best: {card.secondBest.name} (~{card.secondBest.pct.toFixed(2)}%). Clear of sim noise, so the pick holds.
         </div>
@@ -69,7 +70,7 @@ export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; 
 
       {card.vaultCompare && (
         <div className="rec-card__compare">
-          <div className={`rec-card__compare-option${card.verdict !== 'vault' ? ' rec-card__compare-option--win' : ''}`}>
+          <div className={`rec-card__compare-option${card.verdict === 'roll' ? ' rec-card__compare-option--win' : ''}`}>
             <div className="rec-card__compare-label">Voidcore roll</div>
             <div className="rec-card__compare-value num">{card.vaultCompare.voidcorePct.toFixed(2)}%</div>
           </div>
@@ -80,11 +81,10 @@ export function RecommendationCard({ card, onPrimaryAction }: { card: CardData; 
         </div>
       )}
 
-      {card.vaultCompare && vaultMarginPct != null && card.verdict !== 'tokens' && (
-        <div className="rec-card__note--strong">
-          {card.verdict === 'vault'
-            ? `${card.vaultCompare.vaultItemName} beats the Voidcore roll by ${vaultMarginPct.toFixed(2)}%.`
-            : `${heroName ?? 'This roll'} beats ${card.vaultCompare.vaultItemName} by ${vaultMarginPct.toFixed(2)}%.`}
+      {card.vaultCompare && card.bestRoll && (
+        <div className="rec-card__note">
+          Best roll target: {card.bestRoll.name} (~{card.bestRoll.pct.toFixed(2)}%
+          {card.bestRoll.bestCaseItemName ? `, best case ${card.bestRoll.bestCaseItemName}` : ''}).
         </div>
       )}
 

@@ -50,6 +50,13 @@ export type RaidbotsRawReport = {
     player: string
     charClass: string
     spec: string
+    /**
+     * The raw simc profile the sim was built from. Raidbots' data.json carries the
+     * character's realm/region only here (as `server=` / `region=` lines) -- there's no
+     * structured field for them. Verified live 2026-09-22 against reports 6PTZ7TjgU8PdxJhZ97bMUa
+     * and k3vroAKe6QvF5gN4GeCVAq (both `region=us`, `server=hyjal`).
+     */
+    input?: string
     meta: {
       rawFormData: {
         droptimizer: {
@@ -68,6 +75,19 @@ const TRASH_ENCOUNTER_NAME = 'Trash Drop'
 
 function roleForSpec(spec: string): Role {
   return TANK_SPECS.has(spec.toLowerCase()) ? 'tank' : 'dps'
+}
+
+/**
+ * Pulls the character's realm/region out of the simc profile string (`simbot.input`),
+ * which is where Raidbots' data.json keeps them (as `server=<realm>` and `region=<region>`
+ * lines) -- there is no structured field. Returns undefined for either when the input is
+ * absent or the line isn't present, so the storage key falls back gracefully.
+ */
+export function parseCharacterLocation(input: string | undefined): { realm?: string; region?: string } {
+  if (!input) return {}
+  const region = /(?:^|\n)\s*region\s*=\s*([^\n#]+)/i.exec(input)?.[1]?.trim()
+  const realm = /(?:^|\n)\s*server\s*=\s*([^\n#]+)/i.exec(input)?.[1]?.trim()
+  return { realm: realm || undefined, region: region || undefined }
 }
 
 function classifyInstanceType(type: string | undefined): DetectedContentType {
@@ -231,10 +251,14 @@ export function normalizeRaidbotsReport(
     warnings.push(`${unmappedCount} items had no encounter mapping`)
   }
 
+  const { realm, region } = parseCharacterLocation(raw.simbot.input)
+
   return {
     source: 'raidbots',
     reportId,
     character: raw.simbot.player,
+    realm,
+    region,
     spec,
     charClass: raw.simbot.charClass,
     role: roleForSpec(spec),

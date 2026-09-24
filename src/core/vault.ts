@@ -6,6 +6,11 @@ function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length
 }
 
+/** EV-contributing value of a pool entry: a dud (owned, not rolled) is worth 0 while still occupying the pool. */
+function poolValue(entry: PoolEntry): number {
+  return entry.isDud ? 0 : entry.value
+}
+
 /**
  * Exact expected/worst-case/threshold-truncated roll counts to land one specific pool
  * entry via uniform sampling without replacement (knockout: each roll permanently
@@ -18,9 +23,18 @@ function mean(values: number[]): number {
  * rather than simulation: each state's continuation depends only on which entries remain,
  * not the order they were drawn in, so this is provably exact, not an approximation.
  */
-export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValue: number): RollsToTarget {
-  const n = pool.length
-  if (n === 0) return { expected: 0, worstCase: 0, expectedTruncated: 0 }
+/**
+ * `denominatorOverride`, when given, replaces `pool.length` for the two closed-form
+ * figures (`expected`, `worstCase`) only -- used when unattributed bonus rolls have
+ * fractionally shrunk the boss's effective remaining pool size (see buildBossPools'
+ * `unattributedAdjustment`) without removing any specific entry from `pool` itself.
+ * `expectedTruncated`'s recursion still runs over the real entries: there's no principled
+ * fractional analog for "abandon the hunt once the mean value drops below threshold"
+ * that doesn't invent a valuation for a nonexistent entry.
+ */
+export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValue: number, denominatorOverride?: number): RollsToTarget {
+  const n = denominatorOverride ?? pool.length
+  if (pool.length === 0) return { expected: 0, worstCase: 0, expectedTruncated: 0 }
 
   const expected = (n + 1) / 2
   const worstCase = n
@@ -49,7 +63,7 @@ export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValu
         continue
       }
       const after = remaining.filter((p) => p.key !== drawn.key)
-      const keepsHunting = mean(after.map((p) => p.value)) >= thresholdValue
+      const keepsHunting = mean(after.map((p) => poolValue(p))) >= thresholdValue
       total += 1 + (keepsHunting ? expectedRemainingRolls(after) : 0)
     }
 
@@ -110,11 +124,18 @@ export function compareVault(input: {
 
   const thresholdValue = (settings.thresholdPct / 100) * report.baseline
 
+  // Roll-only knockout: taking the vault item X does NOT remove X from its boss's roll
+  // pool -- X becomes a value-0 dud there, so next week's roll on that boss is diluted, not
+  // shrunk (see buildBossPools' `owned` handling). The saved-rolls credit is kept as-is: it
+  // stands for the bonus rolls you'd otherwise spend hunting X, freed to spend on the best
+  // OTHER boss (altRollEvPct below already excludes X's own boss, so X's post-vault dud state
+  // doesn't feed back into this figure).
   let savedRolls = 0
   if (found) {
     const remainingPool = found.boss.pool.filter((p) => !p.knockedOut)
     const { expectedTruncated } = rollsToTarget(remainingPool, found.target.key, thresholdValue)
     savedRolls = Math.min(expectedTruncated, remainingPool.length)
+    notes.push(`Taking "${vaultItem!.name}" leaves it in ${found.boss.encounterName}'s roll pool as a value-0 dud (roll-only knockout).`)
   }
 
   const excludeEncounterId = found?.boss.encounterId

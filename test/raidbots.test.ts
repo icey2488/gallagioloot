@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeRaidbotsReport, UnsupportedReportError, type RaidbotsRawReport } from '../src/normalize/raidbots'
+import { normalizeRaidbotsReport, parseCharacterLocation, UnsupportedReportError, type RaidbotsRawReport } from '../src/normalize/raidbots'
 import { UnsupportedContentError } from '../src/normalize/contentType'
 
 const BASELINE = 100000
@@ -44,6 +44,27 @@ describe('normalizeRaidbotsReport', () => {
     const report = makeReport()
     report.simbot.simType = 'raidSummary'
     expect(() => normalizeRaidbotsReport('abc', report)).toThrow(UnsupportedReportError)
+  })
+
+  it('extracts realm/region from the simc profile input (server=/region= lines), the only place data.json carries them', () => {
+    // Mirrors the live simbot.input shape verified 2026-09-22 (report 6PTZ7TjgU8PdxJhZ97bMUa).
+    const report = makeReport()
+    report.simbot.input = 'mage="Icemagus"\nlevel=90\nrace=dracthyr\nregion=us\nserver=hyjal\nrole=spell\nspec=arcane\n'
+    const result = normalizeRaidbotsReport('abc', report)
+    expect(result.region).toBe('us')
+    expect(result.realm).toBe('hyjal')
+  })
+
+  it('leaves realm/region undefined when the report has no simc input (so the storage key still forms)', () => {
+    const result = normalizeRaidbotsReport('abc', makeReport())
+    expect(result.realm).toBeUndefined()
+    expect(result.region).toBeUndefined()
+  })
+
+  it('parseCharacterLocation is tolerant of missing lines and surrounding whitespace', () => {
+    expect(parseCharacterLocation(undefined)).toEqual({})
+    expect(parseCharacterLocation('spec=arcane\nregion=eu\n')).toEqual({ region: 'eu' })
+    expect(parseCharacterLocation('  server = Area 52 \nregion=US')).toEqual({ realm: 'Area 52', region: 'US' })
   })
 
   it('computes baseline, delta, and pct for a basic row', () => {

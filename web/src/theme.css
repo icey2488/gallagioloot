@@ -529,6 +529,75 @@ tr.excluded .deploy-table__ev {
   .fold-table td[data-label='Item']::before {
     content: none;
   }
+
+  /* .loot-item-table's desktop per-column percent/px widths (needed for its
+     table-layout: fixed) outrank the generic .fold-table td { width: 100% } rule on
+     specificity alone -- so every folded cell (not just State) was still boxed to its
+     desktop column width, just invisibly, since only .state-seg (below) actually
+     clips overflow instead of letting text spill past an invisible boundary. Two
+     classes beats one, clearing every column back to the full fold-row width. */
+  .loot-item-table.fold-table tbody td {
+    width: 100%;
+  }
+
+  /* The State cell holds a 3-button control, not a short value -- stack the label
+     above it and let the control use the full row width instead of squeezing it into
+     the value half of a label/value split (which is how it got clipped to "No..."). */
+  .fold-table td[data-label='State'] {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+  }
+
+  /* Real touch target height at phone width. */
+  .state-seg__btn {
+    min-height: 44px;
+  }
+
+  /* Boss row header: the name gets its own full-width line (so it can wrap instead of
+     truncating) with remaining/EV dropped to a second line below it, rather than
+     squeezing the name's grid column down to a sliver next to those two auto-width
+     columns (which is how it got truncated to "Ula'..." in the first place). */
+  .boss-row__summary {
+    grid-template-columns: 20px 1fr 20px;
+    grid-template-areas:
+      'rank name chevron'
+      'meta meta meta';
+    row-gap: 4px;
+  }
+
+  .boss-row__rank {
+    grid-area: rank;
+  }
+
+  .boss-row__name {
+    grid-area: name;
+    white-space: normal;
+    overflow: visible;
+    text-overflow: unset;
+  }
+
+  .boss-row__chevron {
+    grid-area: chevron;
+  }
+
+  .boss-row__meta {
+    grid-area: meta;
+  }
+
+  /* The Loot spec/Difficulty and Voidcores/Rolls-available field pairs go full width
+     instead of squeezing two selects/inputs side by side (where the second one clips). */
+  .run-settings-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A <select>'s min-content width (driven by its option text) can't shrink below its
+   content -- as a grid item with the default min-width:auto, that floor forces the
+   whole run-settings-row grid track wider than its 1fr share, overflowing the panel.
+   min-width: 0 lets the field (and its select/input) actually shrink to the track. */
+.run-settings-row > .field {
+  min-width: 0;
 }
 
 /* Fixed layout with an explicit Item-column share -- an auto table layout squeezes
@@ -540,17 +609,17 @@ tr.excluded .deploy-table__ev {
 
 .loot-item-table th:first-child,
 .loot-item-table td:first-child {
-  width: 34%;
+  width: 26%;
 }
 
 .loot-item-table th:nth-child(2),
 .loot-item-table td:nth-child(2) {
-  width: 14%;
+  width: 12%;
 }
 
 .loot-item-table th:nth-child(3),
 .loot-item-table td:nth-child(3) {
-  width: 16%;
+  width: 14%;
 }
 
 .loot-item-table th:nth-child(3),
@@ -562,14 +631,16 @@ tr.excluded .deploy-table__ev {
 
 .loot-item-table th:nth-child(4),
 .loot-item-table td:nth-child(4) {
-  width: 26%;
+  width: 22%;
 }
 
-/* Fixed-width checkbox column so knockout controls line up in a column instead of
-   drifting with item-name length. */
+/* The STATE column holds a 3-button segmented control (None/Owned/Rolled), not a
+   checkbox -- it needs real room, in percent so it scales down (rather than overflowing
+   its cell, and the card's right edge with it) at any width down to the fold-table
+   breakpoint, where it switches to a full-width block below the item name instead. */
 .loot-item-table th:last-child,
 .loot-item-table td:last-child {
-  width: 72px;
+  width: 26%;
   text-align: center;
 }
 
@@ -621,6 +692,26 @@ tr.excluded .deploy-table__ev {
   margin-top: 8px;
 }
 
+/* One merged curio pool entry, several tier pieces listed inside it -- one state control
+   and one "X / Y remaining" count for the whole group (see buildBossPools' curio merge). */
+.curio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.curio-group__item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.curio-group__pct {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
 /* Recommendation card: the strongest gold treatment on any screen (2px gold border +
    gold headline + gold primary button, all at once) -- everywhere else in the app gold
    is accent-weight only (see the CLAUDE.md "Design (web/)" gold-accent rule).
@@ -657,6 +748,29 @@ tr.excluded .deploy-table__ev {
 .rec-card__meta {
   font-size: var(--text-eyebrow);
   color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.rec-card__top-right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+/* Reuses the warning-banner fill/border/text combo (already contrast-verified against
+   its own background) as a compact pill -- same visible-warning language as the
+   reprice note below the button, just badge-shaped. */
+.rec-card__badge--stale {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: #3a2a12;
+  border: 1px solid #996f2b;
+  color: #e8c98a;
   white-space: nowrap;
 }
 
@@ -1315,4 +1429,214 @@ select:disabled {
   padding: 10px 12px;
   font-size: 13px;
   margin-bottom: 16px;
+}
+
+/* -------------------------------------------------------------------------
+   Single-page flow (feat/single-page-flow). No tabs -- Reports, Run settings
+   and the priced recommendation all stack in one column. Reuses the existing
+   v4 tokens/panels; no new palette. Claude Design polish comes later.
+   ------------------------------------------------------------------------- */
+
+/* One column, a touch wider than the 720px default to fit the ranked-boss and
+   loot tables comfortably. */
+.app-main--page {
+  max-width: 860px;
+}
+
+.app-main--page > .panel + .panel,
+.app-main--page > section + section {
+  margin-top: var(--space-8);
+}
+
+/* Boss list in Run settings: a hairline-separated stack of expandable rows. */
+.boss-list {
+  display: flex;
+  flex-direction: column;
+  border-top: 1px solid var(--border);
+}
+
+.boss-row {
+  border-bottom: 1px solid var(--border);
+}
+
+.boss-row__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: 48px;
+}
+
+.boss-row__kill {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+.boss-row__summary {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto 20px;
+  align-items: center;
+  gap: var(--space-5);
+  background: none;
+  border: none;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  padding: var(--space-5) var(--space-2);
+  font-size: var(--text-body);
+}
+
+.boss-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+}
+
+.boss-row__summary:hover {
+  background: var(--bg-panel-alt);
+}
+
+.boss-row__rank {
+  color: var(--text-muted);
+}
+
+.boss-row__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boss-row__remaining {
+  color: var(--text-secondary);
+  font-size: var(--text-meta);
+  white-space: nowrap;
+}
+
+.boss-row__remaining-label {
+  color: var(--text-muted);
+}
+
+.boss-row__ev {
+  font-weight: 700;
+  font-size: var(--text-control-label);
+  white-space: nowrap;
+}
+
+.boss-row__chevron {
+  color: var(--text-muted);
+  font-size: 18px;
+  text-align: center;
+}
+
+.boss-row--excluded .boss-row__name,
+.boss-row--excluded .boss-row__ev {
+  color: var(--text-muted);
+}
+
+.boss-row__body {
+  padding: var(--space-2) var(--space-2) var(--space-9);
+}
+
+.boss-row__rolls {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-6);
+}
+
+.boss-row__rolls label {
+  font-size: var(--text-meta);
+  color: var(--text-secondary);
+}
+
+.boss-row__rolls-input {
+  width: 64px;
+}
+
+.boss-row__rolls-note {
+  font-size: var(--text-eyebrow);
+  color: var(--text-muted);
+}
+
+.boss-row__item--rolled {
+  color: var(--text-muted);
+}
+
+.boss-row__item--rolled td[data-label='Item'] {
+  text-decoration: line-through;
+}
+
+.boss-row__item--owned {
+  color: var(--text-muted);
+}
+
+/* Per-item ownership control: None / Owned / Rolled. Selected segment gets a neutral
+   highlight (no gold -- the recommendation card keeps the heaviest treatment). Always
+   full width of its cell with three equal-share buttons, so it fits the STATE column at
+   any width instead of overflowing it (and, at the fold-table breakpoint, the row). */
+.state-seg {
+  display: flex;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.state-seg__btn {
+  flex: 1 1 0;
+  min-width: 0;
+  background: var(--bg-panel-alt);
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-secondary);
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--text-eyebrow);
+  cursor: pointer;
+  min-height: 32px;
+}
+
+.state-seg__btn:last-child {
+  border-right: none;
+}
+
+.state-seg__btn:hover {
+  background: var(--bg-hover);
+}
+
+.state-seg__btn--on {
+  background: var(--bg-hover);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--gold);
+}
+
+/* Price my roll action + the priced snapshot below it. */
+.price-action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-8);
+}
+
+.price-action__btn {
+  min-width: 220px;
+}
+
+/* Reuses .warning-banner's visible-warning treatment -- just adds top spacing under
+   the button instead of the banner's usual bottom-of-panel margin. */
+.reprice-note {
+  margin-top: var(--space-8);
+  margin-bottom: 0;
+}
+
+/* Stale dim: the snapshot is intentionally de-emphasized (not hidden) until re-priced.
+   A transient affordance, not permanent text -- the numbers are still legible. */
+.priced-section--stale {
+  opacity: 0.45;
+  filter: saturate(0.6);
+  transition: opacity 0.15s ease;
 }
