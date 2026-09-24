@@ -51,6 +51,7 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
         </div>
       ) : (
         <div className="rec-card__pct-row">
+          {card.verdict === 'toss-up' && card.vaultCompare && <div className="rec-card__pct-label">Voidcore roll</div>}
           <div className="rec-card__pct num">{card.pct.toFixed(2)}%</div>
           {card.verdict === 'roll' && <div className="rec-card__pct-caption">expected gain from this Voidcore</div>}
         </div>

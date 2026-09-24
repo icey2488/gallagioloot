@@ -188,6 +188,24 @@ input[type='checkbox']:checked {
   display: flex;
   align-items: center;
   gap: var(--space-6);
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* A long character key must shrink (ellipsis) rather than push the header past the viewport. */
+.app-header__controls > div {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.app-header__controls select {
+  min-width: 0;
+  flex: 0 1 auto;
+  text-overflow: ellipsis;
+}
+
+.app-header__controls .voidcore-pill {
+  flex: none;
 }
 
 /* Screen tab bar (Paste/Reconcile/Loot table/Recommendation), from the v2 design export.
@@ -530,6 +548,24 @@ tr.excluded .deploy-table__ev {
     content: none;
   }
 
+  /* The Item cell's children (name, tag, spec-specific pill, note) are flex items here.
+     Let them wrap onto new lines and keep the pill at its natural width -- otherwise flex
+     shrinks it to a sliver and its 999px radius renders a circle. */
+  .fold-table td[data-label='Item'] {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    align-items: baseline;
+    column-gap: var(--space-3);
+  }
+
+  .fold-table td[data-label='Item'] .badge {
+    flex: none;
+  }
+
+  .fold-table td[data-label='Item'] .note-line {
+    flex-basis: 100%;
+  }
+
   /* .loot-item-table's desktop per-column percent/px widths (needed for its
      table-layout: fixed) outrank the generic .fold-table td { width: 100% } rule on
      specificity alone -- so every folded cell (not just State) was still boxed to its
@@ -665,6 +701,7 @@ tr.excluded .deploy-table__ev {
 
 .badge {
   display: inline-block;
+  white-space: nowrap;
   padding: 2px 8px;
   border-radius: 999px;
   font-size: 11px;
@@ -812,6 +849,12 @@ tr.excluded .deploy-table__ev {
   letter-spacing: -0.02em;
   color: var(--text);
   line-height: 1;
+}
+
+.rec-card__pct-label {
+  flex-basis: 100%;
+  font-size: 13px;
+  color: var(--text-secondary);
 }
 
 .rec-card__pct-caption {
