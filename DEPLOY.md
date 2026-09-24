@@ -39,6 +39,8 @@ npx wrangler deploy        # uses web/wrangler.toml, uploads dist/
 
 ## Smoke test
 
+**Run `npm run check:live` (in `web/`) after every deploy** — it drives the live site with real reports and prints/asserts-by-eye the switcher, card, and layout state (outputs land gitignored in `web/design/live-single-page-*`).
+
 ```bash
 cd web
 npx playwright install chromium   # first time only
