@@ -2,6 +2,7 @@
 // by a future frontend as-is.
 
 import type { TargetKind } from '../types'
+import type { ExtraVoidcore } from './supply'
 
 /**
  * How the player obtained an item, under the roll-only knockout model (operator ruling):
@@ -57,8 +58,13 @@ export type KnockoutState = {
 export type Settings = {
   /** Minimum EV, as a percentage of baseline (e.g. 0.2 means 0.2%), for a boss to be worth a roll. */
   thresholdPct: number
-  /** 1 normally, 2 from season week 8 onward -- caller supplies this, core does not compute it from dates. */
-  rollsAvailable: number
+  /**
+   * Voidcores to spend this week: how many rolls `recommend` allocates down the ranking (at least 1,
+   * so the card can always name the best target). There is no weekly spend cap -- the limits are the
+   * Voidcores held and the targeting rules -- so this is the player's own choice (the UI defaults it
+   * to Voidcores on hand). See supply.ts for the hold-vs-spend side.
+   */
+  voidcoresToSpend: number
   includeOffSpec: boolean
   /**
    * Encounter ids the player expects to kill this week. Undefined (default) means every
@@ -83,7 +89,7 @@ export type Settings = {
 
 export const DEFAULT_SETTINGS: Settings = {
   thresholdPct: 0.2,
-  rollsAvailable: 1,
+  voidcoresToSpend: 1,
   includeOffSpec: false,
 }
 
@@ -191,6 +197,12 @@ export type BossEval = {
   bestCase: PoolEntry | null
   /** UI vocabulary is "rollable"; the field name is kept for stability. */
   deployable: boolean
+  /**
+   * In play this week (expected kill / key you will run, pool not empty) but EV below the threshold:
+   * not deployable, yet a Voidcore spent this week can still land here once the better targets are
+   * used (see planVoidcores, which flags such a roll "below threshold").
+   */
+  belowThreshold?: boolean
   notes: string[]
   /** Mean of the remaining pool's `errorPct` values, where known -- the boss-level sim error used for toss-up detection. Undefined when no remaining entry carries an error (e.g. QE Live). */
   evErrorPct?: number
@@ -219,7 +231,7 @@ export type Recommendation = {
    * Set when the boss decided by the last allocated roll and the next-best deployable
    * boss are close enough to call sim noise rather than a real ranking (see `isTossUpGap`
    * in tossup.ts). `bosses` is [the allocated boss's name, the runner-up's name] --
-   * for `rollsAvailable` 1 this is rank 1 vs rank 2; for 2 it's rank 2 vs rank 3, since
+   * for `voidcoresToSpend` 1 this is rank 1 vs rank 2; for 2 it's rank 2 vs rank 3, since
    * the first two rolls are both allocated regardless. The allocation itself is
    * unaffected -- this only annotates the recommendation for display.
    */
@@ -240,7 +252,10 @@ export type VaultItemInput = {
 }
 
 export type VaultDecision = {
+  /** What the Voidcore adds to supply: max(its spend-now EV as the next roll this week, its hold value next week). See `extraVoidcore` in supply.ts. */
   voidcoreGainPct: number
+  /** Where that Voidcore goes: rolled this week (roll N) or held for next week's target. Null when neither week has a target for it. */
+  voidcoreUse: ExtraVoidcore | null
   vaultItemGainPct: number
   savedRolls: number
   /** Set when the vault item was found in a loot pool but that target isn't one of this week's allocated rolls, so no saved-rolls credit was given. */

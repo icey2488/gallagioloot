@@ -40,7 +40,7 @@ function makeKnockout(overrides: Partial<KnockoutState> = {}): KnockoutState {
   return { character: 'Iceshaman', difficulty: 'raid-vault-heroic', entries: [], version: 2, ...overrides }
 }
 
-const SETTINGS: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+const SETTINGS: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 
 describe('buildBossPools', () => {
   it('collapses duplicate rows for the same itemId into one entry using the max delta', () => {

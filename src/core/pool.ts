@@ -337,6 +337,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       evPct,
       bestCase,
       deployable: inExpectedKills && remaining > 0 && evPct >= settings.thresholdPct,
+      belowThreshold: inExpectedKills && remaining > 0 && evPct < settings.thresholdPct,
       notes,
       evErrorPct: meanErrorPct(remainingEntries),
     })

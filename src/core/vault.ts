@@ -2,6 +2,7 @@ import type { NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../t
 import type { BossEval, PoolEntry, Recommendation, RollsToTarget, Settings, VaultDecision, VaultItemInput } from './types'
 import { isTossUpGap } from './tossup'
 import { evalKey } from './targets'
+import { planVoidcores, type ExtraVoidcore, type VoidcoreSupply } from './supply'
 
 function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length
@@ -102,18 +103,28 @@ export function noSavedRollsNote(itemName: string, targetName: string): string {
   return `${targetName} isn't a target you'd roll this week, so taking "${itemName}" saves no rolls.`
 }
 
+/** A player with no Voidcores and the default earning rate: one more Voidcore is simply their first roll. */
+const FRESH_SUPPLY: VoidcoreSupply = { onHand: 0, toSpend: 0, earnedPerWeek: 1 }
+
+/** "roll 4: The Lost Explorers (Mythic)" / "next week: The Coiled Altar (Mythic)" -- where one more Voidcore goes. */
+export function extraVoidcoreWhere(extra: ExtraVoidcore): string {
+  const name = extra.target.kind === 'mplus' || !extra.target.difficultyLabel ? extra.target.encounterName : `${extra.target.encounterName} (${extra.target.difficultyLabel})`
+  return extra.use === 'spend' ? `roll ${extra.roll}: ${name}` : `next week: ${name}`
+}
+
 /**
- * Compares the Great Vault's two options for the week: take a specific vault item
- * outright, or take the Nebulous Voidcore and spend `settings.rollsAvailable` bonus
- * rolls per `recommend()`'s allocation. `bossEvals` may span several reports (raid
- * difficulties + Mythic+): the vault item is matched against every target's pool, and the
- * alternative roll is the best OTHER target across all of them. `report` only supplies a
- * fallback baseline for evals built without one.
+ * Compares the Great Vault's two options for the week: take a specific vault item outright, or
+ * take the Nebulous Voidcore, which adds ONE Voidcore to supply. That Voidcore is worth
+ * max(its spend-now EV as the next roll in this week's order, its hold value next week) under
+ * `supply` (see `planVoidcores`; defaults to a player with none on hand, for whom it is simply
+ * roll 1). `bossEvals` may span several reports (raid difficulties + Mythic+): the vault item is
+ * matched against every target's pool, and the alternative roll is the best OTHER target across
+ * all of them. `report` only supplies a fallback baseline for evals built without one.
  *
  * The saved-rolls credit only applies when the vault item's target is among the targets
  * `recommendation` allocates rolls to this week: you can't save rolls you would never have
  * spent hunting there. Otherwise savedRolls is 0 and the comparison is the plain vault item
- * gain against the Voidcore path (`savedRollsNote` says why).
+ * gain against the Voidcore (`savedRollsNote` says why).
  */
 export function compareVault(input: {
   vaultItem: VaultItemInput | null
@@ -121,14 +132,16 @@ export function compareVault(input: {
   recommendation: Recommendation
   settings: Settings
   report: NormalizedReport
+  supply?: VoidcoreSupply
 }): VaultDecision {
   const { vaultItem, bossEvals, recommendation, settings, report } = input
   const notes: string[] = []
 
-  const voidcoreGainPct = recommendation.totalExpectedGainPct
+  const voidcoreUse = planVoidcores(bossEvals, input.supply ?? FRESH_SUPPLY).extra
+  const voidcoreGainPct = voidcoreUse?.valuePct ?? 0
 
   if (!vaultItem) {
-    notes.push('No vault item specified this week; comparing the Voidcore path against a zero-value alternative.')
+    notes.push('No vault item specified this week; comparing the Voidcore against a zero-value alternative.')
   }
 
   const found = vaultItem ? findVaultPool(vaultItem, bossEvals) : null
@@ -178,7 +191,7 @@ export function compareVault(input: {
 
   if (belowThresholdA && belowThresholdB) {
     verdict = 'tokens'
-    explanation = `Neither the Voidcore path (~${voidcoreGainPct.toFixed(2)}%) nor "${vaultItem?.name ?? 'the vault item'}" (~${vaultItemGainPct.toFixed(2)}%) clears the ${settings.thresholdPct}% threshold this week; take the Great Vault's Thalassian Tokens of Merit instead.`
+    explanation = `Neither the Voidcore (~${voidcoreGainPct.toFixed(2)}%) nor "${vaultItem?.name ?? 'the vault item'}" (~${vaultItemGainPct.toFixed(2)}%) clears the ${settings.thresholdPct}% threshold this week; take the Great Vault's Thalassian Tokens of Merit instead.`
   } else {
     const diff = Math.abs(voidcoreGainPct - vaultItemGainPct)
     if (isTossUpGap(diff, Math.max(voidcoreGainPct, vaultItemGainPct), { pctOfReference: 0.1 })) {
@@ -187,14 +200,14 @@ export function compareVault(input: {
       notes.push("When it's close, prefer the vault item if it removes a dungeon from your weekly farm.")
     } else if (vaultItemGainPct > voidcoreGainPct) {
       verdict = 'vault'
-      explanation = `"${vaultItem?.name ?? 'The vault item'}" (~${vaultItemGainPct.toFixed(2)}%) beats the Voidcore path (~${voidcoreGainPct.toFixed(2)}%) by ${(vaultItemGainPct - voidcoreGainPct).toFixed(2)} points.`
+      explanation = `"${vaultItem?.name ?? 'The vault item'}" (~${vaultItemGainPct.toFixed(2)}%) beats the Voidcore (~${voidcoreGainPct.toFixed(2)}%) by ${(vaultItemGainPct - voidcoreGainPct).toFixed(2)} points.`
     } else {
       verdict = 'voidcore'
-      explanation = `The Voidcore path (~${voidcoreGainPct.toFixed(2)}%) beats "${vaultItem?.name ?? 'the vault item'}" (~${vaultItemGainPct.toFixed(2)}%) by ${(voidcoreGainPct - vaultItemGainPct).toFixed(2)} points.`
+      explanation = `The Voidcore (~${voidcoreGainPct.toFixed(2)}%) beats "${vaultItem?.name ?? 'the vault item'}" (~${vaultItemGainPct.toFixed(2)}%) by ${(voidcoreGainPct - vaultItemGainPct).toFixed(2)} points.`
     }
   }
 
-  return { voidcoreGainPct, vaultItemGainPct, savedRolls, savedRollsNote, verdict, explanation, notes }
+  return { voidcoreGainPct, voidcoreUse, vaultItemGainPct, savedRolls, savedRollsNote, verdict, explanation, notes }
 }
 
 export type TopGearVaultItem = VaultItemInput & {

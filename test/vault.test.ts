@@ -156,7 +156,7 @@ function makeRecommendation(totalExpectedGainPct: number, allocated: BossEval[] 
   }
 }
 
-const SETTINGS: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+const SETTINGS: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 
 describe('compareVault', () => {
   it('returns verdict "voidcore" when the Voidcore path clearly beats the vault item', () => {

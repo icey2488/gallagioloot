@@ -8,7 +8,7 @@ import type { LootTableEncounter, LootTableItem, NormalizedItem, NormalizedRepor
 import { loadLookup, loadMplusRaw, loadRaidRaw, MPLUS_REPORT_ID, RAID_REPORT_ID } from './fixtures/load'
 
 const BASELINE = 100000
-const SETTINGS: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false, lootSpecId: 62 }
+const SETTINGS: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false, lootSpecId: 62 }
 
 function row(overrides: Partial<NormalizedItem>): NormalizedItem {
   return { itemId: 1, name: 'Item', encounterId: 2883, encounterName: 'The Coiled Altar', instanceId: 1320, ilvl: 334, delta: 0, pct: 0, ...overrides }

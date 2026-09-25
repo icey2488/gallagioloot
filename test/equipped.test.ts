@@ -61,7 +61,7 @@ describe('real Icemagus fixtures', () => {
   })
 
   it('auto-Owned items and per-target EV on the real data (equipped-aware vs. ignoring the gear)', () => {
-    const settings: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false, lootSpecId: 62 }
+    const settings: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false, lootSpecId: 62 }
     const lookup = loadLookup()
     const run = (report: NormalizedReport, instanceId: number, equipped: boolean) => {
       const r = equipped ? report : { ...report, equippedItemIds: undefined }
@@ -102,7 +102,7 @@ describe('real Icemagus fixtures', () => {
 
 describe('equipped items in the pool', () => {
   const RING = 251148
-  const SETTINGS: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+  const SETTINGS: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
   const simmed = (itemId: number, delta: number): NormalizedItem => ({ itemId, name: `Item ${itemId}`, encounterId: 1311, encounterName: 'Den of Nalorakk', instanceId: -1, ilvl: 334, delta, pct: delta / 1000 })
   const report = (equippedItemIds: number[] | undefined, items: NormalizedItem[] = [simmed(1, 2000), simmed(2, 1000)]): NormalizedReport => ({
     source: 'raidbots', reportId: 'r', character: 'Icemagus', spec: 'arcane', role: 'dps', metric: 'dps', contentType: 'raid', difficulty: 'raid-vault-mythic', baseline: 100000, items, warnings: [], equippedItemIds,

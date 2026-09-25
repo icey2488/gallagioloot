@@ -10,7 +10,7 @@ import { toIsoDate } from '../src/normalize/simDate'
 import type { Settings } from '../src/core/types'
 import { loadLookup, loadMplusRaw, loadRaidRaw, MPLUS_REPORT_ID, RAID_REPORT_ID } from './fixtures/load'
 
-const SETTINGS: Settings = { thresholdPct: 0.2, rollsAvailable: 2, includeOffSpec: false }
+const SETTINGS: Settings = { thresholdPct: 0.2, voidcoresToSpend: 2, includeOffSpec: false }
 const lookup = loadLookup()
 
 describe('per-boss drop step read off the Mythic raid fixture (6PTZ7TjgU8PdxJhZ97bMUa)', () => {

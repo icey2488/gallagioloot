@@ -182,7 +182,7 @@ describe('reconcile', () => {
       item({ itemId: 301, name: 'Tier Shoulder Token', encounterId: 2895, encounterName: "Ula'tek", delta: 900, viaCurio: true, tierSlot: 'shoulder' }),
     ])
     const state = createState('Iceshaman', 'raid-vault-heroic')
-    const settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+    const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 
     const result = reconcile(state, report, { encounterId: 2895, receivedItemId: 300, receivedAt: '2026-09-08T00:00:00Z' }, settings)
 
@@ -195,7 +195,7 @@ describe('reconcile', () => {
   it('re-evaluates the recommendation after knocking out the only deployable boss', () => {
     const report = makeReport([item({ itemId: 100, delta: 1000 })])
     const state = createState('Iceshaman', 'raid-vault-heroic')
-    const settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+    const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 
     const result = reconcile(state, report, { encounterId: 2888, receivedItemId: 100, receivedAt: '2026-09-08T00:00:00Z' }, settings)
 
@@ -206,7 +206,7 @@ describe('reconcile', () => {
   it('records the currently active lootSpecId (from settings) on every new knockout entry', () => {
     const report = makeReport([item({ itemId: 100, delta: 1000 })])
     const state = createState('Iceshaman', 'raid-vault-heroic')
-    const settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false, lootSpecId: 262 }
+    const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false, lootSpecId: 262 }
 
     const result = reconcile(state, report, { encounterId: 2888, receivedItemId: 100, receivedAt: '2026-09-08T00:00:00Z' }, settings)
 
@@ -216,7 +216,7 @@ describe('reconcile', () => {
   it('records the outcome as a "rolled" entry and bumps the per-boss rolls-spent counter', () => {
     const report = makeReport([item({ itemId: 100, delta: 1000 }), item({ itemId: 200, delta: 2000 })])
     const state = createState('Iceshaman', 'raid-vault-heroic')
-    const settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+    const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 
     const result = reconcile(state, report, { encounterId: 2888, receivedItemId: 100, receivedAt: '2026-09-08T00:00:00Z' }, settings)
 
@@ -230,7 +230,7 @@ describe('reconcile', () => {
 
   it('turns a repeat roll of an already-recorded item into an unattributed roll (counter up, attributed unchanged)', () => {
     const report = makeReport([item({ itemId: 100, delta: 1000 }), item({ itemId: 200, delta: 2000 })])
-    const settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+    const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
     let state = createState('Iceshaman', 'raid-vault-heroic')
     state = reconcile(state, report, { encounterId: 2888, receivedItemId: 100, receivedAt: '2026-09-08T00:00:00Z' }, settings).state
     // Same item again (a dud repeat): the upsert doesn't add a new attributed entry, but the roll is still spent.

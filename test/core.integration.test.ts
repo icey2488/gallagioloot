@@ -34,8 +34,8 @@ async function fetchLiveLookup() {
   return buildEncounterItemsLookup(items, instances, encounterNames, instanceNames, weaponSpecs)
 }
 
-function printReportTable(label: string, report: NormalizedReport, rollsAvailable: 1 | 2, lookup: EncounterItemsLookup) {
-  const settings: Settings = { thresholdPct: 0.2, rollsAvailable, includeOffSpec: false, lootSpecId: report.lootSpecId }
+function printReportTable(label: string, report: NormalizedReport, voidcoresToSpend: 1 | 2, lookup: EncounterItemsLookup) {
+  const settings: Settings = { thresholdPct: 0.2, voidcoresToSpend, includeOffSpec: false, lootSpecId: report.lootSpecId }
   const knockout = createState(report.character, report.difficulty, report.realm, report.region)
 
   const bossEvalsReportOnly = buildBossPools(report, knockout, settings)
@@ -45,7 +45,7 @@ function printReportTable(label: string, report: NormalizedReport, rollsAvailabl
   const bossEvals = lootTableEncounters ? buildBossPools(report, knockout, settings, lootTableEncounters) : bossEvalsReportOnly
   const recommendation = recommend(bossEvals, settings, report)
 
-  console.log(`\n[${label}] rolls=${rollsAvailable} -- own loot spec: ${report.lootSpecId} -- per-boss pool size before (report only) vs after (full loot table)`)
+  console.log(`\n[${label}] rolls=${voidcoresToSpend} -- own loot spec: ${report.lootSpecId} -- per-boss pool size before (report only) vs after (full loot table)`)
   console.table(
     bossEvalsReportOnly.map((b) => {
       const after = bossEvals.find((a) => a.encounterId === b.encounterId)
@@ -59,7 +59,7 @@ function printReportTable(label: string, report: NormalizedReport, rollsAvailabl
     })
   )
 
-  console.log(`\n[${label}] rolls=${rollsAvailable} -- per-boss table (full loot table applied)`)
+  console.log(`\n[${label}] rolls=${voidcoresToSpend} -- per-boss table (full loot table applied)`)
   console.table(
     bossEvals.map((b) => ({
       encounter: b.encounterName,
@@ -72,9 +72,9 @@ function printReportTable(label: string, report: NormalizedReport, rollsAvailabl
       deployable: b.deployable,
     }))
   )
-  console.log(`[${label}] rolls=${rollsAvailable} -- recommendation:`, JSON.stringify(recommendation, null, 2))
+  console.log(`[${label}] rolls=${voidcoresToSpend} -- recommendation:`, JSON.stringify(recommendation, null, 2))
 
-  if (rollsAvailable === 1) {
+  if (voidcoresToSpend === 1) {
     const topBoss = [...bossEvals].filter((b) => b.deployable).sort((a, b) => b.ev - a.ev)[0] as BossEval | undefined
     if (topBoss?.bestCase) {
       const vaultDecision = compareVault({

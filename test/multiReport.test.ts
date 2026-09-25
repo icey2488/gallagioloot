@@ -12,7 +12,7 @@ import type { NormalizedItem, NormalizedReport } from '../src/types'
 import { loadLookup, loadMplusRaw, loadRaidRaw, MPLUS_REPORT_ID, RAID_REPORT_ID } from './fixtures/load'
 
 const BASELINE = 100000
-const SETTINGS: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+const SETTINGS: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 
 function item(encounterId: number, encounterName: string, delta: number, overrides: Partial<NormalizedItem> = {}): NormalizedItem {
   return { itemId: encounterId * 10, name: `${encounterName} item`, encounterId, encounterName, instanceId: 1320, ilvl: 334, delta, pct: delta / 1000, ...overrides }
@@ -112,7 +112,7 @@ describe('roll allocation across raid and Mythic+ targets', () => {
   const raid = raidReport([item(2883, 'The Coiled Altar', 800), item(2871, 'Sszorak', 700), item(2895, "Ula'tek", 300)])
 
   it('2 rolls, raid only: two distinct bosses', () => {
-    const settings = { ...SETTINGS, rollsAvailable: 2 }
+    const settings = { ...SETTINGS, voidcoresToSpend: 2 }
     const rec = recommend(evalsFor([raid], settings), settings, raid)
     expect(rec.allocations.map((a) => [a.encounterName, a.rolls])).toEqual([
       ['The Coiled Altar', 1],
@@ -122,7 +122,7 @@ describe('roll allocation across raid and Mythic+ targets', () => {
 
   it('2 rolls, best target is a dungeon: both rolls go to that repeatable M+ target (run the key twice)', () => {
     const mplus = mplusReport([item(1322, 'Altar of Fangs', 1200), item(1311, 'Den of Nalorakk', 900)])
-    const settings = { ...SETTINGS, rollsAvailable: 2 }
+    const settings = { ...SETTINGS, voidcoresToSpend: 2 }
     const rec = recommend(evalsFor([raid, mplus], settings), settings, [raid, mplus])
     expect(rec.allocations).toHaveLength(1)
     expect(rec.allocations[0]).toMatchObject({ encounterName: 'Altar of Fangs', kind: 'mplus', rolls: 2, targetKey: 'mplus-myth:1322', keyLevel: 10, difficultyLabel: '+10 (Myth)' })
@@ -134,7 +134,7 @@ describe('roll allocation across raid and Mythic+ targets', () => {
 
   it('2 rolls, raid best then a dungeon: one roll each', () => {
     const mplus = mplusReport([item(1322, 'Altar of Fangs', 750)])
-    const settings = { ...SETTINGS, rollsAvailable: 2 }
+    const settings = { ...SETTINGS, voidcoresToSpend: 2 }
     const rec = recommend(evalsFor([raid, mplus], settings), settings, [raid, mplus])
     expect(rec.allocations.map((a) => [a.encounterName, a.rolls])).toEqual([
       ['The Coiled Altar', 1],
@@ -144,7 +144,7 @@ describe('roll allocation across raid and Mythic+ targets', () => {
 
   it('3 rolls: a raid boss never takes a second roll, a dungeon keeps taking them while it is the best left', () => {
     const mplus = mplusReport([item(1322, 'Altar of Fangs', 750)])
-    const settings = { ...SETTINGS, rollsAvailable: 3 }
+    const settings = { ...SETTINGS, voidcoresToSpend: 3 }
     const rec = recommend(evalsFor([raid, mplus], settings), settings, [raid, mplus])
     expect(rec.allocations.map((a) => [a.encounterName, a.rolls])).toEqual([
       ['The Coiled Altar', 1],
@@ -156,7 +156,7 @@ describe('roll allocation across raid and Mythic+ targets', () => {
   it('allows the same boss on two difficulties as two distinct raid targets', () => {
     const heroic = raidReport([item(2883, 'The Coiled Altar', 750)], { reportId: 'raid-heroic', difficulty: 'raid-vault-heroic' })
     const mythicOnly = raidReport([item(2883, 'The Coiled Altar', 800)])
-    const settings = { ...SETTINGS, rollsAvailable: 2 }
+    const settings = { ...SETTINGS, voidcoresToSpend: 2 }
     const rec = recommend(evalsFor([mythicOnly, heroic], settings), settings, [mythicOnly, heroic])
     expect(rec.allocations.map((a) => [a.encounterName, a.difficultyLabel])).toEqual([
       ['The Coiled Altar', 'Mythic'],
@@ -166,7 +166,7 @@ describe('roll allocation across raid and Mythic+ targets', () => {
 
   it('respects expectedTargets: an unchecked dungeon ("I will run this key" off) takes no roll', () => {
     const mplus = mplusReport([item(1322, 'Altar of Fangs', 1200)])
-    const settings = { ...SETTINGS, rollsAvailable: 1, expectedTargets: ['raid-vault-mythic:2883', 'raid-vault-mythic:2871'] }
+    const settings = { ...SETTINGS, voidcoresToSpend: 1, expectedTargets: ['raid-vault-mythic:2883', 'raid-vault-mythic:2871'] }
     const evals = evalsFor([raid, mplus], settings)
     expect(evals.find((b) => b.encounterId === 1322)?.deployable).toBe(false)
     expect(recommend(evals, settings, [raid, mplus]).allocations[0].encounterName).toBe('The Coiled Altar')
@@ -248,7 +248,7 @@ describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () 
   // Equipped-gear defaults are pinned in equipped.test.ts; the ranking here is evaluated as if no gear were equipped.
   const raid = { ...normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup), equippedItemIds: undefined }
   const mplus = { ...normalizeRaidbotsReport(MPLUS_REPORT_ID, loadMplusRaw(), lookup), equippedItemIds: undefined }
-  const settings: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false, lootSpecId: 62 }
+  const settings: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false, lootSpecId: 62 }
   const evals = [
     ...buildBossPools(raid, createStateFor(raid), settings, buildLootTable(1320, 62, lookup)),
     ...buildBossPools(mplus, createStateFor(mplus), settings, buildLootTable(-1, 62, lookup)),
@@ -303,14 +303,16 @@ describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () 
     expect(vd.verdict).toBe('voidcore') // 0.92% vs 0.74%: gap 0.18 is past the vault toss-up band
   })
 
-  it("2 rolls: Ula'tek + Coiled Altar, still no saved rolls for the Vial -> Voidcore (1.73% vs 0.74%)", () => {
-    const twoRolls: Settings = { ...settings, rollsAvailable: 2 }
+  it("2 Voidcores on hand, 1 earned a week: the vault's Voidcore is worth its hold value (The Coiled Altar next week, 0.81%), a toss-up with the Vial", () => {
+    // v2.08 valued the Voidcore side as the whole week's rolls (1.73% = Ula'tek + The Coiled Altar); v2.09 values the one Voidcore the vault adds.
+    const twoRolls: Settings = { ...settings, voidcoresToSpend: 2 }
     const rec = recommend(evals, twoRolls, [raid, mplus])
     expect(rec.allocations.map((a) => a.encounterName)).toEqual(["Ula'tek", 'The Coiled Altar'])
-    const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings: twoRolls, report: raid })
+    const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings: twoRolls, report: raid, supply: { onHand: 2, toSpend: 2, earnedPerWeek: 1 } })
     expect(vd.savedRolls).toBe(0)
-    expect(vd.voidcoreGainPct).toBeCloseTo(1.7323, 3)
+    expect(vd.voidcoreUse).toMatchObject({ use: 'hold', target: { encounterName: 'The Coiled Altar' }, spendPct: expect.closeTo(0.6475, 3) })
+    expect(vd.voidcoreGainPct).toBeCloseTo(0.8117, 3)
     expect(vd.vaultItemGainPct).toBeCloseTo(0.7439, 4)
-    expect(vd.verdict).toBe('voidcore')
+    expect(vd.verdict).toBe('toss-up') // gap 0.068 is inside the vault toss-up band (10% of 0.81)
   })
 })

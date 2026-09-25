@@ -30,8 +30,8 @@ export function fallbackMessage(thresholdPct: number): string {
  * so targets from several reports sit on one scale -- identical to ranking by ev within one
  * report), ties broken by bestCase pct, then by original order (index in `deployable`).
  */
-function rankDeployable(deployable: BossEval[]): BossEval[] {
-  return deployable
+export function rankTargets(targets: BossEval[]): BossEval[] {
+  return targets
     .map((boss, index) => ({ boss, index }))
     .sort((a, b) => {
       if (b.boss.evPct !== a.boss.evPct) return b.boss.evPct - a.boss.evPct
@@ -44,19 +44,31 @@ function rankDeployable(deployable: BossEval[]): BossEval[] {
 }
 
 /**
- * Allocates `rolls` rolls greedily down the ranking. A raid target takes at most one roll
- * (one per boss per difficulty per week, first kill only), so each raid roll goes to a
- * distinct target; a Mythic+ target is repeatable (one roll per completed key, and the
- * dungeon can be rerun), so it keeps taking rolls while it's the best target left. Under
- * uniform draw without replacement the expected value of the k-th draw from a pool equals
- * the pool's mean, so a repeat roll on the same dungeon is worth its same EV.
+ * The week's rolls in order, one target per roll, greedily down the ranking. A raid target
+ * takes at most one roll (one per boss per difficulty per week, first kill only), so each raid
+ * roll goes to a distinct target; a Mythic+ target is repeatable (one roll per completed key,
+ * and the dungeon can be rerun), so it keeps taking rolls while it's the best target left.
+ * Under uniform draw without replacement the expected value of the k-th draw from a pool
+ * equals the pool's mean, so a repeat roll on the same dungeon is worth its same EV. Shorter
+ * than `rolls` when the targets run out (raid-only, every boss already holding a roll).
  */
+export function rollSequence(ranked: BossEval[], rolls: number): BossEval[] {
+  const sequence: BossEval[] = []
+  const used = new Set<string>()
+  for (let roll = 0; roll < rolls; roll++) {
+    const target = ranked.find((b) => isRepeatable(b) || !used.has(evalKey(b)))
+    if (!target) break
+    used.add(evalKey(target))
+    sequence.push(target)
+  }
+  return sequence
+}
+
+/** `rollSequence` grouped per target, in first-roll order: a Mythic+ target that takes several rolls is one Allocation. */
 function allocate(ranked: BossEval[], rolls: number): Allocation[] {
   const allocations: Allocation[] = []
   const byKey = new Map<string, Allocation>()
-  for (let roll = 0; roll < rolls; roll++) {
-    const target = ranked.find((b) => isRepeatable(b) || !byKey.has(evalKey(b)))
-    if (!target) break
+  for (const target of rollSequence(ranked, rolls)) {
     const existing = byKey.get(evalKey(target))
     if (existing) {
       existing.rolls++
@@ -106,29 +118,6 @@ function computeTossUp(ranked: BossEval[], allocations: Allocation[]): Recommend
   return { bosses: [boundary.encounterName, nextUp.encounterName], gapPct, targetKeys: [evalKey(boundary), evalKey(nextUp)] }
 }
 
-/** The (N+1)th roll of the week: where it would go and what it is worth. */
-export type NextRoll = { encounterName: string; targetKey?: string; kind?: BossEval['kind']; difficultyLabel?: string; expectedGainPct: number }
-
-/**
- * Expected value of ONE MORE roll this week beyond the `settings.rollsAvailable` already available, under
- * the same allocation rules as `recommend` (deployable targets only; a raid target takes one roll, a
- * Mythic+ target repeats): the (N+1)th roll goes to the best target that can still take it. Null when none
- * can -- e.g. every deployable raid boss already holds a roll and no Mythic+ target is in play.
- */
-export function nextRollValue(bossEvals: BossEval[], settings: Settings): NextRoll | null {
-  const ranked = rankDeployable(bossEvals.filter((b) => b.deployable))
-  const rolls = Math.max(1, Math.floor(settings.rollsAvailable))
-  const before = allocate(ranked, rolls)
-  const after = allocate(ranked, rolls + 1)
-  const count = (allocs: Allocation[]) => allocs.reduce((n, a) => n + a.rolls, 0)
-  if (count(after) <= count(before)) return null
-  const beforeByKey = new Map(before.map((a) => [a.targetKey ?? String(a.encounterId), a]))
-  const grown = after.find((a) => a.rolls > (beforeByKey.get(a.targetKey ?? String(a.encounterId))?.rolls ?? 0))!
-  // Uniform draw: every roll on a target is worth its EV, so the extra roll is worth the target's own evPct.
-  const target = ranked.find((b) => evalKey(b) === (grown.targetKey ?? String(grown.encounterId)))!
-  return { encounterName: target.encounterName, targetKey: target.targetKey, kind: target.kind, difficultyLabel: target.difficultyLabel, expectedGainPct: target.evPct }
-}
-
 /**
  * `report` may be a single report or every report the evals came from (raid difficulties +
  * Mythic+); it only supplies warnings -- EV% is already per-report in each BossEval.
@@ -153,8 +142,8 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
     }
   }
 
-  const ranked = rankDeployable(deployable)
-  const allocations = allocate(ranked, Math.max(1, Math.floor(settings.rollsAvailable)))
+  const ranked = rankTargets(deployable)
+  const allocations = allocate(ranked, Math.max(1, Math.floor(settings.voidcoresToSpend)))
   return {
     allocations,
     totalExpectedGainPct: allocations.reduce((sum, a) => sum + a.expectedGainPct, 0),

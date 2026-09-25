@@ -58,7 +58,7 @@ function makeReport(overrides: Partial<NormalizedReport> = {}): NormalizedReport
   }
 }
 
-const SETTINGS_1_ROLL: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+const SETTINGS_1_ROLL: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 
 describe('recommend', () => {
   it('with 1 roll, picks the deployable boss with the highest ev', () => {
@@ -74,7 +74,7 @@ describe('recommend', () => {
     const bossA = makeBoss(2888, 'Boss A', [3000, 2000, 1000], 0.2) // ev 2000
     const bossB = makeBoss(2887, 'Boss B', [2500], 0.2) // ev 2500
     const bossC = makeBoss(2871, 'Boss C', [500], 0.2) // ev 500 -- not in the top two
-    const settings: Settings = { ...SETTINGS_1_ROLL, rollsAvailable: 2 }
+    const settings: Settings = { ...SETTINGS_1_ROLL, voidcoresToSpend: 2 }
     const rec = recommend([bossA, bossB, bossC], settings, makeReport())
 
     expect(rec.allocations).toHaveLength(2)
@@ -85,7 +85,7 @@ describe('recommend', () => {
 
   it('with 2 rolls but only one deployable boss, allocates just the single roll', () => {
     const bossA = makeBoss(2888, 'Boss A', [1000], 0.2)
-    const settings: Settings = { ...SETTINGS_1_ROLL, rollsAvailable: 2 }
+    const settings: Settings = { ...SETTINGS_1_ROLL, voidcoresToSpend: 2 }
     const rec = recommend([bossA], settings, makeReport())
     expect(rec.allocations).toHaveLength(1)
     expect(rec.allocations[0]).toMatchObject({ encounterId: 2888, rolls: 1, expectedGain: 1000 })
@@ -95,7 +95,7 @@ describe('recommend', () => {
     const bossA = makeBoss(2888, 'Boss A', [1000], 0.2) // ev 1000, bestCase 1000
     const bossB = makeBoss(2887, 'Boss B', [1000], 0.2) // ev 1000, bestCase 1000 -- ties A on both; A wins (earlier)
     const bossC = makeBoss(2871, 'Boss C', [1500, 500], 0.2) // ev 1000, bestCase 1500 -- wins the tie over A/B
-    const settings: Settings = { ...SETTINGS_1_ROLL, rollsAvailable: 2 }
+    const settings: Settings = { ...SETTINGS_1_ROLL, voidcoresToSpend: 2 }
     const rec = recommend([bossA, bossB, bossC], settings, makeReport())
 
     expect(rec.allocations.map((a) => a.encounterId)).toEqual([2871, 2888])
@@ -161,7 +161,7 @@ describe('recommend', () => {
       const bossA = makeBoss(2888, 'Boss A', [10000], 0.2)
       const bossB = makeBoss(2887, 'Boss B', [5000], 0.2)
       const bossC = makeBoss(2871, 'Boss C', [4970], 0.2)
-      const settings: Settings = { ...SETTINGS_1_ROLL, rollsAvailable: 2 }
+      const settings: Settings = { ...SETTINGS_1_ROLL, voidcoresToSpend: 2 }
       const rec = recommend([bossA, bossB, bossC], settings, makeReport())
       expect(rec.allocations.map((a) => a.encounterId).sort()).toEqual([2887, 2888])
       expect(rec.tossUp).not.toBeNull()
