@@ -37,7 +37,7 @@ const STATE_OPTIONS: Array<{ value: ItemOwnership | 'none'; label: string; title
 ]
 
 function StateControl(props: { current: ItemOwnership | 'none'; onChange: (state: ItemOwnership | 'none') => void; label: string; equipped?: boolean }) {
-  // An equipped item is owned by definition, so "None" isn't offered: it would only fall back to the Owned default.
+  // An auto-Owned equipped item has Owned as its default, so "None" isn't offered: it would only fall back to it.
   const options = props.equipped ? STATE_OPTIONS.filter((opt) => opt.value !== 'none') : STATE_OPTIONS
   return (
     <div className="state-seg" role="group" aria-label={`Ownership of ${props.label}`}>
@@ -169,7 +169,9 @@ function BossRow(props: {
                         row.name
                       )}
                       {row.item?.isTier && <span className="item-tag">Tier</span>}
-                      {entry?.equipped && <span className="item-tag item-tag--equipped">Equipped</span>}
+                      {entry?.equipped && (
+                        <span className="item-tag item-tag--equipped">{entry.equippedUpgrade ? 'Equipped (lower ilvl)' : 'Equipped'}</span>
+                      )}
                       {row.item?.specSpecific && specName && (
                         <>
                           {' '}
@@ -197,9 +199,9 @@ function BossRow(props: {
                       <StateControl
                         current={current}
                         label={row.name}
-                        equipped={entry?.equipped}
+                        equipped={entry?.equipped && !entry.equippedUpgrade}
                         onChange={(state) => {
-                          if (entry?.equipped && state === 'owned') {
+                          if (entry?.equipped && !entry.equippedUpgrade && state === 'owned') {
                             // Owned is the automatic default for equipped gear: it isn't stored, so already showing
                             // it is a no-op, and coming back from Rolled drops the stored entry.
                             if (current === 'owned') return

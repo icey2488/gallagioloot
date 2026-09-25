@@ -203,7 +203,8 @@ describe('report set storage', () => {
 
 describe('items equipped in the sim profile', () => {
   it('shows Equipped + Owned by default and never writes that default to the stored knockout state', async () => {
-    vi.mocked(fetchReport).mockImplementation(async () => ({ ...RAID, equippedItemIds: [1] }))
+    // Item 1 has no sim gain here (delta <= 0), so being equipped auto-Owns it.
+    vi.mocked(fetchReport).mockImplementation(async () => ({ ...RAID, items: [item(2883, 'The Coiled Altar', 1, -50, 1320), ...RAID.items.slice(1)], equippedItemIds: [1] }))
     await act(async () => {
       root.render(createElement(App))
     })

@@ -77,23 +77,26 @@ describe('real Icemagus fixtures', () => {
           {
             ev: [Number(run(report, instanceId, false).find((x) => x.encounterId === b.encounterId)!.evPct.toFixed(3)), Number(b.evPct.toFixed(3))],
             owned: b.pool.filter((p) => p.autoOwned).map((p) => p.name).sort(),
+            upgrades: b.pool.filter((p) => p.equippedUpgrade).map((p) => p.name).sort(),
           },
         ])
       )
+    // Only equipped items the sim does not show as an upgrade are auto-Owned, so every EV equals its ignore-the-gear value.
     expect(summary(raid, 1320)).toEqual({
-      "Nek'zali the Soulcoiler": { ev: [0.349, 0.349], owned: [] },
-      'Entombed Sentinels': { ev: [0.348, 0], owned: ["Primal Leywarden's Manashapers", "Sentinel's Vitriolic Chain"] },
-      'The Lost Explorers': { ev: [0.614, 0.614], owned: ["Gebbo's Bottomless Bag"] },
-      'Vashnik the Malignant': { ev: [0.245, 0], owned: ["Crest of the Primal Leywarden"] },
-      Sszorak: { ev: [0.648, 0.253], owned: ["Primal Leywarden's Tailored Legwraps"] },
-      'The Twin Fangs': { ev: [0.458, 0], owned: ['Crown of the Primal Leywarden', 'Ornaments of the Eternal Coil'] },
-      'The Coiled Altar': { ev: [0.812, 0.812], owned: [] },
-      "Ula'tek": { ev: [0.921, 0.921], owned: [] },
+      "Nek'zali the Soulcoiler": { ev: [0.349, 0.349], owned: [], upgrades: [] },
+      'Entombed Sentinels': { ev: [0.348, 0.348], owned: [], upgrades: ["Primal Leywarden's Manashapers", "Sentinel's Vitriolic Chain"] },
+      'The Lost Explorers': { ev: [0.614, 0.614], owned: ["Gebbo's Bottomless Bag"], upgrades: [] },
+      'Vashnik the Malignant': { ev: [0.245, 0.245], owned: [], upgrades: ['Crest of the Primal Leywarden'] },
+      Sszorak: { ev: [0.648, 0.648], owned: [], upgrades: ["Primal Leywarden's Tailored Legwraps"] },
+      'The Twin Fangs': { ev: [0.458, 0.458], owned: [], upgrades: ['Crown of the Primal Leywarden', 'Ornaments of the Eternal Coil'] },
+      'The Coiled Altar': { ev: [0.812, 0.812], owned: [], upgrades: [] },
+      "Ula'tek": { ev: [0.921, 0.921], owned: [], upgrades: [] },
     })
     const m = summary(mplus, -1)
-    expect(m['Den of Nalorakk']).toEqual({ ev: [0.348, 0.348], owned: ['Pilfered Precious Band'] })
-    expect(m['Murder Row']).toEqual({ ev: [0.381, 0.227], owned: ["Freightrunner's Flask"] })
-    expect(m['Temple of Sethraliss']).toEqual({ ev: [0.341, 0.281], owned: ['Ouroborial Sash'] })
+    expect(m['Den of Nalorakk']).toEqual({ ev: [0.348, 0.348], owned: ['Pilfered Precious Band'], upgrades: [] })
+    expect(m['Murder Row']).toEqual({ ev: [0.381, 0.381], owned: [], upgrades: ["Freightrunner's Flask"] })
+    expect(m['Temple of Sethraliss']).toEqual({ ev: [0.341, 0.341], owned: [], upgrades: ['Ouroborial Sash'] })
+    expect(Object.values(m).every((b) => b.ev[0] === b.ev[1])).toBe(true)
   })
 })
 
@@ -150,11 +153,22 @@ describe('equipped items in the pool', () => {
     expect(withGear.ev).toBe(without.ev)
   })
 
-  it('an equipped item that WAS simmed with a positive delta drops out of the EV', () => {
+  it('an equipped item with a positive sim delta is an upgrade: keeps its value, state None, not auto-Owned', () => {
     const items = [simmed(1, 2000), simmed(2, 1000), simmed(RING, 3000)]
     const withGear = buildBossPools(report([RING], items), knockout(), SETTINGS, loot)[0]
     const without = buildBossPools(report([], items), knockout(), SETTINGS, loot)[0]
-    expect(without.ev).toBe(2000)
-    expect(withGear.ev).toBe(1000)
+    expect(withGear.ev).toBe(without.ev)
+    expect(withGear.pool.find((p) => p.itemIds.includes(RING))).toMatchObject({ equipped: true, equippedUpgrade: true, ownership: 'none', isDud: false, value: 3000 })
+  })
+
+  it('an equipped item whose best delta is <= 0 is auto-Owned', () => {
+    const e = ring(report([RING], [simmed(1, 2000), simmed(RING, -500)]), knockout())
+    expect(e).toMatchObject({ equipped: true, equippedUpgrade: false, autoOwned: true, ownership: 'owned' })
+  })
+
+  it('a stored state still wins on an upgrade row', () => {
+    const items = [simmed(1, 2000), simmed(RING, 3000)]
+    expect(ring(report([RING], items), knockout([entry('owned')]))).toMatchObject({ equippedUpgrade: true, ownership: 'owned' })
+    expect(ring(report([RING], items), knockout([entry('rolled')]))).toMatchObject({ equippedUpgrade: true, ownership: 'rolled', knockedOut: true })
   })
 })

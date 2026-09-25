@@ -125,8 +125,10 @@ export type PoolEntry = {
   ownership: 'none' | 'owned' | 'rolled'
   /** True when one of this entry's item ids is equipped in the report's sim profile (`NormalizedReport.equippedItemIds`), whatever its ownership state. */
   equipped?: boolean
+  /** With `equipped`: the sim shows the drop as an upgrade over the worn copy (best delta > 0), so it is NOT auto-Owned and keeps its value. */
+  equippedUpgrade?: boolean
   /**
-   * True when `ownership` is `'owned'` only because the item is equipped -- the automatic
+   * True when `ownership` is `'owned'` only because the item is equipped and not a sim upgrade -- the automatic
    * default. Never stored: a stored knockout entry (the user's own choice) always wins over
    * it, and it is re-derived from each report's gear on every evaluation.
    */

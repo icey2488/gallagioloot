@@ -348,7 +348,7 @@ A hand-maintained, static table of all 40 current WoW specs (`{ specId, specName
 
 ## Decision engine
 
-**Equipped gear (v2.06).** `NormalizedReport.equippedItemIds` (Raidbots only) lists the item ids equipped in the sim profile. Pool entries whose item id is in it default to Owned (value-0 dud, still in the denominator) with `equipped: true` / `autoOwned: true`; a stored knockout entry wins, and the default is never persisted. Matched by item id only -- an equipped ring/trinket pair or a lower-item-level copy is not reasoned about.
+**Equipped gear (v2.06, corrected v2.07).** `NormalizedReport.equippedItemIds` (Raidbots only) lists the item ids equipped in the sim profile. A pool entry whose item id is in it gets `equipped: true`. It defaults to Owned (value-0 dud, still in the denominator, `autoOwned: true`) only when the sim does not show it as an upgrade: no sim row, or best delta (catalyst credit included) <= 0. With a positive delta the drop copy is the better one, so it keeps its value, defaults to None and gets `equippedUpgrade: true` (UI label "Equipped (lower ilvl)", all three states offered). The sim delta is the source of truth; no separate item-level comparison. A stored knockout entry always wins, and the default is never persisted. Matched by item id only -- no ring/trinket pair reasoning.
 
 `src/core/` decides where to spend a Nebulous Voidcore bonus roll, given a `NormalizedReport` and a per-character knockout state. It's pure TypeScript with zero Worker/runtime dependencies (no `fetch`, no Cache API/KV, no `Date.now()` except via caller-supplied timestamps) so a future frontend can import it directly instead of going through this Worker.
 

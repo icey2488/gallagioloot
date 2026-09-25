@@ -322,6 +322,29 @@ async function assertEquippedRows(page: Page, label: string) {
   const bag = await inspect('The Lost Explorers', "Gebbo's Bottomless Bag")
   check(`[${label}] Gebbo's Bottomless Bag (equipped trinket2) shows Equipped / Owned`, bag.found.tag.join() === 'Equipped' && bag.found.on.join() === 'Owned', JSON.stringify(bag.found))
   await bag.summary.click()
+  // The drop copy of Crest of the Primal Leywarden (Vashnik) simmed as an upgrade over the worn copy: not auto-Owned.
+  const crest = await inspect('Vashnik the Malignant', 'Crest of the Primal Leywarden')
+  check(
+    `[${label}] Crest (Vashnik) shows "Equipped (lower ilvl)", state None, all three states offered, sim gain intact`,
+    crest.found.tag.join() === 'Equipped (lower ilvl)' && crest.found.on.join() === 'None' && crest.found.buttons.join() === 'None,Owned,Rolled' && /^0\.9\d%$/.test(crest.found.gain),
+    JSON.stringify(crest.found)
+  )
+  await crest.summary.click()
+}
+
+/** Per-target EV (2dp, shown in each boss row) is back to its pre-v2.06 value: equipped upgrades keep their value. */
+async function assertTargetEvs(page: Page, label: string) {
+  const evs = await page.evaluate(() =>
+    Object.fromEntries(
+      [...document.querySelectorAll('.boss-row__summary')].map((r) => [(r.querySelector('.boss-row__name')?.textContent ?? '').trim(), parseFloat(r.querySelector('.boss-row__ev')?.textContent ?? 'NaN')])
+    )
+  )
+  const EXPECTED: Record<string, number> = {
+    "Ula'tek": 0.921, 'The Coiled Altar': 0.812, Sszorak: 0.648, 'The Lost Explorers': 0.614, 'The Twin Fangs': 0.458, "Nek'zali the Soulcoiler": 0.349, 'Entombed Sentinels': 0.348, 'Vashnik the Malignant': 0.245,
+    'Den of Nalorakk': 0.348, 'Murder Row': 0.381, 'Temple of Sethraliss': 0.341,
+  }
+  const off = Object.entries(EXPECTED).filter(([name, v]) => !(Math.abs((evs[name] ?? NaN) - v) <= 0.006))
+  check(`[${label}] per-target EVs match the pre-v2.06 values (Sszorak 0.65, Twin Fangs 0.46, Vashnik 0.25, Murder Row 0.38, Temple 0.34, ...)`, off.length === 0, JSON.stringify({ off, evs }))
 }
 
 async function main() {
@@ -334,6 +357,7 @@ async function main() {
   await load(page, out, '1280')
   await assertLayout(page, '1280, loaded')
   await assertBossOrder(page, '1280')
+  await assertTargetEvs(page, '1280')
   await assertEquippedRows(page, '1280')
   await page.screenshot({ path: 'design/live-single-page-loaded.png', fullPage: true })
 

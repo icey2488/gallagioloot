@@ -257,10 +257,13 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
         entry = phantomEntry(`item:${itemId}`, [itemId], lootRow!.name, lootRow!.isTier ? 'tier-token' : 'item', lootRow!.tierSlot, specSpecific)
       }
       let ownership = resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId)
-      // Equipped gear defaults to Owned (a value-0 dud) -- but only when the user hasn't set a state of their own.
+      // Equipped gear defaults to Owned (a value-0 dud) only when the sim doesn't show the drop as an upgrade
+      // (no sim row, or best delta incl. catalyst credit <= 0) -- a positive delta means the drop copy is the
+      // better one. A state the user set always wins.
       if (entry.itemIds.some((id) => equippedIds.has(id))) {
         entry.equipped = true
-        if (ownership === 'none') {
+        entry.equippedUpgrade = entry.rawDelta > 0
+        if (ownership === 'none' && !entry.equippedUpgrade) {
           ownership = 'owned'
           entry.autoOwned = true
         }

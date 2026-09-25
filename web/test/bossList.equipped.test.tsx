@@ -14,11 +14,12 @@ const RING = 251148
 const simmed = (itemId: number, name: string, delta: number): NormalizedItem => ({
   itemId, name, encounterId: 1311, encounterName: 'Den of Nalorakk', instanceId: -1, ilvl: 334, delta, pct: delta / 1000,
 })
+const CREST = 271000
 const REPORT: NormalizedReport = {
   source: 'raidbots', reportId: 'r', character: 'Icemagus', realm: 'hyjal', region: 'us', spec: 'arcane', role: 'dps', metric: 'dps',
   contentType: 'dungeon', difficulty: 'dungeon-mythic-weekly10', baseline: 100000, instanceId: -1, warnings: [], lootSpecId: 62, targetKind: 'mplus',
-  items: [simmed(1, 'Some Cloak', 1200), simmed(RING, 'Pilfered Precious Band', 0)],
-  equippedItemIds: [RING],
+  items: [simmed(1, 'Some Cloak', 1200), simmed(RING, 'Pilfered Precious Band', 0), simmed(CREST, 'Crest of the Primal Leywarden', 980)],
+  equippedItemIds: [RING, CREST],
 }
 
 let container: HTMLDivElement
@@ -45,10 +46,22 @@ function render(entries: KnockoutEntry[], changes: ItemStateChange[]) {
 }
 
 const ringRow = () => [...container.querySelectorAll('tbody tr')].find((r) => r.textContent?.includes('Pilfered Precious Band'))!
+const crestRow = () => [...container.querySelectorAll('tbody tr')].find((r) => r.textContent?.includes('Crest of the Primal Leywarden'))!
 const cloakRow = () => [...container.querySelectorAll('tbody tr')].find((r) => r.textContent?.includes('Some Cloak'))!
 const button = (row: Element, label: string) => [...row.querySelectorAll('.state-seg__btn')].find((b) => b.textContent === label)!
 
 describe('equipped items in the loot table', () => {
+  it('labels an equipped item the sim shows as an upgrade "Equipped (lower ilvl)": state None, all three states, sim gain kept', () => {
+    const changes: ItemStateChange[] = []
+    render([], changes)
+    expect(crestRow().querySelector('.item-tag--equipped')?.textContent).toBe('Equipped (lower ilvl)')
+    expect(crestRow().querySelector('.state-seg__btn--on')?.textContent).toBe('None')
+    expect([...crestRow().querySelectorAll('.state-seg__btn')].map((b) => b.textContent)).toEqual(['None', 'Owned', 'Rolled'])
+    expect(crestRow().querySelector('td[data-label="Sim gain"]')?.textContent).toBe('0.98%')
+    act(() => Simulate.click(button(crestRow(), 'Owned')))
+    expect(changes[0]).toMatchObject({ itemId: CREST, state: 'owned' })
+  })
+
   it('labels an equipped item "Equipped" with Owned preselected, and only that item', () => {
     render([], [])
     expect(ringRow().querySelector('.item-tag--equipped')?.textContent).toBe('Equipped')
