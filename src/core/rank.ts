@@ -106,6 +106,29 @@ function computeTossUp(ranked: BossEval[], allocations: Allocation[]): Recommend
   return { bosses: [boundary.encounterName, nextUp.encounterName], gapPct, targetKeys: [evalKey(boundary), evalKey(nextUp)] }
 }
 
+/** The (N+1)th roll of the week: where it would go and what it is worth. */
+export type NextRoll = { encounterName: string; targetKey?: string; kind?: BossEval['kind']; difficultyLabel?: string; expectedGainPct: number }
+
+/**
+ * Expected value of ONE MORE roll this week beyond the `settings.rollsAvailable` already available, under
+ * the same allocation rules as `recommend` (deployable targets only; a raid target takes one roll, a
+ * Mythic+ target repeats): the (N+1)th roll goes to the best target that can still take it. Null when none
+ * can -- e.g. every deployable raid boss already holds a roll and no Mythic+ target is in play.
+ */
+export function nextRollValue(bossEvals: BossEval[], settings: Settings): NextRoll | null {
+  const ranked = rankDeployable(bossEvals.filter((b) => b.deployable))
+  const rolls = Math.max(1, Math.floor(settings.rollsAvailable))
+  const before = allocate(ranked, rolls)
+  const after = allocate(ranked, rolls + 1)
+  const count = (allocs: Allocation[]) => allocs.reduce((n, a) => n + a.rolls, 0)
+  if (count(after) <= count(before)) return null
+  const beforeByKey = new Map(before.map((a) => [a.targetKey ?? String(a.encounterId), a]))
+  const grown = after.find((a) => a.rolls > (beforeByKey.get(a.targetKey ?? String(a.encounterId))?.rolls ?? 0))!
+  // Uniform draw: every roll on a target is worth its EV, so the extra roll is worth the target's own evPct.
+  const target = ranked.find((b) => evalKey(b) === (grown.targetKey ?? String(grown.encounterId)))!
+  return { encounterName: target.encounterName, targetKey: target.targetKey, kind: target.kind, difficultyLabel: target.difficultyLabel, expectedGainPct: target.evPct }
+}
+
 /**
  * `report` may be a single report or every report the evals came from (raid difficulties +
  * Mythic+); it only supplies warnings -- EV% is already per-report in each BossEval.
