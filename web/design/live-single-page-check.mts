@@ -14,9 +14,11 @@
 //   - none on hand: "Roll Ula'tek (Mythic) or The Coiled Altar (Mythic)" (toss-up on kill order), "One more Voidcore"
 //     0.92% (roll 1) vs Vile Vial 0.74%, with the no-saved-rolls explanation
 //   - v2.09 Voidcore supply, 3 on hand + re-price: the ordered roll list (Ula'tek, The Coiled Altar, Sszorak); earning 1 a
-//     week the 3rd reads "spend now 0.65% vs hold ~0.81% next week" and one more Voidcore is ~0.81% held for The Coiled
-//     Altar; earning 2 a week the 3rd is "spend now" and one more Voidcore is ~0.65% held for Sszorak
-//   - the footer's assumptions list carries the seven Voidcore supply assumptions
+//     week the 3rd reads "spend now 0.65% vs hold ~0.81% next week, playing without ~0.65% for 1 week" and one more Voidcore is ~0.81%
+//     held for The Coiled Altar (with its own "playing without ~0.61% for 1 week"); earning 2 a week the 3rd is "spend now" and
+//     one more Voidcore is ~0.65% held for Sszorak
+//   - 1 roll (vault comparison layout): the toss-up note and the next-best line agree ("the pick holds" never appears beside "Toss-up")
+//   - the footer's assumptions list carries the eight Voidcore supply assumptions, including "Holding delays the upgrade: ..."
 //   - the spec-specific pill renders inline (a wide pill, not a circle) at 390px
 //   - layout: no horizontal scroll, controls inside their cards, names wrap, nothing exceeds its panel
 // Screenshots + a JSON dump land in design/live-single-page-* (gitignored).
@@ -30,6 +32,7 @@ const MPLUS_URL = 'https://www.raidbots.com/simbot/report/a8URThoNZqEXDW3tBtavHq
 const TOPGEAR_URL = 'https://www.raidbots.com/simbot/report/k3vroAKe6QvF5gN4GeCVAq'
 const LOOT_SPEC = 'Arcane'
 const VAULT_ITEM = 'Vile Vial of Volatile Venom'
+const HOLD_DELAY_LINE = 'Holding delays the upgrade: every week you wait, you play without it, and a roll never guarantees the item you are holding for.'
 
 const results: Array<{ ok: boolean; label: string; detail?: string }> = []
 function check(label: string, ok: boolean, detail?: string) {
@@ -226,6 +229,10 @@ function assertOneRollCard(card: Card, label: string) {
     card.notes.some((n) => n.includes('Next best: The Coiled Altar (Mythic), ~0.81%')) && card.notes.some((n) => n.includes('let kill order decide')),
     JSON.stringify(card.notes)
   )
+  // One toss-up determination: a "Toss-up" note beside a "the pick holds" claim would contradict itself.
+  const tossUpNote = card.notes.some((n) => n.startsWith('Toss-up'))
+  const claimsPickHolds = card.notes.some((n) => n.includes('the pick holds') || n.includes('Clear of sim noise'))
+  check(`[${label}] 1 roll: the Toss-up note is present and the next-best line does not claim the pick holds`, tossUpNote && !claimsPickHolds, JSON.stringify(card.notes))
   const voidcore = card.compare.find((o) => o.label === 'One more Voidcore')
   const vial = card.compare.find((o) => o.label === VAULT_ITEM)
   check(`[${label}] 1 roll: One more Voidcore 0.92% (roll 1: Ula'tek) vs ${VAULT_ITEM} 0.74%`, voidcore?.value === '0.92%' && voidcore?.where === "roll 1: Ula'tek (Mythic)" && vial?.value === '0.74%', JSON.stringify(card.compare))
@@ -250,10 +257,11 @@ async function assertVoidcoreSupply(page: Page, label: string, out: Record<strin
   const rows = one.rolls.map((r) => `${r.n} ${r.name} ${r.ev}`)
   check(`[${label}] 3 on hand: meta "3 Voidcores" and the ordered list Ula'tek, The Coiled Altar, Sszorak`, one.meta === '3 Voidcores' && JSON.stringify(rows) === JSON.stringify(["1 Ula'tek (Mythic) 0.92%", '2 The Coiled Altar (Mythic) 0.81%', '3 Sszorak (Mythic) 0.65%']), JSON.stringify({ meta: one.meta, rows }))
   check(`[${label}] earned 1/week: rolls 1-2 "spend now"`, one.rolls[0]?.advice === 'spend now' && one.rolls[1]?.advice === 'spend now', JSON.stringify(one.rolls.map((r) => r.advice)))
-  check(`[${label}] earned 1/week: roll 3 "spend now 0.65% vs hold ~0.81% next week"`, !!one.rolls[2]?.advice.startsWith('spend now 0.65% vs hold ~0.81% next week'), one.rolls[2]?.advice)
-  check(`[${label}] earned 1/week: strip "One more Voidcore: ~0.81% next week (hold for The Coiled Altar (Mythic))"`, one.strip === 'One more Voidcore: ~0.81% next week (hold for The Coiled Altar (Mythic))', one.strip)
+  check(`[${label}] earned 1/week: roll 3 "spend now 0.65% vs hold ~0.81% next week, playing without ~0.65% for 1 week"`, !!one.rolls[2]?.advice.startsWith('spend now 0.65% vs hold ~0.81% next week, playing without ~0.65% for 1 week'), one.rolls[2]?.advice)
+  check(`[${label}] earned 1/week: rolls 1-2 carry no hold clause`, !one.rolls[0]?.advice.includes('playing without') && !one.rolls[1]?.advice.includes('playing without'), JSON.stringify(one.rolls.map((r) => r.advice)))
+  check(`[${label}] earned 1/week: strip "One more Voidcore: ~0.81% next week (hold for The Coiled Altar (Mythic)), playing without ~0.61% for 1 week"`, one.strip === 'One more Voidcore: ~0.81% next week (hold for The Coiled Altar (Mythic)), playing without ~0.61% for 1 week', one.strip)
   const voidcore = one.compare.find((o) => o.label === 'One more Voidcore')
-  check(`[${label}] earned 1/week: vault compare One more Voidcore 0.81% (hold: The Coiled Altar next week) vs the Vial 0.74%`, voidcore?.value === '0.81%' && voidcore?.where === 'hold: The Coiled Altar (Mythic) next week' && one.compare.some((o) => o.label === VAULT_ITEM && o.value === '0.74%'), JSON.stringify(one.compare))
+  check(`[${label}] earned 1/week: vault compare One more Voidcore 0.81% (hold: The Coiled Altar next week) vs the Vial 0.74%`, voidcore?.value === '0.81%' && voidcore?.where === 'hold: The Coiled Altar (Mythic) next week, playing without ~0.61% for 1 week' && one.compare.some((o) => o.label === VAULT_ITEM && o.value === '0.74%'), JSON.stringify(one.compare))
   await assertLayout(page, `${label}, priced, 3 Voidcores`)
   await page.locator('.rec-card').screenshot({ path: `design/live-single-page-card-rolls-${label}.png` })
 
@@ -261,17 +269,19 @@ async function assertVoidcoreSupply(page: Page, label: string, out: Record<strin
   await priceTheRoll(page)
   const two = await readCard(page)
   out[`${label}Supply2`] = two
-  check(`[${label}] earned 2/week: roll 3 is "spend now" (a held 3rd would get Sszorak anyway)`, two.rolls.length === 3 && two.rolls.every((r) => r.advice.startsWith('spend now')) && !two.rolls[2].advice.includes(' vs hold'), JSON.stringify(two.rolls.map((r) => r.advice)))
-  check(`[${label}] earned 2/week: strip "One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic))"`, two.strip === 'One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic))', two.strip)
+  check(`[${label}] earned 2/week: roll 3 is "spend now" (a held 3rd would get Sszorak anyway), no hold clause`, two.rolls.length === 3 && two.rolls.every((r) => r.advice === 'spend now'), JSON.stringify(two.rolls.map((r) => r.advice)))
+  check(`[${label}] earned 2/week: strip "One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic)), playing without ~0.61% for 1 week"`, two.strip === 'One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic)), playing without ~0.61% for 1 week', two.strip)
   await page.screenshot({ path: `design/live-single-page-supply-${label}.png`, fullPage: true })
 }
 
-/** The footer's "Show assumptions" list includes the seven Voidcore supply assumptions verbatim. */
+/** The footer's "Show assumptions" list includes the eight Voidcore supply assumptions verbatim, among them the plain holding-delays-the-upgrade line. */
 async function assertAssumptions(page: Page, label: string) {
   await page.locator('.app-footer__assumptions summary').click()
   const items = await page.locator('.app-footer__assumptions li').allTextContents()
   const missing = VOIDCORE_ASSUMPTIONS.filter((a) => !items.includes(a))
-  check(`[${label}] footer assumptions include the 7 Voidcore supply assumptions`, missing.length === 0 && VOIDCORE_ASSUMPTIONS.length === 7, JSON.stringify(missing))
+  check(`[${label}] footer assumptions include the 8 Voidcore supply assumptions`, missing.length === 0 && VOIDCORE_ASSUMPTIONS.length === 8, JSON.stringify(missing))
+  check(`[${label}] footer has the line "${HOLD_DELAY_LINE}"`, items.includes(HOLD_DELAY_LINE), JSON.stringify(items.filter((i) => i.startsWith('Holding'))))
+  check(`[${label}] footer assumptions use no finance terms`, !/time value|npv|discount/i.test(items.join(' ')))
   check(`[${label}] no em dashes in the assumptions`, !items.join(' ').includes('\u2014'))
 }
 
