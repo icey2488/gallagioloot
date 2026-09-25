@@ -14,6 +14,8 @@ export type NormalizedItem = {
   delta: number
   pct: number
   catalystSourceId?: number
+  /** Name of the `catalystSourceId` item (the non-tier item a catalyst row converts from), when known. */
+  catalystSourceName?: string
   offSpec?: boolean
   /** True when encounterId is a class-neutral "curio" token source (e.g. Ula'tek's Slumbering Coil Curio) rather than a direct tier-slot boss. */
   viaCurio?: boolean
@@ -21,6 +23,39 @@ export type NormalizedItem = {
   tierSlot?: string
   /** Raidbots profileset row's `mean_error`, same absolute units as `delta`. Raidbots-only; QE Live never sets this. */
   meanError?: number
+}
+
+/**
+ * What a bonus roll against this report's targets means:
+ * - `'raid'`: one roll per boss per difficulty per week, first kill only -- targets are
+ *   (boss, difficulty) pairs and two rolls must go to two distinct targets.
+ * - `'mplus'`: a Voidcore spent at the end of a key draws from that dungeon's whole loot
+ *   table (all bosses pooled). One roll per completed key, and a dungeon can be rerun, so a
+ *   target is repeatable. Each dungeon is one target whose `encounterId` is the dungeon's
+ *   instance id (matching `/loot-table/-1`'s pseudo-encounters).
+ */
+export type TargetKind = 'raid' | 'mplus'
+
+/**
+ * Upgrade-track / key-level metadata read from a Raidbots report's itemLibrary (see
+ * src/normalize/track.ts). QE Live reports carry none of this.
+ */
+export type TrackInfo = {
+  /** Upgrade track name, e.g. "Myth". */
+  name?: string
+  /** Mythic+ only: lowest key level this report's rewards come from (`overrides.difficulty.keyLevels[0]`, e.g. 10 for "+10 and above"). */
+  keyLevelMin?: number
+  /** Item level the reward drops at before upgrades (M+: `overrides.difficulty.itemLevelOverride`; raid: itemLibrary `dropLevel`). */
+  dropIlvl?: number
+  /** Item level the report actually simmed at (most common itemLibrary `itemLevel`). */
+  simmedIlvl?: number
+  /** Upgrade step the report simmed at (lowest across the itemLibrary), e.g. 6 of `upgradeMax` 6. */
+  upgradeLevel?: number
+  upgradeMax?: number
+  /** e.g. "Myth 6/6". */
+  upgradeFullName?: string
+  /** True when every item carrying upgrade info was simmed at max upgrade of its track; undefined when the report carries no upgrade info. */
+  atMaxUpgrade?: boolean
 }
 
 export type NormalizedReport = {
@@ -47,6 +82,10 @@ export type NormalizedReport = {
    * spec id of its own). Undefined only if neither source could resolve it.
    */
   lootSpecId?: number
+  /** Undefined on payloads from before Mythic+ support, which were always raid-shaped -- treat as `'raid'`. */
+  targetKind?: TargetKind
+  /** Raidbots only. */
+  track?: TrackInfo
 }
 
 /** Encounter-items.json entry (Raidbots static data). Trimmed to the fields we use. */
