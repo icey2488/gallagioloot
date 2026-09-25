@@ -1,6 +1,8 @@
 // Decision-engine types. Pure data -- no Worker/runtime dependencies, importable
 // by a future frontend as-is.
 
+import type { TargetKind } from '../types'
+
 /**
  * How the player obtained an item, under the roll-only knockout model (operator ruling):
  * - `'rolled'`: received FROM A BONUS ROLL. Removed from that boss's roll pool -- a true
@@ -64,6 +66,13 @@ export type Settings = {
    * table can show them) but are marked non-deployable and excluded from allocation.
    */
   expectedKills?: number[]
+  /**
+   * Target keys (see targetKey in targets.ts) the player expects to kill -- or, for a
+   * Mythic+ dungeon, will run a key for -- this week. Takes precedence over `expectedKills`
+   * when set; needed once several reports are loaded, since the same boss on two
+   * difficulties shares an encounter id.
+   */
+  expectedTargets?: string[]
   /**
    * The loot spec currently in effect (set in-game before rolling). Used to decide
    * whether a spec-specific KnockoutEntry applies: only when its own `lootSpecId`
@@ -145,6 +154,18 @@ export type BossEval = {
   encounterId: number
   encounterName: string
   instanceId: number
+  /**
+   * Identity of this roll target across every loaded report (see targetKey in targets.ts),
+   * e.g. "raid-vault-mythic:2883" or "mplus-myth:1322". Set by buildBossPools; optional only
+   * so hand-built evals (tests, design fixtures) stay valid -- use `evalKey()` to read it.
+   */
+  targetKey?: string
+  /** 'raid': (boss, difficulty), one roll per week. 'mplus': a dungeon at a key level, repeatable. Undefined = 'raid'. */
+  kind?: TargetKind
+  /** Human label for the target's difficulty/track, e.g. "Mythic" or "+10 (Myth)". */
+  difficultyLabel?: string
+  /** The source report's baseline, so EV% from different reports sits on one scale. */
+  baseline?: number
   pool: PoolEntry[]
   /**
    * Count of non-knocked-out pool entries, minus the fractional denominator taken by any
@@ -173,6 +194,10 @@ export type BossEval = {
 export type Allocation = {
   encounterId: number
   encounterName: string
+  targetKey?: string
+  kind?: TargetKind
+  difficultyLabel?: string
+  /** Always 1 for a raid target (one roll per boss per difficulty per week); an M+ target can take more than one (one per key run). */
   rolls: number
   expectedGain: number
   expectedGainPct: number
@@ -192,7 +217,7 @@ export type Recommendation = {
    * the first two rolls are both allocated regardless. The allocation itself is
    * unaffected -- this only annotates the recommendation for display.
    */
-  tossUp: { bosses: [string, string]; gapPct: number } | null
+  tossUp: { bosses: [string, string]; gapPct: number; targetKeys?: [string, string] } | null
 }
 
 export type RollsToTarget = {

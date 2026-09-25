@@ -1,6 +1,7 @@
 import type { NormalizedReport } from '../types'
 import type { Allocation, BossEval, Recommendation, Settings } from './types'
 import { isTossUpGap } from './tossup'
+import { evalKey, isRepeatable } from './targets'
 
 /** Percentage of the leading boss's evPct used as the toss-up band, absent a sim error. */
 const TOSS_UP_PCT_OF_TOP = 0.05
@@ -12,7 +13,11 @@ export const ASSUMPTIONS: string[] = [
   'Rolls award at Great Vault item level, as reflected by the source report.',
   'Delves and Prey Hunts are not simmed and are excluded from consideration.',
   'A boss offers a bonus roll only on its first kill at this difficulty this week; decide at the kill, there is no second chance on a repeat kill.',
-  'Ranking is limited to bosses you expect to kill this week.',
+  'Ranking is limited to bosses you expect to kill this week and Mythic+ keys you will run.',
+  'All items are valued at the max upgrade of their track; simming below max upgrade is treated as noise.',
+  "An item is worth the better of its own sim gain and the gain of the tier piece it catalyzes into.",
+  "Mythic+: a Voidcore spent at the end of a key draws from that dungeon's whole loot table (all bosses pooled) at the Great Vault track for the key level (+10 and above = Myth).",
+  'Mythic+: one roll per completed key, and a dungeon can be rerun, so one dungeon can take more than one roll; a raid boss takes at most one roll per difficulty per week.',
 ]
 
 /** Exported so a frontend can override the copy without forking the ranking logic. */
@@ -21,20 +26,58 @@ export function fallbackMessage(thresholdPct: number): string {
 }
 
 /**
- * Ranks deployable bosses best-first: highest ev, ties broken by bestCase value, then
- * by original encounter order (index in `deployable`, which preserves bossEvals' order).
+ * Ranks deployable targets best-first: highest evPct (EV as % of its own report's baseline,
+ * so targets from several reports sit on one scale -- identical to ranking by ev within one
+ * report), ties broken by bestCase pct, then by original order (index in `deployable`).
  */
 function rankDeployable(deployable: BossEval[]): BossEval[] {
   return deployable
     .map((boss, index) => ({ boss, index }))
     .sort((a, b) => {
-      if (b.boss.ev !== a.boss.ev) return b.boss.ev - a.boss.ev
-      const bestA = a.boss.bestCase?.value ?? 0
-      const bestB = b.boss.bestCase?.value ?? 0
+      if (b.boss.evPct !== a.boss.evPct) return b.boss.evPct - a.boss.evPct
+      const bestA = a.boss.bestCase?.pct ?? 0
+      const bestB = b.boss.bestCase?.pct ?? 0
       if (bestB !== bestA) return bestB - bestA
       return a.index - b.index
     })
     .map((r) => r.boss)
+}
+
+/**
+ * Allocates `rolls` rolls greedily down the ranking. A raid target takes at most one roll
+ * (one per boss per difficulty per week, first kill only), so each raid roll goes to a
+ * distinct target; a Mythic+ target is repeatable (one roll per completed key, and the
+ * dungeon can be rerun), so it keeps taking rolls while it's the best target left. Under
+ * uniform draw without replacement the expected value of the k-th draw from a pool equals
+ * the pool's mean, so a repeat roll on the same dungeon is worth its same EV.
+ */
+function allocate(ranked: BossEval[], rolls: number): Allocation[] {
+  const allocations: Allocation[] = []
+  const byKey = new Map<string, Allocation>()
+  for (let roll = 0; roll < rolls; roll++) {
+    const target = ranked.find((b) => isRepeatable(b) || !byKey.has(evalKey(b)))
+    if (!target) break
+    const existing = byKey.get(evalKey(target))
+    if (existing) {
+      existing.rolls++
+      existing.expectedGain += target.ev
+      existing.expectedGainPct += target.evPct
+      continue
+    }
+    const allocation: Allocation = {
+      encounterId: target.encounterId,
+      encounterName: target.encounterName,
+      targetKey: target.targetKey,
+      kind: target.kind,
+      difficultyLabel: target.difficultyLabel,
+      rolls: 1,
+      expectedGain: target.ev,
+      expectedGainPct: target.evPct,
+    }
+    byKey.set(evalKey(target), allocation)
+    allocations.push(allocation)
+  }
+  return allocations
 }
 
 /**
@@ -44,9 +87,14 @@ function rankDeployable(deployable: BossEval[]): BossEval[] {
  * `evErrorPct` of both bosses as the band when both report one (Raidbots), else falls
  * back to a fixed percentage of the leading boss's evPct (always the case for QE Live).
  */
-function computeTossUp(ranked: BossEval[], allocatedCount: number): Recommendation['tossUp'] {
-  const boundary = ranked[allocatedCount - 1]
-  const nextUp = ranked[allocatedCount]
+function computeTossUp(ranked: BossEval[], allocations: Allocation[]): Recommendation['tossUp'] {
+  // The last allocated target by rank vs the best target that got no roll -- rank 1 vs 2
+  // for one roll, rank 2 vs 3 for two distinct raid rolls, rank 1 vs 2 when a repeatable
+  // M+ target took both rolls.
+  const allocatedKeys = new Set(allocations.map((a) => a.targetKey ?? String(a.encounterId)))
+  const allocatedRanked = ranked.filter((b) => allocatedKeys.has(evalKey(b)))
+  const boundary = allocatedRanked[allocatedRanked.length - 1]
+  const nextUp = ranked.find((b) => !allocatedKeys.has(evalKey(b)))
   if (!boundary || !nextUp) return null
 
   const gapPct = boundary.evPct - nextUp.evPct
@@ -54,16 +102,19 @@ function computeTossUp(ranked: BossEval[], allocatedCount: number): Recommendati
     boundary.evErrorPct !== undefined && nextUp.evErrorPct !== undefined ? boundary.evErrorPct + nextUp.evErrorPct : undefined
 
   if (!isTossUpGap(gapPct, boundary.evPct, { pctOfReference: TOSS_UP_PCT_OF_TOP, errorBand })) return null
-  return { bosses: [boundary.encounterName, nextUp.encounterName], gapPct }
+  return { bosses: [boundary.encounterName, nextUp.encounterName], gapPct, targetKeys: [evalKey(boundary), evalKey(nextUp)] }
 }
 
-export function recommend(bossEvals: BossEval[], settings: Settings, report: NormalizedReport): Recommendation {
+/**
+ * `report` may be a single report or every report the evals came from (raid difficulties +
+ * Mythic+); it only supplies warnings -- EV% is already per-report in each BossEval.
+ */
+export function recommend(bossEvals: BossEval[], settings: Settings, report: NormalizedReport | NormalizedReport[]): Recommendation {
+  const reports = Array.isArray(report) ? report : [report]
   const deployable = bossEvals.filter((b) => b.deployable)
-  const baseline = report.baseline
 
   const warnings = [
-    ...report.warnings,
-    ...new Set(bossEvals.flatMap((b) => b.notes).filter((n) => n.includes('knockout state not applied'))),
+    ...new Set([...reports.flatMap((r) => r.warnings), ...bossEvals.flatMap((b) => b.notes).filter((n) => n.includes('knockout state not applied'))]),
   ]
 
   if (deployable.length === 0) {
@@ -78,42 +129,14 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
     }
   }
 
-  if (settings.rollsAvailable <= 1) {
-    const ranked = rankDeployable(deployable)
-    const best = ranked[0]
-    const allocations: Allocation[] = [
-      { encounterId: best.encounterId, encounterName: best.encounterName, rolls: 1, expectedGain: best.ev, expectedGainPct: best.evPct },
-    ]
-    return {
-      allocations,
-      totalExpectedGainPct: best.evPct,
-      fallback: null,
-      assumptions: ASSUMPTIONS,
-      warnings,
-      tossUp: computeTossUp(ranked, 1),
-    }
-  }
-
-  // rollsAvailable >= 2: a boss only offers a bonus roll on its first kill per
-  // difficulty per week, so the two rolls must land on two distinct bosses -- the
-  // top two deployable bosses by ev (ties: bestCase value, then encounter order).
   const ranked = rankDeployable(deployable)
-  const chosen = ranked.slice(0, 2)
-  const allocations: Allocation[] = chosen.map((boss) => ({
-    encounterId: boss.encounterId,
-    encounterName: boss.encounterName,
-    rolls: 1,
-    expectedGain: boss.ev,
-    expectedGainPct: boss.evPct,
-  }))
-
-  const totalExpectedGain = allocations.reduce((sum, a) => sum + a.expectedGain, 0)
+  const allocations = allocate(ranked, Math.max(1, Math.floor(settings.rollsAvailable)))
   return {
     allocations,
-    totalExpectedGainPct: baseline > 0 ? (totalExpectedGain / baseline) * 100 : 0,
+    totalExpectedGainPct: allocations.reduce((sum, a) => sum + a.expectedGainPct, 0),
     fallback: null,
     assumptions: ASSUMPTIONS,
     warnings,
-    tossUp: computeTossUp(ranked, chosen.length),
+    tossUp: computeTossUp(ranked, allocations),
   }
 }

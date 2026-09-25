@@ -1,6 +1,7 @@
 import type { LootTableEncounter, LootTableItem, NormalizedItem, NormalizedReport } from '../types'
 import type { BossEval, KnockoutState, PoolEntry, Settings } from './types'
 import { rollsToTarget } from './vault'
+import { difficultyLabel, knockoutDifficulty, targetKey, targetKindOf } from './targets'
 
 const CURIO_NOTE = 'Curio counts as one item; value assumes you pick your best missing tier slot'
 const CURIO_NAME = 'Curio (any missing tier slot)'
@@ -142,9 +143,13 @@ function applyOwnership(entry: PoolEntry, ownership: 'none' | 'owned' | 'rolled'
  * false, no phantom entries) -- existing callers are unaffected.
  */
 export function buildBossPools(report: NormalizedReport, knockout: KnockoutState, settings: Settings, lootTable?: LootTableEncounter[]): BossEval[] {
-  const difficultyMismatch = knockout.difficulty !== report.difficulty
+  const expectedDifficulty = knockoutDifficulty(report)
+  const difficultyMismatch = knockout.difficulty !== expectedDifficulty
   const knockoutEntries = difficultyMismatch ? [] : knockout.entries
+  const expectedTargets = settings.expectedTargets ? new Set(settings.expectedTargets) : null
   const expectedKills = settings.expectedKills ? new Set(settings.expectedKills) : null
+  const kind = targetKindOf(report)
+  const label = difficultyLabel(report)
 
   const groups = new Map<number, NormalizedItem[]>()
   for (const item of report.items) {
@@ -172,7 +177,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     const notes: string[] = []
     if (difficultyMismatch) {
       notes.push(
-        `Knockout state is for difficulty "${knockout.difficulty}" but report is for "${report.difficulty}"; knockout state not applied`
+        `Knockout state is for difficulty "${knockout.difficulty}" but report is for "${expectedDifficulty}"; knockout state not applied`
       )
     }
 
@@ -341,13 +346,18 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       notes.push(`${notInLootTableCount} item${notInLootTableCount === 1 ? '' : 's'} in sim report but not in this boss's loot table`)
     }
 
-    const inExpectedKills = !expectedKills || expectedKills.has(encounterId)
+    const key = targetKey(report, encounterId)
+    const inExpectedKills = expectedTargets ? expectedTargets.has(key) : !expectedKills || expectedKills.has(encounterId)
     if (!inExpectedKills) notes.push('not in expected kills this week')
 
     bossEvals.push({
       encounterId,
       encounterName: items[0]?.encounterName ?? lootNameByEncounter.get(encounterId) ?? `Encounter ${encounterId}`,
       instanceId: items[0]?.instanceId ?? report.instanceId ?? 0,
+      targetKey: key,
+      kind,
+      difficultyLabel: label,
+      baseline: report.baseline,
       pool,
       remaining,
       rollsSpent: effectiveRollsSpent,

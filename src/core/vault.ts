@@ -1,6 +1,7 @@
 import type { NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../types'
 import type { BossEval, PoolEntry, Recommendation, RollsToTarget, Settings, VaultDecision, VaultItemInput } from './types'
 import { isTossUpGap } from './tossup'
+import { evalKey } from './targets'
 
 function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length
@@ -99,7 +100,10 @@ function findVaultPool(vaultItem: VaultItemInput, bossEvals: BossEval[]): { boss
 /**
  * Compares the Great Vault's two options for the week: take a specific vault item
  * outright, or take the Nebulous Voidcore and spend `settings.rollsAvailable` bonus
- * rolls per `recommend()`'s allocation.
+ * rolls per `recommend()`'s allocation. `bossEvals` may span several reports (raid
+ * difficulties + Mythic+): the vault item is matched against every target's pool, and the
+ * alternative roll is the best OTHER target across all of them. `report` only supplies a
+ * fallback baseline for evals built without one.
  */
 export function compareVault(input: {
   vaultItem: VaultItemInput | null
@@ -122,7 +126,7 @@ export function compareVault(input: {
     notes.push(`Could not identify the loot pool for "${vaultItem.name}"; assuming 0 saved rolls.`)
   }
 
-  const thresholdValue = (settings.thresholdPct / 100) * report.baseline
+  const thresholdValue = (settings.thresholdPct / 100) * (found?.boss.baseline ?? report.baseline)
 
   // Roll-only knockout: taking the vault item X does NOT remove X from its boss's roll
   // pool -- X becomes a value-0 dud there, so next week's roll on that boss is diluted, not
@@ -138,11 +142,11 @@ export function compareVault(input: {
     notes.push(`Taking "${vaultItem!.name}" leaves it in ${found.boss.encounterName}'s roll pool as a value-0 dud (roll-only knockout).`)
   }
 
-  const excludeEncounterId = found?.boss.encounterId
+  const excludeKey = found ? evalKey(found.boss) : undefined
   let altBoss: BossEval | null = null
   for (const boss of bossEvals) {
     if (!boss.deployable) continue
-    if (excludeEncounterId !== undefined && boss.encounterId === excludeEncounterId) continue
+    if (excludeKey !== undefined && evalKey(boss) === excludeKey) continue
     if (!altBoss || boss.evPct > altBoss.evPct) altBoss = boss
   }
   const altRollEvPct = altBoss?.evPct ?? 0
