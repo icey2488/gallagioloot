@@ -83,7 +83,7 @@ export type CardData = {
    * verdict: comparing "next-best boss to roll" against a vault or toss-up verdict would
    * compare unlike things, so it's omitted there.
    */
-  secondBest?: { name: string; pct: number }
+  secondBest?: { name: string; pct: number; /** False when the engine calls the top pick a toss-up (`recommendation.tossUp`): the card must not claim the pick is clear of noise. */ clearOfNoise: boolean }
   vaultCompare?: { voidcorePct: number; vaultPct: number; vaultItemName: string; savedRollsNote?: string; voidcoreWhere?: string }
   tossUp: boolean
   tossUpNote?: string
@@ -153,10 +153,13 @@ export function buildCardData(params: {
   const topKey = top.targetKey ?? String(top.encounterId)
   const topEval = bossEvals.find((b) => evalKey(b) === topKey)
   const deployableByEv = [...bossEvals].filter((b) => b.deployable && evalKey(b) !== topKey).sort((a, b) => b.evPct - a.evPct)
+  // One toss-up determination (the engine's `recommendation.tossUp`, via isTossUpGap) drives both the
+  // "Toss-up" note and whether "clear of sim noise" may be claimed.
+  const clearOfNoise = !recommendation.tossUp
   const secondBest = secondAllocation
-    ? { name: targetDisplayName(secondAllocation), pct: secondAllocation.expectedGainPct }
+    ? { name: targetDisplayName(secondAllocation), pct: secondAllocation.expectedGainPct, clearOfNoise }
     : deployableByEv[0]
-      ? { name: targetDisplayName(deployableByEv[0]), pct: deployableByEv[0].evPct }
+      ? { name: targetDisplayName(deployableByEv[0]), pct: deployableByEv[0].evPct, clearOfNoise }
       : undefined
 
   // The kill-order toss-up is the headline only when it decides the first (only) roll; with a roll

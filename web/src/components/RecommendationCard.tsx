@@ -67,7 +67,7 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
 
       {card.secondBest && !tossUpPair && !listed && card.verdict === 'roll' && (
         <div className="rec-card__second">
-          Next best: {card.secondBest.name}, ~{card.secondBest.pct.toFixed(2)}%. Clear of sim noise, so the pick holds.
+          Next best: {card.secondBest.name}, ~{card.secondBest.pct.toFixed(2)}%.{card.secondBest.clearOfNoise ? ' Clear of sim noise, so the pick holds.' : ''}
         </div>
       )}
 
