@@ -100,6 +100,14 @@ export type PoolEntry = {
   /** True for a PoolEntry synthesized from the loot table with no matching report item -- see buildBossPools. */
   notInSimReport?: boolean
   /**
+   * Set when this entry is worth more catalyzed than as-is: an item's value is
+   * max(its own sim delta, the delta of the tier piece it catalyzes into -- the report's
+   * catalyst row whose `catalystSourceId` is this item). Present only when the catalyzed
+   * value wins AND is a net upgrade, so the UI can say "Catalyze into <name>: +x%". `ownPct`
+   * is the item's own floored gain (0 when it wasn't simmed as-is).
+   */
+  catalyst?: { itemId: number; name: string; tierSlot?: string; pct: number; ownPct: number }
+  /**
    * Roll-only ownership state from the knockout state:
    * - `'none'`: no knockout entry -- a normal, full-value pool member.
    * - `'owned'`: owned from a non-roll source -- a value-0 dud that stays in the pool (`isDud: true`, `knockedOut: false`).

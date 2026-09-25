@@ -192,9 +192,20 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     // mark a catalyst conversion via `catalystSourceId` on an otherwise-normal row rather
     // than `viaCurio` (see normalize/raidbots.ts), so without a loot table there is no way
     // to tell a tier piece is one of several curio options rather than a direct drop.
+    //
+    // Catalyst rows (`catalystSourceId` set) are the tier piece a dropped item converts
+    // into. A roll yields the SOURCE item, never the tier piece, so a catalyst row is never a
+    // pool entry of its own -- it only credits its source item: value = max(own delta,
+    // catalyzed delta). Same rule for raid and Mythic+.
+    const catalystBySource = new Map<number, NormalizedItem>()
     const directByItemId = new Map<number, NormalizedItem[]>()
     const curioRows: NormalizedItem[] = []
     for (const item of items) {
+      if (item.catalystSourceId !== undefined) {
+        const existing = catalystBySource.get(item.catalystSourceId)
+        if (!existing || item.delta > existing.delta) catalystBySource.set(item.catalystSourceId, item)
+        continue
+      }
       const isCurio = lootTable ? lootCurioById.has(item.itemId) : item.viaCurio
       if (isCurio) {
         curioRows.push(item)
@@ -208,17 +219,37 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     let notInSimReportCount = 0
     let notInLootTableCount = 0
 
-    const directItemIds = new Set<number>([...directByItemId.keys(), ...lootDirectById.keys()])
+    const directItemIds = new Set<number>([...directByItemId.keys(), ...lootDirectById.keys(), ...catalystBySource.keys()])
     for (const itemId of directItemIds) {
       const rows = directByItemId.get(itemId)
       const lootRow = lootDirectById.get(itemId)
+      const catalystRow = catalystBySource.get(itemId)
       if (lootTable && !lootRow) notInLootTableCount++
 
       const specSpecific = lootRow?.specSpecific ?? false
       let entry: PoolEntry
-      if (rows) {
-        const best = bestByDelta(rows)
-        entry = toEntry(`item:${itemId}`, [itemId], best, best.tierSlot ? 'tier-token' : 'item', report.baseline, specSpecific)
+      if (rows || catalystRow) {
+        const own = rows ? bestByDelta(rows) : undefined
+        const ownValue = Math.max(own?.delta ?? 0, 0)
+        const catalyzedWins = !!catalystRow && catalystRow.delta > ownValue
+        const valueRow: NormalizedItem = catalyzedWins
+          ? {
+              ...catalystRow!,
+              itemId,
+              name: own?.name ?? catalystRow!.catalystSourceName ?? lootRow?.name ?? `Item ${itemId}`,
+              tierSlot: own?.tierSlot,
+            }
+          : own ?? { ...catalystRow!, itemId, name: catalystRow!.catalystSourceName ?? lootRow?.name ?? `Item ${itemId}`, delta: 0, tierSlot: undefined, meanError: undefined }
+        entry = toEntry(`item:${itemId}`, [itemId], valueRow, own?.tierSlot ? 'tier-token' : 'item', report.baseline, specSpecific)
+        if (catalyzedWins) {
+          entry.catalyst = {
+            itemId: catalystRow!.itemId,
+            name: catalystRow!.name,
+            tierSlot: catalystRow!.slot,
+            pct: entry.pct,
+            ownPct: report.baseline > 0 ? (ownValue / report.baseline) * 100 : 0,
+          }
+        }
       } else {
         // lootRow must be defined here -- itemId came from the union of both key sets.
         notInSimReportCount++
