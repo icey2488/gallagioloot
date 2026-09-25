@@ -11,6 +11,7 @@
   "contentType": "dungeon",
   "difficulty": "dungeon-mythic-weekly10",
   "baseline": 572918.2029271872,
+  "simmedAt": "2026-09-25T01:39:28.000Z",
   "instanceId": -1,
   "instanceName": "Mythic+ Dungeons",
   "items": [
@@ -1371,6 +1372,9 @@
     "upgradeLevel": 6,
     "upgradeMax": 6,
     "atMaxUpgrade": true,
+    "upgradeLabelsByIlvl": {
+      "334": "Myth 6/6"
+    },
     "simmedIlvl": 334,
     "keyLevelMin": 10,
     "dropIlvl": 318

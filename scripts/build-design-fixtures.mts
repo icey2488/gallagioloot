@@ -22,8 +22,10 @@ const write = (name: string, value: unknown) => {
   console.log(`wrote ${OUT}/${name} (${text.length} bytes)`)
 }
 
-const raid = normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup)
-const mplus = normalizeRaidbotsReport(MPLUS_REPORT_ID, loadMplusRaw(), lookup)
+// The `Last-Modified` headers Raidbots served for these two data.json files (checked 2026-09-25); the trimmed
+// fixtures carry only the body, and the report's sim date lives in that header.
+const raid = normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup, { lastModified: 'Tue, 22 Sep 2026 20:14:38 GMT' })
+const mplus = normalizeRaidbotsReport(MPLUS_REPORT_ID, loadMplusRaw(), lookup, { lastModified: 'Fri, 25 Sep 2026 01:39:28 GMT' })
 write(`raidbots-${RAID_REPORT_ID}.json`, raid)
 write(`raidbots-${MPLUS_REPORT_ID}.json`, mplus)
 

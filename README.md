@@ -204,6 +204,7 @@ type NormalizedReport = {
   contentType: 'raid' | 'dungeon' | 'other'
   difficulty: string
   baseline: number              // absolute dps/hps of the equipped set
+  simmedAt?: string             // ISO 8601 sim date: Raidbots data.json `Last-Modified` header (the payload has no date), QE Live `timeCreated`
   instanceId?: number
   instanceName?: string
   items: NormalizedItem[]
@@ -219,6 +220,7 @@ type NormalizedReport = {
     upgradeMax?: number         // (6)
     upgradeFullName?: string    // "Myth 6/6"
     atMaxUpgrade?: boolean      // false -> report gets a "not simmed at max upgrade" warning
+    upgradeLabelsByIlvl?: Record<string, string> // the report's own label per item level: { "334": "Myth 6/6", "344": "Myth 9/6" }
   }
 }
 
@@ -261,6 +263,8 @@ type NormalizedItem = {
 - Each dungeon becomes one roll target: `NormalizedItem.encounterId` = dungeon id, `instanceId` = `-1`, `encounterName` = dungeon name, `NormalizedReport.targetKind = 'mplus'`. This matches `/loot-table/-1`, which already returns the 8 dungeons as pseudo-encounters (80 items at Arcane). A single-dungeon Raidbots report (rows with a real positive dungeon id) is normalized to the same shape.
 - There is no key-level field anywhere except `itemLibrary[].overrides.difficulty` (an object on M+ reports, a plain string on raid reports): `{ name: "+10 Vault", keyLevels: [10, 999], itemLevelOverride: 318, ... }`. The report sims every item at the chosen upgrade step (`itemLibrary[].upgrade = { name: "Myth", level: 6, max: 6, fullName: "Myth 6/6", itemLevel: 334 }`), not the 318 drop level. The UI labels this "+10 (Myth)", never "Weekly10".
 - **Max upgrade**: every report is expected to be simmed at max upgrade of its track (anything below is treated as noise). `track.atMaxUpgrade` is false when any upgradeable itemLibrary entry has `level < max`, and the report gets a warning. QE Live reports carry no upgrade info (`track` undefined, no warning).
+- **Per-boss drop step (v2.08, verified on 6PTZ7TjgU8PdxJhZ97bMUa and a8URThoNZqEXDW3tBtavHq).** Drop ilvl is per target, read off the profileset rows (`summarizeDrops` in `src/core/drops.ts`: max row `ilvl` per encounter/dungeon; nothing is hardcoded per season). On the Mythic raid fixture six bosses' rows are all 334 and **The Coiled Altar and Ula'tek's are all 344**; the M+ fixture is 334 in all 8 dungeons. The label comes from the report's itemLibrary: the 334 entries carry `upgrade: { level: 6, max: 6, fullName: "Myth 6/6" }`; the 344 entries carry **no `upgrade` object**, only `overrides.itemLevel: "Myth 9"` (no `/max`). `parseTrackInfo` reads that label as a step too (a label with no max borrows the track's, so `upgradeLabelsByIlvl["344"] = "Myth 9/6"`), which is what keeps a step past max from being mis-parsed or tripping the "not at max upgrade" warning (9 >= 6); a label-only step below max (e.g. "Myth 3") still warns. The Heroic + Mythic pair is legal: the same items at 334 on the first six bosses, so near-identical EVs are correct, and each difficulty is its own target set with its own knockout state.
+- **Sim date (v2.08).** Neither Raidbots payload carries a date. `NormalizedReport.simmedAt` is the `Last-Modified` header of `data.json` (the file is written when the sim finishes; 6PTZ7 = Tue, 22 Sep 2026 20:14:38 GMT, a8URT = Fri, 25 Sep 2026 01:39:28 GMT), passed into the pure normalizer by the Worker. QE Live's payload has `timeCreated` (RFC 7231). The UI shows the date in the viewer's local timezone. `REPORT_CACHE_VERSION` is 3.
 
 ### QE Live `getUpgradeReport.php`
 
@@ -347,6 +351,8 @@ A hand-maintained, static table of all 40 current WoW specs (`{ specId, specName
 ---
 
 ## Decision engine
+
+**Next Voidcore (v2.08).** `nextRollValue(bossEvals, settings)` in `src/core/rank.ts` is the EV of ONE MORE roll this week beyond `settings.rollsAvailable`, under `recommend`'s allocation rules (deployable targets; a raid target takes one roll per week, a Mythic+ target repeats): the (N+1)th roll goes to the best target that can still take it, valued at that target's own EV (uniform draw, so every roll on a target is worth its mean). Null when no target can take another (e.g. every deployable raid boss holds a roll and no M+ target is in play). "Rolls currently available" is the Rolls available setting, not Voidcores held (the latter is display-only). The Reports panel shows it with a "Voidcores on hand" input bound to the same Voidcores-held setting.
 
 **Equipped gear (v2.06, corrected v2.07).** `NormalizedReport.equippedItemIds` (Raidbots only) lists the item ids equipped in the sim profile. A pool entry whose item id is in it gets `equipped: true`. It defaults to Owned (value-0 dud, still in the denominator, `autoOwned: true`) only when the sim does not show it as an upgrade: no sim row, or best delta (catalyst credit included) <= 0. With a positive delta the drop copy is the better one, so it keeps its value, defaults to None and gets `equippedUpgrade: true` (UI label "Equipped (lower ilvl)", all three states offered). The sim delta is the source of truth; no separate item-level comparison. A stored knockout entry always wins, and the default is never persisted. Matched by item id only -- no ring/trinket pair reasoning.
 

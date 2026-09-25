@@ -166,6 +166,64 @@ async function assertLayout(page: Page, label: string) {
   console.log(`layout assertions passed (${label}) ✓`)
 }
 
+/**
+ * The compact Reports panel: exactly one summary strip (Voidcores on hand + the next-Voidcore line) above the
+ * blocks, and each block's three lines exactly as specified (heading + Remove, drop line with the 344 exception,
+ * items / bosses / baseline / sim date). Every line must sit inside its block and viewport and wrap rather than
+ * clip. Then screenshots the panel itself.
+ */
+async function assertReportsPanel(page: Page, label: string, shot: string) {
+  const got = await page.evaluate(() => {
+    const txt = (el: Element | null | undefined) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim()
+    const EPS = 0.5
+    const problems: string[] = []
+    const vw = window.innerWidth
+    const panel = document.querySelector('.report-list')!.closest('.panel')!
+    const summaries = panel.querySelectorAll('.reports-summary')
+    if (summaries.length !== 1) problems.push(`expected 1 reports-summary, found ${summaries.length}`)
+    const summary = summaries[0]
+    const list = panel.querySelector('.report-list')!
+    if (summary && summary.getBoundingClientRect().bottom > list.getBoundingClientRect().top + EPS) problems.push('summary is not above the report blocks')
+    const voidcores = panel.querySelector('#voidcores-on-hand') as HTMLInputElement | null
+    const next = txt(panel.querySelector('.reports-summary__next'))
+    const blocks = [...panel.querySelectorAll('.report-line')].map((b) => ({
+      heading: txt(b.querySelector('.report-line__title')),
+      drops: txt(b.querySelector('.report-line__drops')),
+      stats: txt(b.querySelector('.report-line__stats')),
+      remove: txt(b.querySelector('.report-line__remove')),
+    }))
+    panel.querySelectorAll('.report-line').forEach((b) => {
+      const br = b.getBoundingClientRect()
+      if (br.left < -EPS || br.right > vw + EPS) problems.push(`report block outside the viewport: [${br.left.toFixed(1)},${br.right.toFixed(1)}]`)
+      b.querySelectorAll('.report-line__title, .report-line__drops, .report-line__stats, .report-line__remove').forEach((el) => {
+        const r = el.getBoundingClientRect()
+        if (r.left < br.left - EPS || r.right > br.right + EPS) problems.push(`.${el.className} outside its block: [${r.left.toFixed(1)},${r.right.toFixed(1)}] block=[${br.left.toFixed(1)},${br.right.toFixed(1)}]`)
+        if (el.scrollWidth > el.clientWidth + EPS && getComputedStyle(el).display !== 'inline') problems.push(`.${el.className} clips: scrollWidth ${el.scrollWidth} > clientWidth ${el.clientWidth}`)
+      })
+    })
+    const nextEl = panel.querySelector('.reports-summary__next')
+    if (nextEl && nextEl.scrollWidth > nextEl.clientWidth + EPS) problems.push('next-Voidcore line clips')
+    return { problems, blocks, next, voidcores: voidcores?.value, summaryText: txt(summary) }
+  })
+
+  const expected = [
+    {
+      heading: 'RAID · The Venomous Abyss · Mythic',
+      drops: "Drops Myth 6/6 (334) · The Coiled Altar, Ula'tek Myth 9/6 (344)",
+      stats: '49 items · 8 bosses · baseline 572,817 · simmed Sep 22',
+      remove: 'Remove',
+    },
+    { heading: 'MYTHIC+ · +10 and above', drops: 'Drops Myth 6/6 (334) · 8 dungeons', stats: '101 items · baseline 572,918 · simmed Sep 24', remove: 'Remove' },
+  ]
+  if (JSON.stringify(got.blocks) !== JSON.stringify(expected)) got.problems.push(`report blocks ${JSON.stringify(got.blocks)} != ${JSON.stringify(expected)}`)
+  if (!got.summaryText.startsWith('Voidcores on hand:')) got.problems.push(`summary text: ${got.summaryText}`)
+  if (!/^Next Voidcore worth ~\d+\.\d\d%/.test(got.next)) got.problems.push(`next-Voidcore line: ${got.next}`)
+  if (got.problems.length > 0) throw new Error(`reports-panel assertions failed (${label}):\n${got.problems.join('\n')}`)
+  console.log(`reports-panel assertions passed (${label}) ✓ ${got.summaryText}`)
+  await page.locator('.report-list').locator('xpath=ancestor::section[contains(@class,"panel")]').screenshot({ path: shot })
+  console.log(`captured: ${shot}`)
+}
+
 async function priceTheRoll(page: Page) {
   await page.click('text=Price my roll')
   await page.waitForSelector('.rec-card', { timeout: 10000 })
@@ -195,6 +253,7 @@ async function shootDesktop(page: Page) {
   console.log('captured: single-page-empty.png')
 
   await loadReports(page)
+  await assertReportsPanel(page, '1280px', 'design/single-page-reports-panel-1280.png')
   await expandDungeon(page)
   await assertLayout(page, '1280px, loaded, dungeon expanded')
   await page.screenshot({ path: 'design/single-page-loaded.png', fullPage: true })
@@ -221,6 +280,7 @@ async function shootMobile(page: Page) {
   await page.goto(APP_URL)
   await page.waitForSelector('#report-url')
   await loadReports(page)
+  await assertReportsPanel(page, '390px', 'design/single-page-reports-panel-390.png')
   await expandDungeon(page)
   await assertLayout(page, '390px, loaded, dungeon expanded')
   await page.screenshot({ path: 'design/single-page-mobile-390.png', fullPage: true })
@@ -242,7 +302,8 @@ async function main() {
     await waitForServer(APP_URL)
     const browser = await chromium.launch()
     // tsx/esbuild wraps named closures in __name(); page.evaluate bodies need it defined in the page.
-    const context = await browser.newContext()
+    // Pin the timezone: the sim dates are shown in the viewer's local time (the M+ report was written 01:39 UTC on the 25th).
+    const context = await browser.newContext({ timezoneId: 'America/Los_Angeles' })
     await context.addInitScript('window.__name = (f) => f')
     const desktop = await context.newPage()
     await shootDesktop(desktop)

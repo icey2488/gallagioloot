@@ -2,7 +2,11 @@
 // deploy: `npm run check:live` from web/). Fresh browser contexts, real Raidbots reports: a raid
 // droptimizer + a Mythic+ droptimizer + a Top Gear vault item, loot spec Arcane. Asserts (prints
 // PASS/FAIL per check, exits 1 if any fail) at 1280px and 390px:
-//   - both reports load with parse lines; the M+ section has 8 dungeons and reads "Mythic+ (+10 Myth)", never "Weekly10"
+//   - both reports load as compact blocks (heading, drop line, items / bosses / baseline / sim date); the M+ section has 8 dungeons
+//     and reads "Mythic+ (+10 Myth)", never "Weekly10"
+//   - Reports panel: the Mythic raid drop line carries the 344 exception ("Drops Myth 6/6 (334) · The Coiled Altar, Ula'tek Myth 9/6 (344)"),
+//     sim dates (Sep 22 / Sep 24, from the proxy's Last-Modified passthrough), the "N notes" toggle (closed), "Voidcores on hand"
+//     mirrored with Run settings, and the "Next Voidcore worth ~X%" line (Icemagus: ~0.81%, The Coiled Altar)
 //   - EV: Ula'tek ~0.92%, The Coiled Altar ~0.81%, Altar of Fangs ~0.43%
 //   - Ula'tek's roll pool is the journal's 4 items (4 / 4 remaining): its expanded table lists exactly Aqirbane
 //     Reliquary, Font of Venomous Rage, Jan'thrazet the Soul Fang and Venomkeeper's Horrific Cowl (no Curio row,
@@ -66,13 +70,13 @@ async function load(page: Page, out: Record<string, unknown>, label: string) {
   })
   out[`${label}Loaded`] = { reportLines: loaded.reportLines, sections: loaded.sections, lootSpec: loaded.lootSpec }
 
-  check(`[${label}] two reports loaded with parse lines`, loaded.reportLines.length === 2 && loaded.reportLines.every((l) => /items parsed/.test(l)), JSON.stringify(loaded.reportLines))
+  check(`[${label}] two reports loaded as compact blocks`, loaded.reportLines.length === 2 && loaded.reportLines.every((l) => /items/.test(l) && /baseline/.test(l)) && !loaded.body.includes('items parsed'), JSON.stringify(loaded.reportLines))
   check(`[${label}] loot spec is ${LOOT_SPEC}`, loaded.lootSpec === LOOT_SPEC, String(loaded.lootSpec))
   const mplus = loaded.sections[1]
   check(`[${label}] M+ section has 8 dungeons`, mplus?.rows.length === 8, String(mplus?.rows.length))
   // The UI renders the track as "Mythic+ (+10 Myth)" (section title and report line); "+10 (Myth)" is only the engine's internal difficultyLabel.
   const mplusText = `${loaded.reportLines[1] ?? ''} ${mplus?.title ?? ''}`
-  check(`[${label}] M+ section is titled "Mythic+ (+10 Myth)" (+10 and above, Myth track)`, /Mythic\+ \(\+10 Myth\)/.test(mplus?.title ?? '') && /\+10 and above · Myth track/.test(mplusText), mplusText)
+  check(`[${label}] M+ section is titled "Mythic+ (+10 Myth)" and its report block "MYTHIC+ · +10 and above"`, /Mythic\+ \(\+10 Myth\)/.test(mplus?.title ?? '') && /^MYTHIC\+ · \+10 and above/.test(loaded.reportLines[1] ?? ''), mplusText)
   check(`[${label}] "Weekly10" never renders`, !loaded.body.includes('Weekly10'))
 
   const ev = (name: string) => {
@@ -87,6 +91,51 @@ async function load(page: Page, out: Record<string, unknown>, label: string) {
   near('The Coiled Altar', 0.81)
   near('Altar of Fangs', 0.43)
   await assertUlatekTable(page, label)
+  await assertReportsPanel(page, label, out)
+}
+
+/**
+ * The compact Reports panel against the real proxy: the drop lines (the Mythic raid's last two bosses are the 344
+ * exception, the M+ report is 334 across 8 dungeons), items / bosses / baseline / sim date, the collapsed "N notes"
+ * toggle, Voidcores on hand (mirrored with Run settings), and the next Voidcore's value.
+ */
+async function assertReportsPanel(page: Page, label: string, out: Record<string, unknown>) {
+  const panel = await page.evaluate(() => {
+    const txt = (el: Element | null | undefined) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim()
+    const blocks = [...document.querySelectorAll('.report-line')].map((b) => ({
+      heading: txt(b.querySelector('.report-line__title')),
+      drops: txt(b.querySelector('.report-line__drops')),
+      stats: txt(b.querySelector('.report-line__stats')),
+      remove: txt(b.querySelector('.report-line__remove')),
+      notes: b.querySelector('details.report-notes') ? { summary: txt(b.querySelector('details.report-notes summary')), open: (b.querySelector('details.report-notes') as HTMLDetailsElement).open } : null,
+      oldBanner: !!b.querySelector('.warning-banner'),
+    }))
+    const voidcores = document.querySelector('#voidcores-on-hand') as HTMLInputElement | null
+    return { blocks, summaries: document.querySelectorAll('.reports-summary').length, voidcores: voidcores?.value ?? null, next: txt(document.querySelector('.reports-summary__next')), summary: txt(document.querySelector('.reports-summary')) }
+  })
+  out[`${label}ReportsPanel`] = panel
+  const [raid, mplus] = panel.blocks
+  check(`[${label}] raid block: RAID · The Venomous Abyss · Mythic, Remove`, raid?.heading === 'RAID · The Venomous Abyss · Mythic' && raid?.remove === 'Remove', JSON.stringify(raid))
+  check(`[${label}] raid drop line shows Myth 6/6 (334) with the 344 exception for The Coiled Altar and Ula'tek`, raid?.drops === "Drops Myth 6/6 (334) · The Coiled Altar, Ula'tek Myth 9/6 (344)", raid?.drops)
+  check(`[${label}] raid stats line: 49 items · 8 bosses · baseline 572,817 · simmed Sep 22`, raid?.stats === '49 items · 8 bosses · baseline 572,817 · simmed Sep 22', raid?.stats)
+  check(`[${label}] M+ block drop line: Myth 6/6 (334), 8 dungeons, no exception`, mplus?.drops === 'Drops Myth 6/6 (334) · 8 dungeons', mplus?.drops)
+  check(`[${label}] M+ stats line: 101 items · baseline 572,918 · simmed Sep 24`, mplus?.stats === '101 items · baseline 572,918 · simmed Sep 24', mplus?.stats)
+  check(
+    `[${label}] each block's warnings sit under a closed "N notes" toggle (no inline Reconcile banner)`,
+    panel.blocks.every((b) => !b.oldBanner && (b.notes === null || (/^\d+ notes?$/.test(b.notes.summary) && b.notes.open === false))) && panel.blocks.some((b) => b.notes !== null),
+    JSON.stringify(panel.blocks.map((b) => b.notes))
+  )
+  check(`[${label}] one Voidcores-on-hand strip, above the blocks, at 0 for a fresh browser`, panel.summaries === 1 && panel.voidcores === '0' && panel.summary.startsWith('Voidcores on hand:'), JSON.stringify({ n: panel.summaries, v: panel.voidcores }))
+  const next = /^Next Voidcore worth ~(\d+\.\d\d)% · roll 2 goes to (.+)$/.exec(panel.next)
+  console.log(`[${label}] next Voidcore: ${panel.next}`)
+  check(`[${label}] Next Voidcore worth ~0.81% (Icemagus: one roll available, the next goes to The Coiled Altar)`, !!next && Math.abs(parseFloat(next[1]) - 0.81) <= 0.01 && /^The Coiled Altar/.test(next[2]), panel.next)
+  // Mirror: the strip's input and Run settings' "Voidcores held" are one setting.
+  await page.fill('#voidcores-on-hand', '3')
+  const held = await page.inputValue('input[aria-label="Voidcores held"]')
+  const pill = await page.inputValue('input[aria-label="Voidcore count"]')
+  check(`[${label}] Voidcores on hand mirrors Run settings' Voidcores held and the header pill`, held === '3' && pill === '3', JSON.stringify({ held, pill }))
+  await page.fill('#voidcores-on-hand', '0')
+  await page.locator('.report-list').locator('xpath=ancestor::section[contains(@class,"panel")]').screenshot({ path: `design/live-single-page-reports-${label}.png` })
 }
 
 const ULATEK_ITEMS = ['Aqirbane Reliquary', "Venomkeeper's Horrific Cowl", 'Font of Venomous Rage', "Jan'thrazet, the Soul Fang"]
@@ -247,7 +296,14 @@ async function assertLayout(page: Page, label: string) {
       })
     }
     const sections = [...document.querySelectorAll('.boss-section')]
-    if (document.querySelectorAll('.report-line').length !== 2) problems.push('expected 2 report parse lines')
+    if (document.querySelectorAll('.report-line').length !== 2) problems.push('expected 2 report blocks')
+    document.querySelectorAll('.report-line').forEach((b) => {
+      const br = b.getBoundingClientRect()
+      b.querySelectorAll('.report-line__title, .report-line__drops, .report-line__stats, .report-line__remove').forEach((el) => {
+        const r = el.getBoundingClientRect()
+        if (r.left < br.left - EPS || r.right > br.right + EPS) problems.push(`report block line outside its block: .${el.className}`)
+      })
+    })
     if (sections.length !== 2) problems.push(`expected 2 boss-list sections, found ${sections.length}`)
     if ((sections[1]?.querySelectorAll('.boss-row').length ?? 0) !== 8) problems.push('expected 8 dungeon rows in the Mythic+ section')
     return { problems, docWidth: document.documentElement.scrollWidth, winWidth: window.innerWidth }
@@ -352,7 +408,8 @@ async function main() {
   const out: Record<string, unknown> = {}
 
   // ---- Desktop 1280
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 } })
+  // The sim dates are shown in the viewer's local time; pin US Pacific (the M+ report was written 01:39 UTC on the 25th, i.e. Sep 24 locally).
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 1000 }, timezoneId: 'America/Los_Angeles' })
   const page = await ctx.newPage()
   await load(page, out, '1280')
   await assertLayout(page, '1280, loaded')
@@ -381,7 +438,7 @@ async function main() {
   await ctx.close()
 
   // ---- Mobile 390, fresh context
-  const mctx = await browser.newContext({ viewport: { width: 390, height: 900 }, isMobile: true, hasTouch: true })
+  const mctx = await browser.newContext({ viewport: { width: 390, height: 900 }, isMobile: true, hasTouch: true, timezoneId: 'America/Los_Angeles' })
   const mpage = await mctx.newPage()
   await load(mpage, out, '390')
   await assertLayout(mpage, '390, loaded')

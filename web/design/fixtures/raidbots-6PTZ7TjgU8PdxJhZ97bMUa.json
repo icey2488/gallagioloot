@@ -11,6 +11,7 @@
   "contentType": "raid",
   "difficulty": "raid-vault-mythic",
   "baseline": 572816.6281315831,
+  "simmedAt": "2026-09-22T20:14:38.000Z",
   "instanceId": 1320,
   "instanceName": "The Venomous Abyss",
   "items": [
@@ -673,6 +674,10 @@
     "upgradeLevel": 6,
     "upgradeMax": 6,
     "atMaxUpgrade": true,
+    "upgradeLabelsByIlvl": {
+      "334": "Myth 6/6",
+      "344": "Myth 9/6"
+    },
     "simmedIlvl": 334,
     "dropIlvl": 334
   },
