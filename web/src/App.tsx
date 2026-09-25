@@ -28,6 +28,8 @@ import {
   saveVoidcoreCount,
 } from './lib/storage'
 import { CharacterSwitcher } from './components/CharacterSwitcher'
+import { ThemePicker } from './components/ThemePicker'
+import { applyTheme, loadTheme, saveTheme, type ThemeId } from './lib/theme'
 import { Footer } from './components/Footer'
 import { Tooltip } from './components/Tooltip'
 import { ChipStack } from './components/ChipStack'
@@ -88,6 +90,8 @@ export default function App() {
   const [topGearError, setTopGearError] = useState<string | null>(null)
 
   const [voidcoreCount, setVoidcoreCount] = useState(0)
+  const [theme, setTheme] = useState<ThemeId>(loadTheme)
+  useEffect(() => applyTheme(theme), [theme])
   // One knockout state per storage key: a raid difficulty, or the Mythic+ track.
   const [knockoutStates, setKnockoutStates] = useState<Record<string, KnockoutState>>({})
   const [characterKeys, setCharacterKeys] = useState<string[]>([])
@@ -521,6 +525,13 @@ export default function App() {
       <header className="app-header">
         <span className="app-header__brand">GallagioLoot</span>
         <div className="app-header__controls">
+          <ThemePicker
+            theme={theme}
+            onChange={(next) => {
+              setTheme(next)
+              saveTheme(next)
+            }}
+          />
           <CharacterSwitcher
             keys={characterKeys}
             currentKey={currentKey}
