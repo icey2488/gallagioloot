@@ -97,6 +97,11 @@ function findVaultPool(vaultItem: VaultItemInput, bossEvals: BossEval[]): { boss
   return null
 }
 
+/** Why a vault item credits no saved rolls when its loot source isn't one of this week's allocated roll targets. */
+export function noSavedRollsNote(itemName: string, targetName: string): string {
+  return `${targetName} isn't a target you'd roll this week, so taking "${itemName}" saves no rolls.`
+}
+
 /**
  * Compares the Great Vault's two options for the week: take a specific vault item
  * outright, or take the Nebulous Voidcore and spend `settings.rollsAvailable` bonus
@@ -104,6 +109,11 @@ function findVaultPool(vaultItem: VaultItemInput, bossEvals: BossEval[]): { boss
  * difficulties + Mythic+): the vault item is matched against every target's pool, and the
  * alternative roll is the best OTHER target across all of them. `report` only supplies a
  * fallback baseline for evals built without one.
+ *
+ * The saved-rolls credit only applies when the vault item's target is among the targets
+ * `recommendation` allocates rolls to this week: you can't save rolls you would never have
+ * spent hunting there. Otherwise savedRolls is 0 and the comparison is the plain vault item
+ * gain against the Voidcore path (`savedRollsNote` says why).
  */
 export function compareVault(input: {
   vaultItem: VaultItemInput | null
@@ -135,10 +145,17 @@ export function compareVault(input: {
   // OTHER boss (altRollEvPct below already excludes X's own boss, so X's post-vault dud state
   // doesn't feed back into this figure).
   let savedRolls = 0
+  let savedRollsNote: string | undefined
   if (found) {
-    const remainingPool = found.boss.pool.filter((p) => !p.knockedOut)
-    const { expectedTruncated } = rollsToTarget(remainingPool, found.target.key, thresholdValue)
-    savedRolls = Math.min(expectedTruncated, remainingPool.length)
+    const allocated = recommendation.allocations.some((a) => evalKey(a) === evalKey(found.boss))
+    if (allocated) {
+      const remainingPool = found.boss.pool.filter((p) => !p.knockedOut)
+      const { expectedTruncated } = rollsToTarget(remainingPool, found.target.key, thresholdValue)
+      savedRolls = Math.min(expectedTruncated, remainingPool.length)
+    } else {
+      savedRollsNote = noSavedRollsNote(vaultItem!.name, found.boss.encounterName)
+      notes.push(savedRollsNote)
+    }
     notes.push(`Taking "${vaultItem!.name}" leaves it in ${found.boss.encounterName}'s roll pool as a value-0 dud (roll-only knockout).`)
   }
 
@@ -177,7 +194,7 @@ export function compareVault(input: {
     }
   }
 
-  return { voidcoreGainPct, vaultItemGainPct, savedRolls, verdict, explanation, notes }
+  return { voidcoreGainPct, vaultItemGainPct, savedRolls, savedRollsNote, verdict, explanation, notes }
 }
 
 export type TopGearVaultItem = VaultItemInput & {

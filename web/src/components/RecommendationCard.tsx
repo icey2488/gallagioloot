@@ -88,6 +88,8 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
         </div>
       )}
 
+      {card.vaultCompare?.savedRollsNote && <div className="rec-card__note">{card.vaultCompare.savedRollsNote}</div>}
+
       {card.vaultCompare && card.bestRoll && (
         <div className="rec-card__note">
           Best roll target: {card.bestRoll.name}, ~{card.bestRoll.pct.toFixed(2)}%

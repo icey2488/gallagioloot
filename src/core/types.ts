@@ -240,6 +240,8 @@ export type VaultDecision = {
   voidcoreGainPct: number
   vaultItemGainPct: number
   savedRolls: number
+  /** Set when the vault item was found in a loot pool but that target isn't one of this week's allocated rolls, so no saved-rolls credit was given. */
+  savedRollsNote?: string
   verdict: 'vault' | 'voidcore' | 'tokens' | 'toss-up'
   explanation: string
   notes: string[]

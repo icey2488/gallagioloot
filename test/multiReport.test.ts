@@ -212,16 +212,34 @@ describe('report set validation', () => {
   })
 })
 
-describe('compareVault across reports', () => {
-  it('finds the vault item in a dungeon pool and takes the alternative from the best OTHER target', () => {
+describe('compareVault across reports: saved-rolls credit only for allocated targets', () => {
+  const NOTE = `Altar of Fangs isn't a target you'd roll this week, so taking "Vile Vial" saves no rolls.`
+
+  it("credits no saved rolls when the vault item's dungeon isn't a target you'd roll, and says why", () => {
     const raid = raidReport([item(2883, 'The Coiled Altar', 800)])
     const mplus = mplusReport([item(1322, 'Altar of Fangs', 740, { itemId: 273796, name: 'Vile Vial' }), item(1322, 'Altar of Fangs', 100, { itemId: 5 })])
     const evals = evalsFor([raid, mplus], SETTINGS)
     const rec = recommend(evals, SETTINGS, [raid, mplus])
+    expect(rec.allocations.map((a) => a.encounterName)).toEqual(['The Coiled Altar'])
     const vd = compareVault({ vaultItem: { name: 'Vile Vial', gainPct: 0.74, itemId: 273796 }, bossEvals: evals, recommendation: rec, settings: SETTINGS, report: raid })
-    expect(vd.savedRolls).toBeGreaterThan(0)
+    expect(vd.savedRolls).toBe(0)
+    expect(vd.vaultItemGainPct).toBe(0.74)
+    expect(vd.savedRollsNote).toBe(NOTE)
+    expect(vd.notes).toContain(NOTE)
+  })
+
+  it("keeps the existing credit formula when the vault item's dungeon IS the top allocated target", () => {
+    const raid = raidReport([item(2883, 'The Coiled Altar', 800)])
+    const mplus = mplusReport([item(1322, 'Altar of Fangs', 900, { itemId: 273796, name: 'Vile Vial' }), item(1322, 'Altar of Fangs', 900, { itemId: 5 })])
+    const evals = evalsFor([raid, mplus], SETTINGS)
+    const rec = recommend(evals, SETTINGS, [raid, mplus])
+    expect(rec.allocations.map((a) => a.encounterName)).toEqual(['Altar of Fangs'])
+    const vd = compareVault({ vaultItem: { name: 'Vile Vial', gainPct: 0.74, itemId: 273796 }, bossEvals: evals, recommendation: rec, settings: SETTINGS, report: raid })
+    // Two equal pool entries, hunt never abandoned: expected 1.5 rolls to land the Vial, each worth the best OTHER target (Coiled Altar, 0.8%).
+    expect(vd.savedRolls).toBeCloseTo(1.5, 10)
+    expect(vd.savedRollsNote).toBeUndefined()
     expect(vd.notes[0]).toMatch(/Altar of Fangs's roll pool/)
-    expect(vd.vaultItemGainPct).toBeCloseTo(0.74 + vd.savedRolls * 0.8)
+    expect(vd.vaultItemGainPct).toBeCloseTo(0.74 + 1.5 * 0.8, 10)
   })
 })
 
@@ -262,19 +280,28 @@ describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () 
     ])
   })
 
-  it('1 roll: Coiled Altar, a toss-up with Ula\'tek; the Top Gear vault item now matches the Altar of Fangs pool', () => {
+  const vaultItem = { name: 'Vile Vial of Volatile Venom', gainPct: 0.7439364712473122, itemId: 273796, encounterId: 2878 }
+
+  it("1 roll: Coiled Altar, a toss-up with Ula'tek; Altar of Fangs isn't allocated, so the Vial saves no rolls (Voidcore 0.81% vs vault 0.74% = toss-up, as raid-only)", () => {
     const rec = recommend(evals, settings, [raid, mplus])
     expect(rec.allocations.map((a) => a.encounterName)).toEqual(['The Coiled Altar'])
     expect(rec.tossUp?.bosses).toEqual(['The Coiled Altar', "Ula'tek"])
-    const vd = compareVault({
-      vaultItem: { name: 'Vile Vial of Volatile Venom', gainPct: 0.7439364712473122, itemId: 273796, encounterId: 2878 },
-      bossEvals: evals,
-      recommendation: rec,
-      settings,
-      report: raid,
-    })
-    expect(vd.savedRolls).toBeCloseTo(5.7026, 3)
-    expect(vd.verdict).toBe('vault')
-    expect(vd.vaultItemGainPct).toBeCloseTo(0.7439 + 5.7026 * 0.8117, 2)
+    const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings, report: raid })
+    expect(vd.savedRolls).toBe(0)
+    expect(vd.savedRollsNote).toBe(`Altar of Fangs isn't a target you'd roll this week, so taking "Vile Vial of Volatile Venom" saves no rolls.`)
+    expect(vd.voidcoreGainPct).toBeCloseTo(0.8117, 3)
+    expect(vd.vaultItemGainPct).toBeCloseTo(0.7439, 4)
+    expect(vd.verdict).toBe('toss-up')
+  })
+
+  it("2 rolls: Coiled Altar + Ula'tek, still no saved rolls for the Vial -> Voidcore (1.61% vs 0.74%)", () => {
+    const twoRolls: Settings = { ...settings, rollsAvailable: 2 }
+    const rec = recommend(evals, twoRolls, [raid, mplus])
+    expect(rec.allocations.map((a) => a.encounterName)).toEqual(['The Coiled Altar', "Ula'tek"])
+    const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings: twoRolls, report: raid })
+    expect(vd.savedRolls).toBe(0)
+    expect(vd.voidcoreGainPct).toBeCloseTo(1.6098, 3)
+    expect(vd.vaultItemGainPct).toBeCloseTo(0.7439, 4)
+    expect(vd.verdict).toBe('voidcore')
   })
 })

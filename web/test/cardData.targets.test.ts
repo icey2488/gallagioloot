@@ -71,6 +71,17 @@ describe('card target phrasing', () => {
     expect(card.headline).toBe('Take the Voidcore. Run Altar of Fangs at +10 and roll.')
   })
 
+  it('carries the no-saved-rolls explanation through to vaultCompare', () => {
+    const note = `Altar of Fangs isn't a target you'd roll this week, so taking "Vial" saves no rolls.`
+    const card = buildCardData({
+      recommendation: rec({ allocations: [{ encounterId: 2883, encounterName: 'The Coiled Altar', targetKey: 'raid-vault-mythic:2883', kind: 'raid', difficultyLabel: 'Mythic', rolls: 1, expectedGain: 812, expectedGainPct: 0.812 }] }),
+      bossEvals: [makeEval({})],
+      vaultDecision: { voidcoreGainPct: 0.81, vaultItemGainPct: 0.74, savedRolls: 0, savedRollsNote: note, verdict: 'toss-up', explanation: '', notes: [note] },
+      vaultItemName: 'Vial',
+    })
+    expect(card.vaultCompare?.savedRollsNote).toBe(note)
+  })
+
   it('toss-up sides resolve by target key: the same boss on two difficulties stays distinguishable', () => {
     const mythic = makeEval({})
     const heroic = makeEval({ targetKey: 'raid-vault-heroic:2883', difficultyLabel: 'Heroic', evPct: 0.8 })

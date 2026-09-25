@@ -56,7 +56,7 @@ export type CardData = {
    * compare unlike things, so it's omitted there.
    */
   secondBest?: { name: string; pct: number }
-  vaultCompare?: { voidcorePct: number; vaultPct: number; vaultItemName: string }
+  vaultCompare?: { voidcorePct: number; vaultPct: number; vaultItemName: string; savedRollsNote?: string }
   tossUp: boolean
   tossUpNote?: string
   message?: string
@@ -182,6 +182,7 @@ export function buildCardData(params: {
     voidcorePct: vaultDecision.voidcoreGainPct,
     vaultPct: vaultDecision.vaultItemGainPct,
     vaultItemName: vaultItemName ?? 'the vault item',
+    savedRollsNote: vaultDecision.savedRollsNote,
   }
 
   if (vaultDecision.verdict === 'tokens') {
