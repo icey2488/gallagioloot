@@ -100,12 +100,21 @@ export function migrateLegacyLocationKey(resolvedKey: string): KnockoutState | n
 
 export type StoredSettings = {
   thresholdPct: number
-  rollsAvailable: 1 | 2
+  /** Voidcores to spend this week when lowered below Voidcores on hand; null = spend everything on hand (the default). */
+  spendOverride: number | null
+  /** Voidcores earned per week when set by hand; null = the default from the season week (1, or 2 from week 8). */
+  earnedPerWeek: number | null
+  seasonWeek: number | null
+  /** Weeks left in the season after this one. */
+  weeksLeft: number | null
 }
 
 export const DEFAULT_STORED_SETTINGS: StoredSettings = {
   thresholdPct: 0.2,
-  rollsAvailable: 1,
+  spendOverride: null,
+  earnedPerWeek: null,
+  seasonWeek: null,
+  weeksLeft: null,
 }
 
 function readJSON<T>(key: string): T | null {
@@ -118,8 +127,25 @@ function readJSON<T>(key: string): T | null {
   }
 }
 
+const countOrNull = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : null)
+
+/**
+ * Stored settings, with v2.08's `rollsAvailable` (a weekly spend cap that doesn't exist -- operator
+ * ruling 2026-09-25) migrated away: 2 meant "season week 8 or later", which is now the earning
+ * rule, so it becomes 2 Voidcores earned per week unless one is already stored; 1 was the default
+ * and is dropped. The migrated shape is written back on the next save.
+ */
 export function loadSettings(key: string): StoredSettings {
-  return readJSON<StoredSettings>(SETTINGS_PREFIX + key) ?? DEFAULT_STORED_SETTINGS
+  const raw = readJSON<Record<string, unknown>>(SETTINGS_PREFIX + key)
+  if (!raw || typeof raw !== 'object') return DEFAULT_STORED_SETTINGS
+  const earned = countOrNull(raw.earnedPerWeek) ?? (raw.rollsAvailable === 2 ? 2 : null)
+  return {
+    thresholdPct: typeof raw.thresholdPct === 'number' && Number.isFinite(raw.thresholdPct) ? raw.thresholdPct : DEFAULT_STORED_SETTINGS.thresholdPct,
+    spendOverride: countOrNull(raw.spendOverride),
+    earnedPerWeek: earned,
+    seasonWeek: countOrNull(raw.seasonWeek),
+    weeksLeft: countOrNull(raw.weeksLeft),
+  }
 }
 
 export function saveSettings(key: string, settings: StoredSettings): void {

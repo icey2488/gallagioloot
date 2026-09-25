@@ -255,7 +255,7 @@ export type VaultDecision = {
   /** What the Voidcore adds to supply: max(its spend-now EV as the next roll this week, its hold value next week). See `extraVoidcore` in supply.ts. */
   voidcoreGainPct: number
   /** Where that Voidcore goes: rolled this week (roll N) or held for next week's target. Null when neither week has a target for it. */
-  voidcoreUse: ExtraVoidcore | null
+  voidcoreUse?: ExtraVoidcore | null
   vaultItemGainPct: number
   savedRolls: number
   /** Set when the vault item was found in a loot pool but that target isn't one of this week's allocated rolls, so no saved-rolls credit was given. */

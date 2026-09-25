@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ASSUMPTIONS } from '@engine/core/rank'
+import { VOIDCORE_ASSUMPTIONS } from '@engine/core/supply'
 
 const CYA =
   "GallagioLoot prices your bonus roll. It does not know your guild's kill order, your luck, or Blizzard's undocumented loot rules. The knockout-sharing behavior across specs is community-reported, not documented. Sim data is only as good as the sim you pasted."
@@ -19,7 +20,7 @@ export function Footer() {
           <details className="app-footer__assumptions" onToggle={(e) => setAssumptionsOpen(e.currentTarget.open)}>
             <summary>{assumptionsOpen ? 'Hide assumptions' : 'Show assumptions'}</summary>
             <ul>
-              {ASSUMPTIONS.map((assumption) => (
+              {[...ASSUMPTIONS, ...VOIDCORE_ASSUMPTIONS].map((assumption) => (
                 <li key={assumption}>{assumption}</li>
               ))}
             </ul>

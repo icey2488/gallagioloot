@@ -3,14 +3,15 @@ import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/typ
 import { curioEntryKeys, dropCurioEntries } from '@engine/core/curio'
 import { addEntry, characterKey, createStateFor, deserialize, removeEntry, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
-import { nextRollValue, recommend } from '@engine/core/rank'
+import { recommend } from '@engine/core/rank'
+import { defaultEarnedPerWeek, planVoidcores, type VoidcoreSupply } from '@engine/core/supply'
 import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
 import { checkCandidate, checkReportSet, DEFAULT_DRIFT_LIMITS, type DriftLimits } from '@engine/core/reportSet'
 import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from '@engine/core/targets'
 import type { BossEval, KnockoutState, Settings, VaultItemInput } from '@engine/core/types'
 import { detectSource, friendlyReportMismatch, friendlyUnsupportedContent, SOURCE_LABELS, type ReportSource } from './lib/urlDetect'
 import { fetchLootTable, fetchReport, fetchTopGear, ProxyRequestError } from './lib/proxyClient'
-import { buildCardData, type CardData } from './lib/cardData'
+import { buildCardData, extraVoidcoreText, type CardData } from './lib/cardData'
 import { isRecognizedDifficulty } from './lib/format'
 import {
   LocalStorageAdapter,
@@ -71,7 +72,12 @@ export default function App() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [driftLimits, setDriftLimits] = useState<DriftLimits>(DEFAULT_DRIFT_LIMITS)
 
-  const [rollsAvailable, setRollsAvailable] = useState<1 | 2>(1)
+  // Voidcore supply (operator rulings 2026-09-25): no weekly spend cap. To-spend defaults to on hand
+  // (spendOverride null) and never exceeds it; earned per week defaults from the season week.
+  const [spendOverride, setSpendOverride] = useState<number | null>(null)
+  const [earnedOverride, setEarnedOverride] = useState<number | null>(null)
+  const [seasonWeek, setSeasonWeek] = useState<number | null>(null)
+  const [weeksLeft, setWeeksLeft] = useState<number | null>(null)
   const [thresholdPct, setThresholdPct] = useState(0.2)
   const [expectedTargetKeys, setExpectedTargetKeys] = useState<Set<string>>(new Set())
   const [manualVaultGainPct, setManualVaultGainPct] = useState('')
@@ -111,15 +117,22 @@ export default function App() {
 
   const setCheck = useMemo(() => checkReportSet(reports, driftLimits), [reports, driftLimits])
 
+  const toSpend = spendOverride === null ? voidcoreCount : Math.min(spendOverride, voidcoreCount)
+  const earnedPerWeek = earnedOverride ?? defaultEarnedPerWeek(seasonWeek ?? undefined)
+  const supply: VoidcoreSupply = useMemo(
+    () => ({ onHand: voidcoreCount, toSpend, earnedPerWeek, weeksLeft: weeksLeft ?? undefined }),
+    [voidcoreCount, toSpend, earnedPerWeek, weeksLeft]
+  )
+
   const settings: Settings = useMemo(
     () => ({
       thresholdPct,
-      rollsAvailable,
+      voidcoresToSpend: toSpend,
       includeOffSpec: false,
       expectedTargets: loaded.length ? [...expectedTargetKeys] : undefined,
       lootSpecId: lootSpecId ?? undefined,
     }),
-    [thresholdPct, rollsAvailable, expectedTargetKeys, loaded.length, lootSpecId]
+    [thresholdPct, toSpend, expectedTargetKeys, loaded.length, lootSpecId]
   )
 
   const sectionsData = useMemo(
@@ -139,10 +152,10 @@ export default function App() {
     [reports, bossEvals, settings, setCheck]
   )
 
-  // The (rollsAvailable+1)th roll of the week under the same allocation rules: what one more Voidcore would add.
-  const nextRoll = useMemo(
-    () => (reports.length && bossEvals.length && setCheck.errors.length === 0 ? nextRollValue(bossEvals, settings) : undefined),
-    [reports, bossEvals, settings, setCheck]
+  // This week's roll order, spend now vs hold, the stockpile check, and what one more Voidcore is worth.
+  const plan = useMemo(
+    () => (reports.length && bossEvals.length && setCheck.errors.length === 0 ? planVoidcores(bossEvals, supply) : undefined),
+    [reports, bossEvals, supply, setCheck]
   )
 
   const topGearVaultItem = useMemo(() => (topGearResult ? vaultItemFromTopGear(topGearResult) : null), [topGearResult])
@@ -161,8 +174,8 @@ export default function App() {
 
   const vaultDecision = useMemo(() => {
     if (!primary || !recommendation || !vaultItemInput) return null
-    return compareVault({ vaultItem: vaultItemInput, bossEvals, recommendation, settings, report: primary })
-  }, [primary, recommendation, vaultItemInput, bossEvals, settings])
+    return compareVault({ vaultItem: vaultItemInput, bossEvals, recommendation, settings, report: primary, supply })
+  }, [primary, recommendation, vaultItemInput, bossEvals, settings, supply])
 
   const cardData = useMemo(() => {
     if (!recommendation) return null
@@ -172,14 +185,16 @@ export default function App() {
       vaultDecision,
       vaultItemName: vaultItemInput?.name,
       isManualVaultGain: !!vaultItemInput && !topGearVaultItem,
+      plan,
+      thresholdPct,
     })
-  }, [recommendation, bossEvals, vaultDecision, vaultItemInput, topGearVaultItem])
+  }, [recommendation, bossEvals, vaultDecision, vaultItemInput, topGearVaultItem, plan, thresholdPct])
 
   // Mark the priced snapshot stale whenever the live pricing inputs change (after the first
   // price). The button press itself changes none of these deps, so it never trips this.
   useEffect(() => {
     if (hasPricedRef.current) setStale(true)
-  }, [bossEvals, recommendation, vaultDecision])
+  }, [bossEvals, recommendation, vaultDecision, plan])
 
   // One loot table per distinct instance among the loaded reports (the raid instance(s) and
   // the Mythic+ aggregate, -1, whose pseudo-encounters are the dungeons).
@@ -251,8 +266,8 @@ export default function App() {
 
   useEffect(() => {
     if (!currentKey) return
-    saveSettings(currentKey, { thresholdPct, rollsAvailable })
-  }, [currentKey, thresholdPct, rollsAvailable])
+    saveSettings(currentKey, { thresholdPct, spendOverride, earnedPerWeek: earnedOverride, seasonWeek, weeksLeft })
+  }, [currentKey, thresholdPct, spendOverride, earnedOverride, seasonWeek, weeksLeft])
 
   useEffect(() => {
     if (!currentKey) return
@@ -341,7 +356,10 @@ export default function App() {
         setLootSpecId(rpt.lootSpecId ?? null)
         const storedSettings = loadSettings(key)
         setThresholdPct(storedSettings.thresholdPct)
-        setRollsAvailable(storedSettings.rollsAvailable)
+        setSpendOverride(storedSettings.spendOverride)
+        setEarnedOverride(storedSettings.earnedPerWeek)
+        setSeasonWeek(storedSettings.seasonWeek)
+        setWeeksLeft(storedSettings.weeksLeft)
         setVoidcoreCount(loadVoidcoreCount(key))
         setManualVaultGainPct('')
         if (opts.fromSwitch || !topGearUrl.trim()) {
@@ -535,20 +553,9 @@ export default function App() {
                   className="reports-summary__input num"
                 />
               </div>
-              {nextRoll !== undefined && (
+              {plan && (
                 <div className="reports-summary__next" aria-live="polite">
-                  {nextRoll ? (
-                    <>
-                      <span>Next Voidcore worth</span> <span className="num reports-summary__ev">~{nextRoll.expectedGainPct.toFixed(2)}%</span>
-                      <span className="reports-summary__target">
-                        {' '}
-                        · roll {Math.max(1, Math.floor(rollsAvailable)) + 1} goes to {nextRoll.encounterName}
-                        {nextRoll.difficultyLabel ? ` (${nextRoll.difficultyLabel})` : ''}
-                      </span>
-                    </>
-                  ) : (
-                    <span>No target left for another roll this week</span>
-                  )}
+                  One more Voidcore: <span className="num reports-summary__ev">{extraVoidcoreText(plan.extra)}</span>
                 </div>
               )}
             </div>
@@ -666,18 +673,6 @@ export default function App() {
               )}
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
-              <label htmlFor="rolls-available" className="field-label-text" style={{ marginBottom: 4 }}>
-                Rolls available
-              </label>
-              <select id="rolls-available" value={rollsAvailable} onChange={(e) => setRollsAvailable(Number(e.target.value) === 2 ? 2 : 1)}>
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="run-settings-row" style={{ marginTop: 14 }}>
-            <div className="field" style={{ marginBottom: 0 }}>
               <span className="field-label-text">Voidcores held</span>
               <div className="voidcore-field">
                 <ChipStack count={voidcoreCount} />
@@ -690,6 +685,78 @@ export default function App() {
                   aria-label="Voidcores held"
                 />
               </div>
+            </div>
+          </div>
+
+          <div className="run-settings-row" style={{ marginTop: 14 }}>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label htmlFor="voidcores-to-spend" className="field-label-text" style={{ marginBottom: 4 }}>
+                Voidcores to spend this week
+              </label>
+              <input
+                id="voidcores-to-spend"
+                type="number"
+                min={0}
+                max={voidcoreCount}
+                value={toSpend}
+                onChange={(e) => {
+                  const n = Math.max(0, Math.floor(Number(e.target.value) || 0))
+                  setSpendOverride(n >= voidcoreCount ? null : n)
+                }}
+                className="num"
+              />
+              <div className="field-hint" style={{ marginBottom: 0 }}>
+                Defaults to all on hand; no weekly cap
+              </div>
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label htmlFor="earned-per-week" className="field-label-text" style={{ marginBottom: 4 }}>
+                Voidcores earned per week
+              </label>
+              <input
+                id="earned-per-week"
+                type="number"
+                min={0}
+                max={2}
+                value={earnedPerWeek}
+                onChange={(e) => {
+                  const n = Math.min(2, Math.max(0, Math.floor(Number(e.target.value) || 0)))
+                  setEarnedOverride(n === defaultEarnedPerWeek(seasonWeek ?? undefined) ? null : n)
+                }}
+                className="num"
+              />
+              <div className="field-hint" style={{ marginBottom: 0 }}>
+                1 from the Great Vault; 2 from season week 8
+              </div>
+            </div>
+          </div>
+
+          <div className="run-settings-row" style={{ marginTop: 14 }}>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label htmlFor="season-week" className="field-label-text" style={{ marginBottom: 4 }}>
+                Season week (optional)
+              </label>
+              <input
+                id="season-week"
+                type="number"
+                min={1}
+                value={seasonWeek ?? ''}
+                onChange={(e) => setSeasonWeek(e.target.value === '' ? null : Math.max(1, Math.floor(Number(e.target.value) || 1)))}
+                className="num"
+              />
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label htmlFor="weeks-left" className="field-label-text" style={{ marginBottom: 4 }}>
+                Weeks left after this one (optional)
+              </label>
+              <input
+                id="weeks-left"
+                type="number"
+                min={0}
+                value={weeksLeft ?? ''}
+                onChange={(e) => setWeeksLeft(e.target.value === '' ? null : Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                className="num"
+              />
             </div>
           </div>
 

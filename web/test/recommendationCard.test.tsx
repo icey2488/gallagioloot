@@ -30,17 +30,17 @@ const base: CardData = {
   verdict: 'toss-up',
   headline: 'Toss-up',
   pct: 0.68,
-  rollsAvailable: 1,
+  voidcoresToSpend: 1,
   tossUp: true,
   tossUpNote: 'close',
   vaultCompare: { voidcorePct: 0.68, vaultPct: 0.74, vaultItemName: 'Vile Vial of Volatile Venom' },
 } as CardData
 
 describe('RecommendationCard toss-up number label', () => {
-  it('labels the big number "Voidcore roll" on a vault-vs-Voidcore toss-up', () => {
+  it('labels the big number "One more Voidcore" on a vault-vs-Voidcore toss-up', () => {
     const el = render(base)
     const row = el.querySelector('.rec-card__pct-row')!
-    expect(row.querySelector('.rec-card__pct-label')?.textContent).toBe('Voidcore roll')
+    expect(row.querySelector('.rec-card__pct-label')?.textContent).toBe('One more Voidcore')
     expect(row.querySelector('.rec-card__pct')?.textContent).toBe('0.68%')
   })
 

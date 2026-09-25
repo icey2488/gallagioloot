@@ -50,7 +50,7 @@ afterEach(() => {
 })
 
 function render() {
-  const settings = { thresholdPct: 0.2, rollsAvailable: 1 as const, includeOffSpec: false, lootSpecId: 62 }
+  const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false, lootSpecId: 62 }
   const section: BossSection = {
     key: 'raid', title: 'The Venomous Abyss · Mythic', kind: 'raid', stateKey: 'k', lootTable: LOOT_TABLE,
     bossEvals: buildBossPools(REPORT, STATE, settings, LOOT_TABLE.encounters),

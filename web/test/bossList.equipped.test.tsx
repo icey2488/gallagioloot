@@ -36,7 +36,7 @@ afterEach(() => {
 
 function render(entries: KnockoutEntry[], changes: ItemStateChange[]) {
   const state: KnockoutState = { character: 'Icemagus', difficulty: knockoutDifficulty(REPORT), entries, version: 2 }
-  const settings = { thresholdPct: 0.2, rollsAvailable: 1 as const, includeOffSpec: false, lootSpecId: 62 }
+  const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false, lootSpecId: 62 }
   const section: BossSection = { key: 'm', title: 'Mythic+', kind: 'mplus', stateKey: 'k', lootTable: null, bossEvals: buildBossPools(REPORT, state, settings) }
   act(() => {
     root.render(createElement(BossList, { sections: [section], hasReports: true, lootTableStatus: 'idle', expectedTargetKeys: new Set<string>(), onToggleExpectedTarget: () => {}, onSetItemState: (c) => changes.push(c), onSetRollsSpent: () => {} }))

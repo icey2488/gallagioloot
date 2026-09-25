@@ -148,8 +148,25 @@ describe('settings / last report URL / voidcore persistence', () => {
   })
 
   it('round-trips settings', () => {
-    saveSettings(key, { thresholdPct: 0.5, rollsAvailable: 2 })
-    expect(loadSettings(key)).toEqual({ thresholdPct: 0.5, rollsAvailable: 2 })
+    const stored = { thresholdPct: 0.5, spendOverride: 1, earnedPerWeek: 2, seasonWeek: 9, weeksLeft: 4 }
+    saveSettings(key, stored)
+    expect(loadSettings(key)).toEqual(stored)
+  })
+
+  it('migrates v2.08 "Rolls available": 2 (season week 8+) becomes 2 earned per week, 1 is dropped, no spend cap survives', () => {
+    localStorage.setItem(`gallagioloot:settings:${key}`, JSON.stringify({ thresholdPct: 0.3, rollsAvailable: 2 }))
+    expect(loadSettings(key)).toEqual({ thresholdPct: 0.3, spendOverride: null, earnedPerWeek: 2, seasonWeek: null, weeksLeft: null })
+    localStorage.setItem(`gallagioloot:settings:${key}`, JSON.stringify({ thresholdPct: 0.3, rollsAvailable: 1 }))
+    expect(loadSettings(key)).toEqual({ ...DEFAULT_STORED_SETTINGS, thresholdPct: 0.3 })
+    // An earning rate already stored wins over the old value.
+    localStorage.setItem(`gallagioloot:settings:${key}`, JSON.stringify({ thresholdPct: 0.3, rollsAvailable: 2, earnedPerWeek: 1 }))
+    expect(loadSettings(key).earnedPerWeek).toBe(1)
+    expect('rollsAvailable' in loadSettings(key)).toBe(false)
+  })
+
+  it('ignores garbage in stored settings', () => {
+    localStorage.setItem(`gallagioloot:settings:${key}`, JSON.stringify({ thresholdPct: 'x', spendOverride: -2, earnedPerWeek: 'two', seasonWeek: 3.7, weeksLeft: null }))
+    expect(loadSettings(key)).toEqual({ ...DEFAULT_STORED_SETTINGS, seasonWeek: 3 })
   })
 
   it('round-trips the last report URL', () => {
@@ -174,7 +191,7 @@ describe('settings / last report URL / voidcore persistence', () => {
 
   it('keeps settings/url/voidcore isolated per character key', () => {
     const otherKey = 'us:hyjal:bravechar:mythic'
-    saveSettings(key, { thresholdPct: 0.5, rollsAvailable: 2 })
+    saveSettings(key, { ...DEFAULT_STORED_SETTINGS, thresholdPct: 0.5, earnedPerWeek: 2 })
     expect(loadSettings(otherKey)).toEqual(DEFAULT_STORED_SETTINGS)
   })
 })

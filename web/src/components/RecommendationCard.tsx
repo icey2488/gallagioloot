@@ -1,10 +1,12 @@
+import { BELOW_THRESHOLD_TEXT } from '@engine/core/supply'
 import type { CardData } from '../lib/cardData'
 import { Tooltip } from './Tooltip'
 
 export function RecommendationCard({ card, onPrimaryAction, stale }: { card: CardData; onPrimaryAction?: () => void; stale?: boolean }) {
   const actionLabel = card.verdict === 'vault' ? 'Take vault item' : card.verdict === 'tokens' ? 'Mark tokens taken' : 'Mark as rolled'
   const kicker = card.vaultCompare ? 'Great Vault vs Voidcore' : 'GallagioLoot recommends'
-  const meta = `${card.rollsAvailable} Voidcore${card.rollsAvailable === 1 ? '' : 's'}`
+  const meta = `${card.voidcoresToSpend} Voidcore${card.voidcoresToSpend === 1 ? '' : 's'}`
+  const listed = (card.rolls?.length ?? 0) > 1
 
   // The bold "verb + boss name" headline split only applies to the plain "Roll <boss>" /
   // "Roll <boss> or <boss>" headlines -- once a vault comparison is in play the headline is
@@ -57,13 +59,13 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
         </div>
       ) : (
         <div className="rec-card__pct-row">
-          {card.verdict === 'toss-up' && card.vaultCompare && <div className="rec-card__pct-label">Voidcore roll</div>}
+          {card.verdict === 'toss-up' && card.vaultCompare && <div className="rec-card__pct-label">One more Voidcore</div>}
           <div className="rec-card__pct num">{card.pct.toFixed(2)}%</div>
           {card.verdict === 'roll' && <div className="rec-card__pct-caption">expected gain from this Voidcore</div>}
         </div>
       )}
 
-      {card.secondBest && !tossUpPair && card.verdict === 'roll' && (
+      {card.secondBest && !tossUpPair && !listed && card.verdict === 'roll' && (
         <div className="rec-card__second">
           Next best: {card.secondBest.name}, ~{card.secondBest.pct.toFixed(2)}%. Clear of sim noise, so the pick holds.
         </div>
@@ -78,8 +80,9 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
       {card.vaultCompare && (
         <div className="rec-card__compare">
           <div className={`rec-card__compare-option${card.verdict === 'roll' ? ' rec-card__compare-option--win' : ''}`}>
-            <div className="rec-card__compare-label">Voidcore roll</div>
+            <div className="rec-card__compare-label">One more Voidcore</div>
             <div className="rec-card__compare-value num">{card.vaultCompare.voidcorePct.toFixed(2)}%</div>
+            {card.vaultCompare.voidcoreWhere && <div className="rec-card__compare-where">{card.vaultCompare.voidcoreWhere}</div>}
           </div>
           <div className={`rec-card__compare-option${card.verdict === 'vault' ? ' rec-card__compare-option--win' : ''}`}>
             <div className="rec-card__compare-label">{card.vaultCompare.vaultItemName}</div>
@@ -99,6 +102,33 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
       )}
 
       {card.message && <div className="rec-card__note">{card.message}</div>}
+
+      {card.rolls && (card.rolls.length > 0 || (card.rollNotes?.length ?? 0) > 0) && (
+        <div className="rec-card__rolls">
+          <div className="rec-card__rolls-title">This week's Voidcores, in order</div>
+          {card.rolls.length > 0 && (
+            <ol className="roll-list">
+              {card.rolls.map((r) => (
+                <li key={r.roll} className={`roll-list__row${r.belowThreshold ? ' roll-list__row--below' : ''}`}>
+                  <span className="roll-list__n num">{r.roll}</span>
+                  <span className="roll-list__name">{r.name}</span>
+                  <span className="roll-list__ev num">{r.pct.toFixed(2)}%</span>
+                  <span className={`roll-list__advice${r.holdBetter ? ' roll-list__advice--hold' : ''}`}>
+                    {r.belowThreshold ? `${BELOW_THRESHOLD_TEXT}; ` : ''}
+                    {r.advice}
+                    {r.tossUp ? `; toss-up with ${r.tossUp.name} (${r.tossUp.pct.toFixed(2)}%), let kill order decide` : ''}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {card.rollNotes?.map((n) => (
+            <div key={n} className="rec-card__note roll-list__note">
+              {n}
+            </div>
+          ))}
+        </div>
+      )}
 
       {onPrimaryAction && (
         <div className="rec-card__action">

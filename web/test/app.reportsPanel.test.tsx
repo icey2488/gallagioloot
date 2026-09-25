@@ -212,42 +212,48 @@ describe('Reports panel: Voidcores on hand and the next Voidcore', () => {
     expect((container.querySelector('input[aria-label="Voidcore count"]') as HTMLInputElement).value).toBe('5')
   })
 
-  it('raid only: the next Voidcore is the (N+1)th best distinct boss at its EV, and runs out when every boss has a roll', async () => {
+  const setOnHand = async (n: number) => {
+    await act(async () => {
+      Simulate.change(voidcoresInput(), { target: { value: String(n) } as unknown as EventTarget })
+    })
+  }
+
+  it('raid only: one more Voidcore is the next roll this week, or its hold value when next week gives it a better target', async () => {
     await renderApp()
     await addReport(RAID_URL)
-    // Bosses: Ula'tek 0.90%, Coiled Altar 0.80%, Sszorak 0.60%, Entombed 0.50%; one roll available.
-    expect(nextText()).toContain('Next Voidcore worth ~0.80%')
-    expect(nextText()).toContain("roll 2 goes to The Coiled Altar (Mythic)")
-
-    const rolls = container.querySelector('#rolls-available') as HTMLSelectElement
-    await act(async () => {
-      Simulate.change(rolls, { target: { value: '2' } as unknown as EventTarget })
-    })
-    expect(nextText()).toContain('Next Voidcore worth ~0.60%')
-    expect(nextText()).toContain('roll 3 goes to Sszorak')
+    // Bosses: Ula'tek 0.90%, Coiled Altar 0.80%, Sszorak 0.60%, Entombed 0.50%; 1 earned a week.
+    expect(nextText()).toBe("One more Voidcore: ~0.90% (roll 1: Ula'tek (Mythic))")
+    await setOnHand(1)
+    // Roll 2 is The Coiled Altar; held, it would get next week's 2nd (The Coiled Altar): equal, so spend.
+    expect(nextText()).toBe('One more Voidcore: ~0.80% (roll 2: The Coiled Altar (Mythic))')
+    await setOnHand(2)
+    // Roll 3 is Sszorak 0.60%; held, next week's 1 earned takes Ula'tek and it gets The Coiled Altar 0.80%.
+    expect(nextText()).toBe('One more Voidcore: ~0.80% next week (hold for The Coiled Altar (Mythic))')
   })
 
-  it('reports no target left when every rollable boss already holds a roll', async () => {
+  it('no target this week or next when a single raid boss is already taken by this week and next week\'s Voidcores', async () => {
     reports['6PTZ7'] = { ...RAID, items: [item(2871, 'Sszorak', 2, 600 * 5.728, 1320)] }
     await renderApp()
     await addReport(RAID_URL)
-    expect(nextText()).toBe('No target left for another roll this week')
+    expect(nextText()).toBe('One more Voidcore: ~0.60% (roll 1: Sszorak (Mythic))')
+    await setOnHand(1)
+    expect(nextText()).toBe('One more Voidcore: no target this week or next')
   })
 
-  it('Mythic+ repeats: with a dungeon that outranks the raid, the next Voidcore is another roll on it', async () => {
+  it('Mythic+ repeats: with a dungeon that outranks the raid, one more Voidcore is another roll on it', async () => {
     reports.a8URT = { ...MPLUS, items: [item(1322, 'Altar of Fangs', 3, 2000 * 5.728, -1)] }
     await renderApp()
     await addReport(RAID_URL)
     await addReport(MPLUS_URL)
-    expect(nextText()).toContain('Next Voidcore worth ~2.00%')
-    expect(nextText()).toContain('Altar of Fangs (+10 (Myth))')
+    await setOnHand(2)
+    expect(nextText()).toBe('One more Voidcore: ~2.00% (roll 3: Altar of Fangs at +10)')
   })
 
   it('is hidden while the report set has an error (pricing is paused)', async () => {
     await renderApp()
     await addReport(RAID_URL)
     await addReport(MPLUS_URL)
-    expect(nextText()).toContain('Next Voidcore worth')
+    expect(nextText()).toContain('One more Voidcore:')
     // The two baselines differ by ~0.02%; refusing any drift puts the loaded set in error.
     await act(async () => {
       Simulate.change(container.querySelector('#drift-refuse')!, { target: { value: '0' } as unknown as EventTarget })

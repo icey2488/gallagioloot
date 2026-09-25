@@ -58,7 +58,7 @@ describe('card target phrasing', () => {
       vaultDecision: null,
     })
     expect(two.headline).toBe('Run Altar of Fangs at +10 and roll (2 keys)')
-    expect(two.rollsAvailable).toBe(2)
+    expect(two.voidcoresToSpend).toBe(2)
   })
 
   it('voidcore verdict uses the same verb', () => {
@@ -71,29 +71,28 @@ describe('card target phrasing', () => {
     expect(card.headline).toBe('Take the Voidcore. Run Altar of Fangs at +10 and roll.')
   })
 
-  it('two rolls on two different targets: the headline names both', () => {
+  it('the vault adds one Voidcore: the headline names roll 1 however many rolls the week has, or says to hold it', () => {
     const coiled = makeEval({})
     const ulatek = makeEval({ encounterId: 2895, encounterName: "Ula'tek", targetKey: 'raid-vault-mythic:2895', evPct: 0.8 })
     const alloc = (b: BossEval, pct: number) => ({ encounterId: b.encounterId, encounterName: b.encounterName, targetKey: b.targetKey, kind: 'raid' as const, difficultyLabel: 'Mythic', rolls: 1, expectedGain: pct * 1000, expectedGainPct: pct })
-    const card = buildCardData({
-      recommendation: rec({ allocations: [alloc(coiled, 0.812), alloc(ulatek, 0.8)] }),
+    const recommendation = rec({ allocations: [alloc(coiled, 0.812), alloc(ulatek, 0.8)] })
+    const target = { encounterId: 2895, encounterName: "Ula'tek", targetKey: 'raid-vault-mythic:2895', kind: 'raid' as const, difficultyLabel: 'Mythic', evPct: 0.8, belowThreshold: false }
+    const spend = buildCardData({
+      recommendation,
       bossEvals: [coiled, ulatek],
-      vaultDecision: { voidcoreGainPct: 1.61, vaultItemGainPct: 0.74, savedRolls: 0, verdict: 'voidcore', explanation: '', notes: [] },
+      vaultDecision: { voidcoreGainPct: 0.5, voidcoreUse: { use: 'spend', roll: 3, target: { ...target, encounterName: 'Sszorak', evPct: 0.5 }, valuePct: 0.5, holdPct: 0.4 }, vaultItemGainPct: 0.2, savedRolls: 0, verdict: 'voidcore', explanation: '', notes: [] },
       vaultItemName: 'Vial',
     })
-    expect(card.headline).toBe("Take the Voidcores. Roll The Coiled Altar (Mythic) and Ula'tek (Mythic).")
-  })
-
-  it('two rolls across a raid boss and a dungeon read as two actions; two dungeons share the verb', () => {
-    const coiled = makeEval({})
-    const raidAlloc = { encounterId: 2883, encounterName: 'The Coiled Altar', targetKey: coiled.targetKey, kind: 'raid' as const, difficultyLabel: 'Mythic', rolls: 1, expectedGain: 812, expectedGainPct: 0.812 }
-    const altarAlloc = { encounterId: 1322, encounterName: 'Altar of Fangs', targetKey: ALTAR.targetKey, kind: 'mplus' as const, keyLevel: 10, rolls: 1, expectedGain: 700, expectedGainPct: 0.7 }
-    const other = { ...altarAlloc, encounterId: 1311, encounterName: 'Den of Nalorakk', targetKey: 'mplus-myth:1311' }
-    const voidcore = { voidcoreGainPct: 1.5, vaultItemGainPct: 0.5, savedRolls: 0, verdict: 'voidcore' as const, explanation: '', notes: [] }
-    const mixed = buildCardData({ recommendation: rec({ allocations: [raidAlloc, altarAlloc] }), bossEvals: [coiled, ALTAR], vaultDecision: voidcore })
-    expect(mixed.headline).toBe('Take the Voidcores. Roll The Coiled Altar (Mythic) and run Altar of Fangs at +10 and roll.')
-    const dungeons = buildCardData({ recommendation: rec({ allocations: [altarAlloc, other] }), bossEvals: [ALTAR], vaultDecision: voidcore })
-    expect(dungeons.headline).toBe('Take the Voidcores. Run Altar of Fangs at +10 and Den of Nalorakk at +10 and roll.')
+    expect(spend.headline).toBe('Take the Voidcore. Roll The Coiled Altar (Mythic).')
+    expect(spend.vaultCompare?.voidcoreWhere).toBe('roll 3: Sszorak (Mythic)')
+    const hold = buildCardData({
+      recommendation,
+      bossEvals: [coiled, ulatek],
+      vaultDecision: { voidcoreGainPct: 0.8, voidcoreUse: { use: 'hold', target, valuePct: 0.8, spendPct: 0.5 }, vaultItemGainPct: 0.2, savedRolls: 0, verdict: 'voidcore', explanation: '', notes: [] },
+      vaultItemName: 'Vial',
+    })
+    expect(hold.headline).toBe('Take the Voidcore and hold it for next week.')
+    expect(hold.vaultCompare?.voidcoreWhere).toBe("hold: Ula'tek (Mythic) next week")
   })
 
   it('carries the no-saved-rolls explanation through to vaultCompare', () => {

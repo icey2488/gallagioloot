@@ -940,6 +940,84 @@ tr.excluded .deploy-table__ev {
   margin-top: 14px;
 }
 
+.rec-card__compare-where {
+  font-size: var(--text-meta);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+/* This week's Voidcores, in order. Plain text weights only (no gold): the card's gold stays on its
+   border, headline and primary action. Numbers are tabular (.num); the advice line wraps under the
+   name so a 390px card never scrolls sideways. */
+.rec-card__rolls {
+  margin-top: var(--space-6);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--border);
+}
+
+.rec-card__rolls-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: var(--space-4);
+}
+
+.roll-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.roll-list__row {
+  display: grid;
+  grid-template-columns: 1.5em minmax(0, 1fr) auto;
+  column-gap: var(--space-5);
+  row-gap: var(--space-1);
+  align-items: baseline;
+}
+
+.roll-list__n {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.roll-list__name {
+  color: var(--text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.roll-list__ev {
+  color: var(--text);
+  font-weight: 600;
+  text-align: right;
+}
+
+.roll-list__advice {
+  grid-column: 2 / 4;
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+.roll-list__advice--hold {
+  color: var(--text);
+}
+
+.roll-list__row--below .roll-list__advice {
+  color: #e8c98a;
+}
+
+.roll-list__note {
+  margin-top: var(--space-4);
+}
+
 /* Header Voidcore-count pill -- labeled (visible "Voidcores held" text, not just an
    aria-label) so it reads as a display of stored state rather than an unlabeled spinner.
    `color` here drives the ChipStack glyph's `stroke="currentColor"`, matching the
