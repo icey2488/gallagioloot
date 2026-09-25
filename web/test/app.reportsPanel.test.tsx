@@ -228,7 +228,7 @@ describe('Reports panel: Voidcores on hand and the next Voidcore', () => {
     expect(nextText()).toBe('One more Voidcore: ~0.80% (roll 2: The Coiled Altar (Mythic))')
     await setOnHand(2)
     // Roll 3 is Sszorak 0.60%; held, next week's 1 earned takes Ula'tek and it gets The Coiled Altar 0.80%.
-    expect(nextText()).toBe('One more Voidcore: ~0.80% next week (hold for The Coiled Altar (Mythic))')
+    expect(nextText()).toBe('One more Voidcore: ~0.80% next week (hold for The Coiled Altar (Mythic)), playing without ~0.60% for 1 week')
   })
 
   it('no target this week or next when a single raid boss is already taken by this week and next week\'s Voidcores', async () => {

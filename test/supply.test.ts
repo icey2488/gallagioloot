@@ -8,6 +8,8 @@ import {
   defaultEarnedPerWeek,
   holdAdvice,
   holdAdviceText,
+  holdCostText,
+  holdWhenText,
   noTargetText,
   planVoidcores,
   stockpileCheck,
@@ -130,7 +132,7 @@ describe('spend now vs hold', () => {
       ['B', 'C', 'spend'],
       ['C', 'B', 'compare'], // the lowest roll, held alone, gets next week's 2nd
     ])
-    expect(holdAdviceText(plan.rolls[2])).toBe('spend now 0.60% vs hold ~0.80% next week')
+    expect(holdAdviceText(plan.rolls[2])).toBe('spend now 0.60% vs hold ~0.80% next week, playing without ~0.60% for 1 week')
     expect(holdAdviceText(plan.rolls[0])).toBe('spend now')
   })
 
@@ -211,9 +213,44 @@ describe('earning rate', () => {
     expect(defaultEarnedPerWeek(12)).toBe(2)
   })
 
-  it('the seven supply assumptions are disclosed, with no em dashes', () => {
-    expect(VOIDCORE_ASSUMPTIONS).toHaveLength(7)
+  it('the eight supply assumptions are disclosed, with no em dashes; one is the plain holding-delays-the-upgrade line, with no finance terms', () => {
+    expect(VOIDCORE_ASSUMPTIONS).toHaveLength(8)
     expect(VOIDCORE_ASSUMPTIONS.join(' ')).not.toMatch(/—/)
+    expect(VOIDCORE_ASSUMPTIONS).toContain(HOLD_DELAY_LINE)
+    expect(VOIDCORE_ASSUMPTIONS.join(' ')).not.toMatch(/time value|npv|discount/i)
+  })
+})
+
+const HOLD_DELAY_LINE = 'Holding delays the upgrade: every week you wait, you play without it, and a roll never guarantees the item you are holding for.'
+
+describe('the power given up while holding', () => {
+  it('holdCostText: the spend-now value times the weeks held', () => {
+    expect(holdCostText(0.648, 1)).toBe('playing without ~0.65% for 1 week')
+    expect(holdCostText(0.5, 2)).toBe('playing without ~1.00% for 2 weeks')
+    expect(holdCostText(0.5, 3.9)).toBe('playing without ~1.50% for 3 weeks')
+  })
+
+  it('holdCostText: nothing given up (no spend-now value, no whole week, non-finite input) is an empty string', () => {
+    expect(holdCostText(0, 1)).toBe('')
+    expect(holdCostText(-0.4, 1)).toBe('')
+    expect(holdCostText(0.5, 0)).toBe('')
+    expect(holdCostText(0.5, 0.9)).toBe('')
+    expect(holdCostText(NaN, 1)).toBe('')
+    expect(holdCostText(0.5, NaN)).toBe('')
+    expect(holdCostText(0.5, Infinity)).toBe('')
+  })
+
+  it('holdWhenText and holdAdviceText take the weeks held as a parameter (default 1: next week)', () => {
+    expect(holdWhenText()).toBe('next week')
+    expect(holdWhenText(3)).toBe('in 3 weeks')
+    const roll = { evPct: 0.65, holdPct: 0.81, advice: 'compare' as const }
+    expect(holdAdviceText(roll)).toBe('spend now 0.65% vs hold ~0.81% next week, playing without ~0.65% for 1 week')
+    expect(holdAdviceText(roll, 2)).toBe('spend now 0.65% vs hold ~0.81% in 2 weeks, playing without ~1.30% for 2 weeks')
+    expect(holdAdviceText({ ...roll, advice: 'spend' as const }, 2)).toBe('spend now')
+  })
+
+  it('no em dashes in any of the new copy', () => {
+    expect(holdCostText(0.5, 2) + holdWhenText(2) + holdAdviceText({ evPct: 0.5, holdPct: 0.9, advice: 'compare' }, 2)).not.toMatch(/—/)
   })
 })
 
@@ -234,7 +271,7 @@ describe('Icemagus fixtures (Mythic raid 6PTZ7 + Mythic+ a8URT, Arcane): 3 Voidc
     expect(plan.rolls.map(row)).toEqual([
       "1. Ula'tek 0.921 · spend now",
       '2. The Coiled Altar 0.812 · spend now',
-      '3. Sszorak 0.648 · spend now 0.65% vs hold ~0.81% next week',
+      '3. Sszorak 0.648 · spend now 0.65% vs hold ~0.81% next week, playing without ~0.65% for 1 week',
     ])
     expect(plan.rolls[2].hold?.encounterName).toBe('The Coiled Altar')
     expect(plan.noTargetCount).toBe(0)

@@ -92,7 +92,7 @@ describe('card target phrasing', () => {
       vaultItemName: 'Vial',
     })
     expect(hold.headline).toBe('Take the Voidcore and hold it for next week.')
-    expect(hold.vaultCompare?.voidcoreWhere).toBe("hold: Ula'tek (Mythic) next week")
+    expect(hold.vaultCompare?.voidcoreWhere).toBe("hold: Ula'tek (Mythic) next week, playing without ~0.50% for 1 week")
   })
 
   it('carries the no-saved-rolls explanation through to vaultCompare', () => {

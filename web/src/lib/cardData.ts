@@ -1,7 +1,7 @@
 import type { BossEval, PoolEntry, Recommendation, VaultDecision } from '@engine/core/types'
 import type { TargetKind } from '@engine/types'
 import { evalKey } from '@engine/core/targets'
-import { holdAdviceText, noTargetText, stockpileWarningText, type ExtraVoidcore, type VoidcorePlan } from '@engine/core/supply'
+import { holdAdviceText, holdCostText, holdWhenText, noTargetText, stockpileWarningText, type ExtraVoidcore, type VoidcorePlan } from '@engine/core/supply'
 
 /** The fields of a BossEval/Allocation that name a roll target. */
 export type TargetLike = { encounterName: string; kind?: TargetKind; difficultyLabel?: string; keyLevel?: number; rolls?: number }
@@ -37,17 +37,28 @@ export function catalystText(entry: Pick<PoolEntry, 'catalyst'> | null | undefin
   return entry?.catalyst ? `Catalyze into ${entry.catalyst.name}: +${entry.catalyst.pct.toFixed(2)}%` : undefined
 }
 
-/** "~0.92% (roll 1: Ula'tek (Mythic))" / "~0.81% next week (hold for The Coiled Altar (Mythic))": what one more Voidcore is worth and where it goes. */
-export function extraVoidcoreText(extra: ExtraVoidcore | null): string {
+/** ", playing without ~0.61% for 1 week" for a Voidcore held instead of spent now; empty when spending it now would have been worth nothing. */
+function holdCostClause(extra: Extract<ExtraVoidcore, { use: 'hold' }>, weeks: number): string {
+  const cost = holdCostText(extra.spendPct, weeks)
+  return cost ? `, ${cost}` : ''
+}
+
+/**
+ * "~0.92% (roll 1: Ula'tek (Mythic))" / "~0.81% next week (hold for The Coiled Altar (Mythic)), playing without ~0.61% for 1 week":
+ * what one more Voidcore is worth and where it goes. `weeks` is how long a held Voidcore waits (1 for next week).
+ */
+export function extraVoidcoreText(extra: ExtraVoidcore | null, weeks = 1): string {
   if (!extra) return 'no target this week or next'
   const name = targetDisplayName(extra.target)
-  return extra.use === 'spend' ? `~${extra.valuePct.toFixed(2)}% (roll ${extra.roll}: ${name})` : `~${extra.valuePct.toFixed(2)}% next week (hold for ${name})`
+  return extra.use === 'spend'
+    ? `~${extra.valuePct.toFixed(2)}% (roll ${extra.roll}: ${name})`
+    : `~${extra.valuePct.toFixed(2)}% ${holdWhenText(weeks)} (hold for ${name})${holdCostClause(extra, weeks)}`
 }
 
 /** Short "where it goes" caption under the vault comparison's Voidcore number. */
-export function extraVoidcoreWhere(extra: ExtraVoidcore | null | undefined): string | undefined {
+export function extraVoidcoreWhere(extra: ExtraVoidcore | null | undefined, weeks = 1): string | undefined {
   if (!extra) return undefined
-  return extra.use === 'spend' ? `roll ${extra.roll}: ${targetDisplayName(extra.target)}` : `hold: ${targetDisplayName(extra.target)} next week`
+  return extra.use === 'spend' ? `roll ${extra.roll}: ${targetDisplayName(extra.target)}` : `hold: ${targetDisplayName(extra.target)} ${holdWhenText(weeks)}${holdCostClause(extra, weeks)}`
 }
 
 export type CardVerdict = 'roll' | 'vault' | 'toss-up' | 'tokens'

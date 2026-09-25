@@ -151,7 +151,7 @@ describe('the recommendation card: this week\'s Voidcores, in order', () => {
     expect(rows()).toEqual([
       ['1', "Ula'tek (Mythic)", '0.90%', 'spend now'],
       ['2', 'The Coiled Altar (Mythic)', '0.80%', 'spend now'],
-      ['3', 'Sszorak (Mythic)', '0.60%', 'spend now 0.60% vs hold ~0.80% next week'],
+      ['3', 'Sszorak (Mythic)', '0.60%', 'spend now 0.60% vs hold ~0.80% next week, playing without ~0.60% for 1 week'],
     ])
     expect(container.querySelectorAll('.roll-list__advice--hold')).toHaveLength(1)
     // With a list, the headline is roll 1, not a toss-up between later rolls.
@@ -171,7 +171,7 @@ describe('the recommendation card: this week\'s Voidcores, in order', () => {
     await loadRaid()
     await set('#voidcores-on-hand', '3')
     await price()
-    expect(rows()[2][3]).toBe('spend now 0.60% vs hold ~0.80% next week; toss-up with Entombed Sentinels (Mythic) (0.55%), let kill order decide')
+    expect(rows()[2][3]).toBe('spend now 0.60% vs hold ~0.80% next week, playing without ~0.60% for 1 week; toss-up with Entombed Sentinels (Mythic) (0.55%), let kill order decide')
     expect(container.querySelector('.rec-card__headline')?.textContent).toBe("Roll Ula'tek (Mythic)")
   })
 
@@ -180,7 +180,7 @@ describe('the recommendation card: this week\'s Voidcores, in order', () => {
     await set('#threshold', '0.55')
     await set('#voidcores-on-hand', '4')
     await price()
-    expect(rows()[3]).toEqual(['4', 'Entombed Sentinels (Mythic)', '0.30%', 'below threshold: hold it or take the tokens; spend now 0.30% vs hold ~0.80% next week'])
+    expect(rows()[3]).toEqual(['4', 'Entombed Sentinels (Mythic)', '0.30%', 'below threshold: hold it or take the tokens; spend now 0.30% vs hold ~0.80% next week, playing without ~0.30% for 1 week'])
     expect(container.querySelectorAll('.roll-list__row--below')).toHaveLength(1)
   })
 
@@ -220,5 +220,6 @@ describe('footer assumptions', () => {
     const items = [...container.querySelectorAll('.app-footer__assumptions li')].map((li) => li.textContent)
     for (const a of VOIDCORE_ASSUMPTIONS) expect(items).toContain(a)
     expect(items.join(' ')).toContain('Voidcores can be held until the end of the season')
+    expect(items).toContain('Holding delays the upgrade: every week you wait, you play without it, and a roll never guarantees the item you are holding for.')
   })
 })
