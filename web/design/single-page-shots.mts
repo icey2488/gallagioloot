@@ -217,11 +217,71 @@ async function assertReportsPanel(page: Page, label: string, shot: string) {
   ]
   if (JSON.stringify(got.blocks) !== JSON.stringify(expected)) got.problems.push(`report blocks ${JSON.stringify(got.blocks)} != ${JSON.stringify(expected)}`)
   if (!got.summaryText.startsWith('Voidcores on hand:')) got.problems.push(`summary text: ${got.summaryText}`)
-  if (!/^Next Voidcore worth ~\d+\.\d\d%/.test(got.next)) got.problems.push(`next-Voidcore line: ${got.next}`)
+  if (got.next !== "One more Voidcore: ~0.92% (roll 1: Ula'tek (Mythic))") got.problems.push(`one-more-Voidcore line: ${got.next}`)
   if (got.problems.length > 0) throw new Error(`reports-panel assertions failed (${label}):\n${got.problems.join('\n')}`)
   console.log(`reports-panel assertions passed (${label}) ✓ ${got.summaryText}`)
   await page.locator('.report-list').locator('xpath=ancestor::section[contains(@class,"panel")]').screenshot({ path: shot })
   console.log(`captured: ${shot}`)
+}
+
+/**
+ * The card's ordered roll list, Icemagus with 3 Voidcores on hand: earning 1 a week the 3rd roll (Sszorak 0.65%)
+ * is worth more held (The Coiled Altar ~0.81% next week); earning 2 a week it is "spend now". Every row sits inside
+ * the card and the viewport and wraps rather than clips; the Reports strip reads the one-more-Voidcore hold value.
+ * Screenshots the card (with the spend/hold comparison) at this width.
+ */
+async function assertRollList(page: Page, label: string, shot: string) {
+  const readList = () =>
+    page.evaluate(() => {
+      const txt = (el: Element | null | undefined) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim()
+      const EPS = 0.5
+      const problems: string[] = []
+      const card = document.querySelector('.rec-card')!
+      const cr = card.getBoundingClientRect()
+      const rows = [...card.querySelectorAll('.roll-list__row')].map((r) => {
+        const rr = r.getBoundingClientRect()
+        if (rr.left < cr.left - EPS || rr.right > cr.right + EPS || rr.right > window.innerWidth + EPS) problems.push(`roll row outside the card/viewport: ${txt(r)}`)
+        r.querySelectorAll('span').forEach((el) => {
+          const er = el.getBoundingClientRect()
+          if (er.left < cr.left - EPS || er.right > cr.right + EPS) problems.push(`.${el.className} outside the card`)
+          if (el.scrollWidth > el.clientWidth + EPS) problems.push(`.${el.className} clips: ${el.scrollWidth} > ${el.clientWidth}`)
+        })
+        return {
+          n: txt(r.querySelector('.roll-list__n')),
+          name: txt(r.querySelector('.roll-list__name')),
+          ev: txt(r.querySelector('.roll-list__ev')),
+          advice: txt(r.querySelector('.roll-list__advice')),
+        }
+      })
+      return { problems, rows, meta: txt(card.querySelector('.rec-card__meta')), strip: txt(document.querySelector('.reports-summary__next')), compare: [...card.querySelectorAll('.rec-card__compare-option')].map((o) => txt(o)) }
+    })
+
+  await page.fill('#voidcores-on-hand', '3')
+  await priceTheRoll(page)
+  const one = await readList()
+  const names = one.rows.map((r) => `${r.n} ${r.name} ${r.ev}`)
+  if (JSON.stringify(names) !== JSON.stringify(["1 Ula'tek (Mythic) 0.92%", '2 The Coiled Altar (Mythic) 0.81%', '3 Sszorak (Mythic) 0.65%'])) one.problems.push(`roll list ${JSON.stringify(names)}`)
+  if (one.rows[0]?.advice !== 'spend now' || one.rows[1]?.advice !== 'spend now') one.problems.push(`rows 1-2 advice ${JSON.stringify(one.rows.map((r) => r.advice))}`)
+  if (!one.rows[2]?.advice.startsWith('spend now 0.65% vs hold ~0.81% next week')) one.problems.push(`row 3 advice (earned 1): ${one.rows[2]?.advice}`)
+  if (one.meta !== '3 Voidcores') one.problems.push(`meta ${one.meta}`)
+  if (one.strip !== 'One more Voidcore: ~0.81% next week (hold for The Coiled Altar (Mythic))') one.problems.push(`strip (earned 1): ${one.strip}`)
+  if (!one.compare.some((c) => c.includes('0.81%') && c.includes('hold: The Coiled Altar (Mythic) next week'))) one.problems.push(`vault compare ${JSON.stringify(one.compare)}`)
+  if (one.problems.length > 0) throw new Error(`roll-list assertions failed (${label}, earned 1):\n${one.problems.join('\n')}`)
+  await assertLayout(page, `${label}, priced, 3 Voidcores`)
+  await page.locator('.rec-card').screenshot({ path: shot })
+  console.log(`roll-list assertions passed (${label}, earned 1) ✓ ${one.rows[2].advice}`)
+  console.log(`captured: ${shot}`)
+
+  await page.fill('#earned-per-week', '2')
+  await priceTheRoll(page)
+  const two = await readList()
+  if (!two.rows.every((r) => r.advice.startsWith('spend now')) || two.rows[2]?.advice.includes(' vs hold')) two.problems.push(`advice (earned 2): ${JSON.stringify(two.rows.map((r) => r.advice))}`)
+  if (two.strip !== 'One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic))') two.problems.push(`strip (earned 2): ${two.strip}`)
+  if (two.problems.length > 0) throw new Error(`roll-list assertions failed (${label}, earned 2):\n${two.problems.join('\n')}`)
+  console.log(`roll-list assertions passed (${label}, earned 2) ✓ ${two.rows[2].advice}`)
+  // Back to the defaults for the shots that follow.
+  await page.fill('#earned-per-week', '1')
+  await page.fill('#voidcores-on-hand', '0')
 }
 
 async function priceTheRoll(page: Page) {
@@ -265,6 +325,8 @@ async function shootDesktop(page: Page) {
   await logCard(page, '1280px')
   await page.screenshot({ path: 'design/single-page-priced.png', fullPage: true })
   console.log('captured: single-page-priced.png')
+  await assertRollList(page, '1280px', 'design/single-page-card-rolls-1280.png')
+  await priceTheRoll(page)
 
   // Now make it stale: untick a dungeon's "I will run this key". The snapshot dims + a re-price note appears.
   await page.locator('.boss-section').nth(1).locator('.boss-row__kill input[type="checkbox"]').nth(1).click()
@@ -291,6 +353,7 @@ async function shootMobile(page: Page) {
   await assertLayout(page, '390px, priced')
   await page.screenshot({ path: 'design/single-page-priced-mobile-390.png', fullPage: true })
   console.log('captured: single-page-priced-mobile-390.png')
+  await assertRollList(page, '390px', 'design/single-page-card-rolls-390.png')
 }
 
 async function main() {

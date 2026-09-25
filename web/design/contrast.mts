@@ -116,6 +116,7 @@ const PAIRS: Pair[] = [
   { name: 'btn-gold label text on gold fill', fg: COLORS.goldTextOn, bg: COLORS.gold, requirement: 'text' },
   { name: 'btn-gold:hover label text on gold-strong fill', fg: COLORS.goldTextOn, bg: COLORS.goldStrong, requirement: 'text' },
   { name: 'Warning banner text on warning background', fg: COLORS.warnText, bg: COLORS.warnBg, requirement: 'text' },
+  { name: 'Below-threshold roll flag (warn text) on the rec-card panel (v2.09 roll list)', fg: COLORS.warnText, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Warning banner border on warning background', fg: COLORS.warnBorder, bg: COLORS.warnBg, requirement: 'ui' },
   { name: 'Badge-yes text on panel', fg: COLORS.badgeYesText, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Badge-yes border on panel', fg: COLORS.badgeYesBorder, bg: COLORS.bgPanel, requirement: 'ui' },

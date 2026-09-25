@@ -16,7 +16,7 @@ const report = JSON.parse(
   readFileSync(new URL('./fixtures/raidbots-jk6WmLFEnBpEqWueDkyRqA.json', import.meta.url), 'utf-8')
 ) as NormalizedReport
 
-const settings: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+const settings: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 const knockout = createState(report.character, report.difficulty, report.realm, report.region)
 const bossEvals = buildBossPools(report, knockout, settings)
 const recommendation = recommend(bossEvals, settings, report)

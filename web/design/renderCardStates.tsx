@@ -22,7 +22,7 @@ const report = JSON.parse(
 ) as NormalizedReport
 
 // --- toss-up: the real live fixture, unmodified (Elemental: Lost Explorers 2.30% vs Ula'tek 2.27%) ---
-const settings: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false }
+const settings: Settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false }
 const knockout = createState(report.character, report.difficulty, report.realm, report.region)
 const tossUpBossEvals = buildBossPools(report, knockout, settings)
 const tossUpRecommendation = recommend(tossUpBossEvals, settings, report)

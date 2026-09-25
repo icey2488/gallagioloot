@@ -6,19 +6,23 @@
 //     and reads "Mythic+ (+10 Myth)", never "Weekly10"
 //   - Reports panel: the Mythic raid drop line carries the 344 exception ("Drops Myth 6/6 (334) · The Coiled Altar, Ula'tek Myth 9/6 (344)"),
 //     sim dates (Sep 22 / Sep 24, from the proxy's Last-Modified passthrough), the "N notes" toggle (closed), "Voidcores on hand"
-//     mirrored with Run settings, and the "Next Voidcore worth ~X%" line (Icemagus: ~0.81%, The Coiled Altar)
+//     mirrored with Run settings, and the "One more Voidcore" line (Icemagus, none on hand: ~0.92%, roll 1: Ula'tek)
 //   - EV: Ula'tek ~0.92%, The Coiled Altar ~0.81%, Altar of Fangs ~0.43%
 //   - Ula'tek's roll pool is the journal's 4 items (4 / 4 remaining): its expanded table lists exactly Aqirbane
 //     Reliquary, Font of Venomous Rage, Jan'thrazet the Soul Fang and Venomkeeper's Horrific Cowl (no Curio row,
 //     no Jaw of the Shackled Goddess / Zatha'tek) plus the note that the Slumbering Coil Curio can't be won with a roll
-//   - 1 roll: "Roll Ula'tek (Mythic) or The Coiled Altar (Mythic)" (toss-up on kill order), "Voidcore roll" 0.92% vs
-//     Vile Vial 0.74%, with the no-saved-rolls explanation
-//   - 2 rolls + re-price: Voidcore verdict whose headline names Ula'tek and The Coiled Altar
+//   - none on hand: "Roll Ula'tek (Mythic) or The Coiled Altar (Mythic)" (toss-up on kill order), "One more Voidcore"
+//     0.92% (roll 1) vs Vile Vial 0.74%, with the no-saved-rolls explanation
+//   - v2.09 Voidcore supply, 3 on hand + re-price: the ordered roll list (Ula'tek, The Coiled Altar, Sszorak); earning 1 a
+//     week the 3rd reads "spend now 0.65% vs hold ~0.81% next week" and one more Voidcore is ~0.81% held for The Coiled
+//     Altar; earning 2 a week the 3rd is "spend now" and one more Voidcore is ~0.65% held for Sszorak
+//   - the footer's assumptions list carries the seven Voidcore supply assumptions
 //   - the spec-specific pill renders inline (a wide pill, not a circle) at 390px
 //   - layout: no horizontal scroll, controls inside their cards, names wrap, nothing exceeds its panel
 // Screenshots + a JSON dump land in design/live-single-page-* (gitignored).
 import { chromium, type Page } from 'playwright'
 import { writeFileSync } from 'node:fs'
+import { VOIDCORE_ASSUMPTIONS } from '../../src/core/supply'
 
 const APP_URL = 'https://gallagioloot.icehunter.net'
 const RAID_URL = 'https://www.raidbots.com/simbot/report/6PTZ7TjgU8PdxJhZ97bMUa'
@@ -126,9 +130,8 @@ async function assertReportsPanel(page: Page, label: string, out: Record<string,
     JSON.stringify(panel.blocks.map((b) => b.notes))
   )
   check(`[${label}] one Voidcores-on-hand strip, above the blocks, at 0 for a fresh browser`, panel.summaries === 1 && panel.voidcores === '0' && panel.summary.startsWith('Voidcores on hand:'), JSON.stringify({ n: panel.summaries, v: panel.voidcores }))
-  const next = /^Next Voidcore worth ~(\d+\.\d\d)% · roll 2 goes to (.+)$/.exec(panel.next)
-  console.log(`[${label}] next Voidcore: ${panel.next}`)
-  check(`[${label}] Next Voidcore worth ~0.81% (Icemagus: one roll available, the next goes to The Coiled Altar)`, !!next && Math.abs(parseFloat(next[1]) - 0.81) <= 0.01 && /^The Coiled Altar/.test(next[2]), panel.next)
+  console.log(`[${label}] one more Voidcore: ${panel.next}`)
+  check(`[${label}] One more Voidcore: ~0.92% (roll 1: Ula'tek (Mythic)) with none on hand`, panel.next === "One more Voidcore: ~0.92% (roll 1: Ula'tek (Mythic))", panel.next)
   // Mirror: the strip's input and Run settings' "Voidcores held" are one setting.
   await page.fill('#voidcores-on-hand', '3')
   const held = await page.inputValue('input[aria-label="Voidcores held"]')
@@ -198,7 +201,15 @@ async function readCard(page: Page) {
       compare: [...(c?.querySelectorAll('.rec-card__compare-option') ?? [])].map((o) => ({
         label: txt(o.querySelector('.rec-card__compare-label')),
         value: txt(o.querySelector('.rec-card__compare-value')),
+        where: txt(o.querySelector('.rec-card__compare-where')),
       })),
+      rolls: [...(c?.querySelectorAll('.roll-list__row') ?? [])].map((r) => ({
+        n: txt(r.querySelector('.roll-list__n')),
+        name: txt(r.querySelector('.roll-list__name')),
+        ev: txt(r.querySelector('.roll-list__ev')),
+        advice: txt(r.querySelector('.roll-list__advice')),
+      })),
+      strip: txt(document.querySelector('.reports-summary__next')),
       notes: [...(c?.querySelectorAll('.rec-card__note, .rec-card__second') ?? [])].map((n) => txt(n)),
       full: txt(c),
       pricedSection: txt(document.querySelector('.priced-section')),
@@ -215,9 +226,9 @@ function assertOneRollCard(card: Card, label: string) {
     card.notes.some((n) => n.includes('Next best: The Coiled Altar (Mythic), ~0.81%')) && card.notes.some((n) => n.includes('let kill order decide')),
     JSON.stringify(card.notes)
   )
-  const voidcore = card.compare.find((o) => o.label === 'Voidcore roll')
+  const voidcore = card.compare.find((o) => o.label === 'One more Voidcore')
   const vial = card.compare.find((o) => o.label === VAULT_ITEM)
-  check(`[${label}] 1 roll: Voidcore 0.92% vs ${VAULT_ITEM} 0.74%`, voidcore?.value === '0.92%' && vial?.value === '0.74%', JSON.stringify(card.compare))
+  check(`[${label}] 1 roll: One more Voidcore 0.92% (roll 1: Ula'tek) vs ${VAULT_ITEM} 0.74%`, voidcore?.value === '0.92%' && voidcore?.where === "roll 1: Ula'tek (Mythic)" && vial?.value === '0.74%', JSON.stringify(card.compare))
   check(
     `[${label}] 1 roll: no-saved-rolls explanation`,
     card.notes.some((n) => n.includes("Altar of Fangs isn't a target you'd roll this week") && n.includes('saves no rolls')),
@@ -225,18 +236,43 @@ function assertOneRollCard(card: Card, label: string) {
   )
 }
 
-function assertTwoRollCard(card: Card, label: string) {
-  check(`[${label}] 2 rolls: Voidcore verdict`, /^Take the Voidcore/.test(card.headline), card.headline)
-  check(`[${label}] 2 rolls: 2 Voidcores`, card.meta === '2 Voidcores', card.meta)
-  const twoRollVoidcore = card.compare.find((o) => o.label === 'Voidcore roll')
-  check(`[${label}] 2 rolls: Voidcore 1.73%`, twoRollVoidcore?.value === '1.73%', JSON.stringify(card.compare))
-  check(
-    `[${label}] 2 rolls: headline names both targets`,
-    card.headline === "Take the Voidcores. Roll Ula'tek (Mythic) and The Coiled Altar (Mythic).",
-    card.headline
-  )
-  const vial = card.compare.find((o) => o.label === VAULT_ITEM)
-  check(`[${label}] 2 rolls: Vial still 0.74% (no saved-rolls credit)`, vial?.value === '0.74%', JSON.stringify(card.compare))
+/**
+ * v2.09 Voidcore supply on the live site: 3 Voidcores on hand, all spent. Earning 1 a week, next week's one takes
+ * Ula'tek, so a held 3rd gets The Coiled Altar (0.81%) against Sszorak now (0.65%); earning 2 a week, next week's two
+ * take Ula'tek and The Coiled Altar, so a held 3rd gets Sszorak: spend now. Screenshots the card with the comparison.
+ */
+async function assertVoidcoreSupply(page: Page, label: string, out: Record<string, unknown>) {
+  await page.fill('#voidcores-on-hand', '3')
+  await page.waitForSelector('.rec-card__badge--stale', { timeout: 5000 })
+  await priceTheRoll(page)
+  const one = await readCard(page)
+  out[`${label}Supply1`] = one
+  const rows = one.rolls.map((r) => `${r.n} ${r.name} ${r.ev}`)
+  check(`[${label}] 3 on hand: meta "3 Voidcores" and the ordered list Ula'tek, The Coiled Altar, Sszorak`, one.meta === '3 Voidcores' && JSON.stringify(rows) === JSON.stringify(["1 Ula'tek (Mythic) 0.92%", '2 The Coiled Altar (Mythic) 0.81%', '3 Sszorak (Mythic) 0.65%']), JSON.stringify({ meta: one.meta, rows }))
+  check(`[${label}] earned 1/week: rolls 1-2 "spend now"`, one.rolls[0]?.advice === 'spend now' && one.rolls[1]?.advice === 'spend now', JSON.stringify(one.rolls.map((r) => r.advice)))
+  check(`[${label}] earned 1/week: roll 3 "spend now 0.65% vs hold ~0.81% next week"`, !!one.rolls[2]?.advice.startsWith('spend now 0.65% vs hold ~0.81% next week'), one.rolls[2]?.advice)
+  check(`[${label}] earned 1/week: strip "One more Voidcore: ~0.81% next week (hold for The Coiled Altar (Mythic))"`, one.strip === 'One more Voidcore: ~0.81% next week (hold for The Coiled Altar (Mythic))', one.strip)
+  const voidcore = one.compare.find((o) => o.label === 'One more Voidcore')
+  check(`[${label}] earned 1/week: vault compare One more Voidcore 0.81% (hold: The Coiled Altar next week) vs the Vial 0.74%`, voidcore?.value === '0.81%' && voidcore?.where === 'hold: The Coiled Altar (Mythic) next week' && one.compare.some((o) => o.label === VAULT_ITEM && o.value === '0.74%'), JSON.stringify(one.compare))
+  await assertLayout(page, `${label}, priced, 3 Voidcores`)
+  await page.locator('.rec-card').screenshot({ path: `design/live-single-page-card-rolls-${label}.png` })
+
+  await page.fill('#earned-per-week', '2')
+  await priceTheRoll(page)
+  const two = await readCard(page)
+  out[`${label}Supply2`] = two
+  check(`[${label}] earned 2/week: roll 3 is "spend now" (a held 3rd would get Sszorak anyway)`, two.rolls.length === 3 && two.rolls.every((r) => r.advice.startsWith('spend now')) && !two.rolls[2].advice.includes(' vs hold'), JSON.stringify(two.rolls.map((r) => r.advice)))
+  check(`[${label}] earned 2/week: strip "One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic))"`, two.strip === 'One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic))', two.strip)
+  await page.screenshot({ path: `design/live-single-page-supply-${label}.png`, fullPage: true })
+}
+
+/** The footer's "Show assumptions" list includes the seven Voidcore supply assumptions verbatim. */
+async function assertAssumptions(page: Page, label: string) {
+  await page.locator('.app-footer__assumptions summary').click()
+  const items = await page.locator('.app-footer__assumptions li').allTextContents()
+  const missing = VOIDCORE_ASSUMPTIONS.filter((a) => !items.includes(a))
+  check(`[${label}] footer assumptions include the 7 Voidcore supply assumptions`, missing.length === 0 && VOIDCORE_ASSUMPTIONS.length === 7, JSON.stringify(missing))
+  check(`[${label}] no em dashes in the assumptions`, !items.join(' ').includes('\u2014'))
 }
 
 const JOURNAL_ORDER_1320 = [
@@ -425,16 +461,9 @@ async function main() {
   await assertLayout(page, '1280, priced, 1 roll')
   await page.screenshot({ path: 'design/live-single-page-desktop.png', fullPage: true })
 
-  // Switch to 2 rolls: the priced snapshot goes stale until re-priced.
-  await page.selectOption('#rolls-available', '2')
-  await page.waitForSelector('.rec-card__badge--stale', { timeout: 5000 })
-  await page.screenshot({ path: 'design/live-single-page-stale.png', fullPage: true })
-  await priceTheRoll(page)
-  const twoRolls = await readCard(page)
-  out.desktopTwoRolls = twoRolls
-  assertTwoRollCard(twoRolls, '1280')
-  await assertLayout(page, '1280, priced, 2 rolls')
-  await page.screenshot({ path: 'design/live-single-page-desktop-2rolls.png', fullPage: true })
+  // v2.09 Voidcore supply: 3 on hand, earned 1 then 2 (the priced snapshot goes stale until re-priced).
+  await assertVoidcoreSupply(page, '1280', out)
+  await assertAssumptions(page, '1280')
   await ctx.close()
 
   // ---- Mobile 390, fresh context
@@ -453,6 +482,8 @@ async function main() {
   assertOneRollCard(mCard, '390')
   await assertLayout(mpage, '390, priced, 1 roll')
   await mpage.screenshot({ path: 'design/live-single-page-mobile-390-priced.png', fullPage: true })
+  await assertVoidcoreSupply(mpage, '390', out)
+  await assertAssumptions(mpage, '390')
   await mctx.close()
 
   await browser.close()

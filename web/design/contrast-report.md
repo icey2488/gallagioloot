@@ -1,6 +1,6 @@
 # Contrast audit
 
-Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 79/80 pairs pass; 1 fail.
+Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing). 80/81 pairs pass; 1 fail.
 
 ## Changes made
 
@@ -46,6 +46,7 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | btn-gold label text on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
 | btn-gold:hover label text on gold-strong fill | `#17110a` | `#e4c158` | 10.77:1 | 4.5:1 (text) | ✅ |
 | Warning banner text on warning background | `#e8c98a` | `#3a2a12` | 8.65:1 | 4.5:1 (text) | ✅ |
+| Below-threshold roll flag (warn text) on the rec-card panel (v2.09 roll list) | `#e8c98a` | `#0b1426` | 11.51:1 | 4.5:1 (text) | ✅ |
 | Warning banner border on warning background | `#996f2b` | `#3a2a12` | 3.07:1 | 3:1 (UI component) | ✅ |
 | Badge-yes text on panel | `#8fd6a4` | `#0b1426` | 10.79:1 | 4.5:1 (text) | ✅ |
 | Badge-yes border on panel | `#467655` | `#0b1426` | 3.49:1 | 3:1 (UI component) | ✅ |
