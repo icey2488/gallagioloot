@@ -279,8 +279,30 @@ async function assertRollList(page: Page, label: string, shot: string) {
   if (two.strip !== 'One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic)), playing without ~0.61% for 1 week') two.problems.push(`strip (earned 2): ${two.strip}`)
   if (two.problems.length > 0) throw new Error(`roll-list assertions failed (${label}, earned 2):\n${two.problems.join('\n')}`)
   console.log(`roll-list assertions passed (${label}, earned 2) ✓ ${two.rows[2].advice}`)
-  // Back to the defaults for the shots that follow.
+
+  // v2.11 plan disclosure: 3 on hand stays in the raid (no Mythic+ line); 6 reaches Altar of Fangs at +10. The re-run reminder shows in both.
   await page.fill('#earned-per-week', '1')
+  const RERUN = 'This order holds until your next roll result. After a win, especially a big one, re-run your droptimizer and GallagioLoot: a jackpot can drop a dungeon or boss off the worthwhile list.'
+  const readLines = () =>
+    page.evaluate(() => ({
+      reminder: [...document.querySelectorAll('.rec-card .roll-list__reminder')].map((e) => e.textContent ?? ''),
+      assumption: [...document.querySelectorAll('.rec-card .roll-list__assumption')].map((e) => e.textContent ?? ''),
+      last: [...document.querySelectorAll('.rec-card .roll-list__row .roll-list__name')].map((e) => e.textContent ?? '').pop() ?? '',
+    }))
+  await page.fill('#voidcores-on-hand', '3')
+  await priceTheRoll(page)
+  const three = await readLines()
+  if (three.reminder.join() !== RERUN || three.assumption.length !== 0) throw new Error(`plan disclosure (${label}, 3 on hand): ${JSON.stringify(three)}`)
+  await page.fill('#voidcores-on-hand', '6')
+  await priceTheRoll(page)
+  const six = await readLines()
+  if (six.reminder.join() !== RERUN || six.assumption.join() !== 'Plan assumes you run Altar of Fangs at +10 once this week.' || six.last !== 'Altar of Fangs at +10') throw new Error(`plan disclosure (${label}, 6 on hand): ${JSON.stringify(six)}`)
+  await assertLayout(page, `${label}, priced, 6 Voidcores`)
+  const planShot = shot.replace('card-rolls', 'card-plan')
+  await page.locator('.rec-card').screenshot({ path: planShot })
+  console.log(`plan-disclosure assertions passed (${label}) ✓ ${six.assumption[0]}`)
+  console.log(`captured: ${planShot}`)
+  // Back to the defaults for the shots that follow.
   await page.fill('#voidcores-on-hand', '0')
 }
 

@@ -6,6 +6,10 @@ import { compareVault } from '../src/core/vault'
 import {
   BELOW_THRESHOLD_TEXT,
   defaultEarnedPerWeek,
+  extraMplusAssumptionText,
+  mplusAssumptionText,
+  ROLL_ORDER_REMINDER,
+  runCountPhrase,
   holdAdvice,
   holdAdviceText,
   holdCostText,
@@ -213,10 +217,11 @@ describe('earning rate', () => {
     expect(defaultEarnedPerWeek(12)).toBe(2)
   })
 
-  it('the eight supply assumptions are disclosed, with no em dashes; one is the plain holding-delays-the-upgrade line, with no finance terms', () => {
-    expect(VOIDCORE_ASSUMPTIONS).toHaveLength(8)
+  it('the nine supply assumptions are disclosed, with no em dashes; one is the plain holding-delays-the-upgrade line, with no finance terms', () => {
+    expect(VOIDCORE_ASSUMPTIONS).toHaveLength(9)
     expect(VOIDCORE_ASSUMPTIONS.join(' ')).not.toMatch(/—/)
     expect(VOIDCORE_ASSUMPTIONS).toContain(HOLD_DELAY_LINE)
+    expect(VOIDCORE_ASSUMPTIONS.filter((a) => /re-run your droptimizer and GallagioLoot/.test(a))).toHaveLength(1)
     expect(VOIDCORE_ASSUMPTIONS.join(' ')).not.toMatch(/time value|npv|discount/i)
   })
 })
@@ -324,5 +329,54 @@ describe('compareVault: the saved-rolls credit still requires an allocated targe
     expect(d.savedRolls).toBeGreaterThan(0)
     expect(d.voidcoreUse).toMatchObject({ use: 'spend', roll: 2, target: { encounterName: 'B' } })
     expect(d.vaultItemGainPct).toBeCloseTo(0.3 + d.savedRolls * 0.5, 10)
+  })
+})
+
+describe('the Mythic+ assumption behind a plan', () => {
+  const run = (name: string, level = 10) => ({ kind: 'mplus' as const, encounterName: name, keyLevel: level })
+  const raid = { kind: 'raid' as const, encounterName: 'Sszorak', keyLevel: undefined }
+
+  it('runCountPhrase: once, twice, then N times', () => {
+    expect(runCountPhrase(1)).toBe('once')
+    expect(runCountPhrase(2)).toBe('twice')
+    expect(runCountPhrase(3)).toBe('3 times')
+    expect(runCountPhrase(5)).toBe('5 times')
+  })
+
+  it('0 runs: says nothing about Mythic+ (raid-only plans and empty plans)', () => {
+    expect(mplusAssumptionText([])).toBe('')
+    expect(mplusAssumptionText([raid, raid])).toBe('')
+  })
+
+  it('1, 2 and 3 runs of one dungeon, counting the rolls the plan assigns to it', () => {
+    expect(mplusAssumptionText([run('Murder Row')])).toBe('Plan assumes you run Murder Row at +10 once this week.')
+    expect(mplusAssumptionText([raid, run('Murder Row'), run('Murder Row')])).toBe('Plan assumes you run Murder Row at +10 twice this week.')
+    expect(mplusAssumptionText([run('Murder Row'), run('Murder Row'), run('Murder Row')])).toBe('Plan assumes you run Murder Row at +10 3 times this week.')
+  })
+
+  it('lists several dungeons, each with its own count and key level', () => {
+    expect(mplusAssumptionText([run('Murder Row'), run('Altar of Fangs', 12), run('Murder Row')])).toBe('Plan assumes you run Murder Row at +10 twice and Altar of Fangs at +12 once this week.')
+    expect(mplusAssumptionText([run('A'), run('B'), run('B'), run('C')])).toBe('Plan assumes you run A at +10 once, B at +10 twice and C at +10 once this week.')
+  })
+
+  it('no em dashes, and a dungeon without a key level is named plainly', () => {
+    expect(mplusAssumptionText([{ kind: 'mplus', encounterName: 'Murder Row' }])).toBe('Plan assumes you run Murder Row once this week.')
+    expect(mplusAssumptionText([run('A'), run('B')]) + ROLL_ORDER_REMINDER).not.toContain('\u2014')
+  })
+
+  it('the extra Voidcore: a spent one is another run this week, a held one is a run next week, a raid boss says nothing', () => {
+    const planOf = (evals: BossEval[], toSpend: number) => planVoidcores(evals, { onHand: toSpend, toSpend, earnedPerWeek: 1 })
+    const dungeon = boss(9, 'Murder Row', 0.9, { kind: 'mplus' })
+    // Two rolls both go to the dungeon (repeatable), and so does the extra one: 3 runs.
+    expect(extraMplusAssumptionText(planOf([dungeon], 2))).toBe('Plan assumes you run Murder Row at +10 3 times this week.')
+    expect(extraMplusAssumptionText(planOf([boss(1, 'A', 0.9), boss(2, 'B', 0.5)], 1))).toBe('')
+    const target = planOf([dungeon], 1).rolls[0]
+    expect(extraMplusAssumptionText({ rolls: [], extra: { use: 'hold', target, valuePct: 0.9, spendPct: 0 } })).toBe('Plan assumes you run Murder Row at +10 once next week.')
+  })
+
+  it('ROLL_ORDER_REMINDER is the operator wording', () => {
+    expect(ROLL_ORDER_REMINDER).toBe(
+      'This order holds until your next roll result. After a win, especially a big one, re-run your droptimizer and GallagioLoot: a jackpot can drop a dungeon or boss off the worthwhile list.'
+    )
   })
 })

@@ -4,7 +4,7 @@ import { curioEntryKeys, dropCurioEntries } from '@engine/core/curio'
 import { addEntry, characterKey, createStateFor, deserialize, removeEntry, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
 import { recommend } from '@engine/core/rank'
-import { defaultEarnedPerWeek, planVoidcores, type VoidcoreSupply } from '@engine/core/supply'
+import { defaultEarnedPerWeek, extraMplusAssumptionText, planVoidcores, type VoidcoreSupply } from '@engine/core/supply'
 import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
 import { checkCandidate, checkReportSet, DEFAULT_DRIFT_LIMITS, type DriftLimits } from '@engine/core/reportSet'
 import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from '@engine/core/targets'
@@ -556,6 +556,7 @@ export default function App() {
               {plan && (
                 <div className="reports-summary__next" aria-live="polite">
                   One more Voidcore: <span className="num reports-summary__ev">{extraVoidcoreText(plan.extra)}</span>
+                  {extraMplusAssumptionText(plan) && <div className="reports-summary__assumption">{extraMplusAssumptionText(plan)}</div>}
                 </div>
               )}
             </div>

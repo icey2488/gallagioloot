@@ -90,7 +90,7 @@ const rows = () =>
   [...container.querySelectorAll('.rec-card .roll-list__row')].map((r) =>
     [r.querySelector('.roll-list__n'), r.querySelector('.roll-list__name'), r.querySelector('.roll-list__ev'), r.querySelector('.roll-list__advice')].map((e) => e?.textContent ?? '')
   )
-const rollNotes = () => [...container.querySelectorAll('.rec-card .roll-list__note')].map((n) => n.textContent)
+const rollNotes = () => [...container.querySelectorAll('.rec-card .roll-list__note:not(.roll-list__reminder):not(.roll-list__assumption)')].map((n) => n.textContent)
 
 describe('Run settings: Voidcore supply inputs', () => {
   it('has no "Rolls available" setting', async () => {
@@ -214,12 +214,31 @@ describe('the recommendation card: this week\'s Voidcores, in order', () => {
   })
 })
 
+describe('the roll order under the card', () => {
+  const reminder = () => container.querySelector('.rec-card .roll-list__reminder')?.textContent
+  const assumption = () => container.querySelector('.rec-card .roll-list__assumption')?.textContent
+
+  it('shows the re-run reminder with at least one roll, says nothing about Mythic+ for a raid-only plan, and drops the reminder with no roll', async () => {
+    await loadRaid()
+    await price()
+    expect(reminder()).toBeUndefined()
+    await set('#voidcores-on-hand', '1')
+    await price()
+    expect(rows()).toHaveLength(1)
+    expect(reminder()).toBe('This order holds until your next roll result. After a win, especially a big one, re-run your droptimizer and GallagioLoot: a jackpot can drop a dungeon or boss off the worthwhile list.')
+    expect(assumption()).toBeUndefined()
+    expect(container.querySelector('.rec-card')?.textContent).not.toContain('Plan assumes')
+  })
+})
+
 describe('footer assumptions', () => {
   it('lists the Voidcore supply assumptions', async () => {
     await loadRaid()
     const items = [...container.querySelectorAll('.app-footer__assumptions li')].map((li) => li.textContent)
     for (const a of VOIDCORE_ASSUMPTIONS) expect(items).toContain(a)
     expect(items.join(' ')).toContain('Voidcores can be held until the end of the season')
+    expect(items).toContain('The roll order is only good until your next roll result. After a win, especially a big one, re-run your droptimizer and GallagioLoot: a jackpot can drop a dungeon or boss off the worthwhile list.')
+    expect(items.join(' ')).not.toContain('\u2014')
     expect(items).toContain('Holding delays the upgrade: every week you wait, you play without it, and a roll never guarantees the item you are holding for.')
   })
 })

@@ -1888,6 +1888,11 @@ select:disabled {
   overflow-wrap: anywhere;
 }
 
+.reports-summary__assumption {
+  color: var(--text-muted);
+  font-size: var(--text-meta);
+}
+
 .reports-summary__ev {
   color: var(--text);
   font-weight: 600;

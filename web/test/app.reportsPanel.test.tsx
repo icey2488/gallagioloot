@@ -246,7 +246,8 @@ describe('Reports panel: Voidcores on hand and the next Voidcore', () => {
     await addReport(RAID_URL)
     await addReport(MPLUS_URL)
     await setOnHand(2)
-    expect(nextText()).toBe('One more Voidcore: ~2.00% (roll 3: Altar of Fangs at +10)')
+    expect(nextText()).toContain('One more Voidcore: ~2.00% (roll 3: Altar of Fangs at +10)')
+    expect(container.querySelector('.reports-summary__assumption')?.textContent).toBe('Plan assumes you run Altar of Fangs at +10 3 times this week.')
   })
 
   it('is hidden while the report set has an error (pricing is paused)', async () => {

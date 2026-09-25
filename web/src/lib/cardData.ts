@@ -1,7 +1,7 @@
 import type { BossEval, PoolEntry, Recommendation, VaultDecision } from '@engine/core/types'
 import type { TargetKind } from '@engine/types'
 import { evalKey } from '@engine/core/targets'
-import { holdAdviceText, holdCostText, holdWhenText, noTargetText, stockpileWarningText, type ExtraVoidcore, type VoidcorePlan } from '@engine/core/supply'
+import { holdAdviceText, holdCostText, holdWhenText, mplusAssumptionText, noTargetText, ROLL_ORDER_REMINDER, stockpileWarningText, type ExtraVoidcore, type VoidcorePlan } from '@engine/core/supply'
 
 /** The fields of a BossEval/Allocation that name a roll target. */
 export type TargetLike = { encounterName: string; kind?: TargetKind; difficultyLabel?: string; keyLevel?: number; rolls?: number }
@@ -105,6 +105,10 @@ export type CardData = {
   rolls?: CardRoll[]
   /** Notes under the roll list: nothing to spend, Voidcores without a target, the season-end stockpile warning. */
   rollNotes?: string[]
+  /** "Plan assumes you run Murder Row at +10 twice this week." Set only when the roll order uses a Mythic+ dungeon. */
+  rollAssumption?: string
+  /** The re-run reminder under the roll order; set whenever the plan has at least one roll. */
+  rollReminder?: string
   /**
    * Per-boss pct for each side of a toss-up headline ("Roll X or Y"), derived by matching
    * recommendation.tossUp.bosses against bossEvals.evPct -- no new engine call, just a lookup
@@ -310,7 +314,7 @@ export function buildCardData(params: {
  * now / hold comparison, plus the notes under it. With several Voidcores, a kill-order toss-up at
  * the last roll (recommendation.tossUp) goes on that roll's row rather than in the headline.
  */
-function buildRollList(plan: VoidcorePlan, recommendation: Recommendation, bossEvals: BossEval[], thresholdPct: number): Pick<CardData, 'rolls' | 'rollNotes'> {
+function buildRollList(plan: VoidcorePlan, recommendation: Recommendation, bossEvals: BossEval[], thresholdPct: number): Pick<CardData, 'rolls' | 'rollNotes' | 'rollAssumption' | 'rollReminder'> {
   const rolls: CardRoll[] = plan.rolls.map((r) => ({
     roll: r.roll,
     name: targetDisplayName(r),
@@ -330,5 +334,5 @@ function buildRollList(plan: VoidcorePlan, recommendation: Recommendation, bossE
   if (plan.toSpend === 0) rollNotes.push('No Voidcores to spend this week. Set Voidcores on hand in Run settings.')
   if (plan.noTargetCount > 0) rollNotes.push(noTargetText(plan.noTargetCount))
   if (plan.stockpile?.warn) rollNotes.push(stockpileWarningText(plan.stockpile, thresholdPct))
-  return { rolls, rollNotes }
+  return { rolls, rollNotes, rollAssumption: mplusAssumptionText(plan.rolls) || undefined, rollReminder: rolls.length > 0 ? ROLL_ORDER_REMINDER : undefined }
 }

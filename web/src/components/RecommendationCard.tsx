@@ -122,6 +122,8 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
               ))}
             </ol>
           )}
+          {card.rollAssumption && <div className="rec-card__note roll-list__note roll-list__assumption">{card.rollAssumption}</div>}
+          {card.rollReminder && <div className="rec-card__note roll-list__note roll-list__reminder">{card.rollReminder}</div>}
           {card.rollNotes?.map((n) => (
             <div key={n} className="rec-card__note roll-list__note">
               {n}

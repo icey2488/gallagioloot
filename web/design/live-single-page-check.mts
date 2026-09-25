@@ -18,7 +18,10 @@
 //     held for The Coiled Altar (with its own "playing without ~0.61% for 1 week"); earning 2 a week the 3rd is "spend now" and
 //     one more Voidcore is ~0.65% held for Sszorak
 //   - 1 roll (vault comparison layout): the toss-up note and the next-best line agree ("the pick holds" never appears beside "Toss-up")
-//   - the footer's assumptions list carries the eight Voidcore supply assumptions, including "Holding delays the upgrade: ..."
+//   - v2.11 plan disclosure: at 3 on hand no dungeon is in the order, so the card says nothing about Mythic+; at 6 on hand
+//     the order reaches Altar of Fangs at +10 and the card reads "Plan assumes you run Altar of Fangs at +10 once this week.";
+//     the re-run reminder shows under the order (both cases), fits at 390 (layout asserts) and appears in the footer assumptions
+//   - the footer's assumptions list carries the nine Voidcore supply assumptions, including "Holding delays the upgrade: ..."
 //   - the spec-specific pill renders inline (a wide pill, not a circle) at 390px
 //   - layout: no horizontal scroll, controls inside their cards, names wrap, nothing exceeds its panel
 // Screenshots + a JSON dump land in design/live-single-page-* (gitignored).
@@ -32,6 +35,8 @@ const MPLUS_URL = 'https://www.raidbots.com/simbot/report/a8URThoNZqEXDW3tBtavHq
 const TOPGEAR_URL = 'https://www.raidbots.com/simbot/report/k3vroAKe6QvF5gN4GeCVAq'
 const LOOT_SPEC = 'Arcane'
 const VAULT_ITEM = 'Vile Vial of Volatile Venom'
+const RERUN_REMINDER = 'This order holds until your next roll result. After a win, especially a big one, re-run your droptimizer and GallagioLoot: a jackpot can drop a dungeon or boss off the worthwhile list.'
+const MPLUS_ASSUMPTION = 'Plan assumes you run Altar of Fangs at +10 once this week.'
 const HOLD_DELAY_LINE = 'Holding delays the upgrade: every week you wait, you play without it, and a roll never guarantees the item you are holding for.'
 
 const results: Array<{ ok: boolean; label: string; detail?: string }> = []
@@ -274,12 +279,38 @@ async function assertVoidcoreSupply(page: Page, label: string, out: Record<strin
   await page.screenshot({ path: `design/live-single-page-supply-${label}.png`, fullPage: true })
 }
 
-/** The footer's "Show assumptions" list includes the eight Voidcore supply assumptions verbatim, among them the plain holding-delays-the-upgrade line. */
+/** v2.11: the roll order's Mythic+ assumption and re-run reminder. 3 Voidcores stay in the raid; 6 reach Altar of Fangs at +10. */
+async function assertPlanDisclosure(page: Page, label: string, out: Record<string, unknown>) {
+  const lines = async () => ({
+    reminder: await page.locator('.rec-card .roll-list__reminder').allTextContents(),
+    assumption: await page.locator('.rec-card .roll-list__assumption').allTextContents(),
+    cardText: (await page.locator('.rec-card').textContent()) ?? '',
+  })
+  await page.fill('#earned-per-week', '1')
+  await page.fill('#voidcores-on-hand', '3')
+  await priceTheRoll(page)
+  const three = await lines()
+  check(`[${label}] 3 on hand: reminder shows, no Mythic+ assumption (no dungeon in the order)`, three.reminder.length === 1 && three.reminder[0] === RERUN_REMINDER && three.assumption.length === 0 && !three.cardText.includes('Plan assumes'), JSON.stringify(three))
+
+  await page.fill('#voidcores-on-hand', '6')
+  await priceTheRoll(page)
+  const six = await lines()
+  const rows = (await page.locator('.rec-card .roll-list__row .roll-list__name').allTextContents()).map((t) => t.trim())
+  out[`${label}Plan6`] = { ...six, rows }
+  check(`[${label}] 6 on hand: the 6th roll is Altar of Fangs at +10`, rows.length === 6 && rows[5] === 'Altar of Fangs at +10', JSON.stringify(rows))
+  check(`[${label}] 6 on hand: "${MPLUS_ASSUMPTION}"`, six.assumption.length === 1 && six.assumption[0] === MPLUS_ASSUMPTION, JSON.stringify(six.assumption))
+  check(`[${label}] 6 on hand: re-run reminder shows once, verbatim, no em dashes`, six.reminder.length === 1 && six.reminder[0] === RERUN_REMINDER && !six.cardText.includes('—'), JSON.stringify(six.reminder))
+  await assertLayout(page, `${label}, priced, 6 Voidcores`)
+  await page.locator('.rec-card').screenshot({ path: `design/live-single-page-card-plan-${label}.png` })
+}
+
+/** The footer's "Show assumptions" list includes the nine Voidcore supply assumptions verbatim, among them the plain holding-delays-the-upgrade line. */
 async function assertAssumptions(page: Page, label: string) {
   await page.locator('.app-footer__assumptions summary').click()
   const items = await page.locator('.app-footer__assumptions li').allTextContents()
   const missing = VOIDCORE_ASSUMPTIONS.filter((a) => !items.includes(a))
-  check(`[${label}] footer assumptions include the 8 Voidcore supply assumptions`, missing.length === 0 && VOIDCORE_ASSUMPTIONS.length === 8, JSON.stringify(missing))
+  check(`[${label}] footer assumptions include the 9 Voidcore supply assumptions`, missing.length === 0 && VOIDCORE_ASSUMPTIONS.length === 9, JSON.stringify(missing))
+  check(`[${label}] footer has the roll-order line about re-running after a win`, items.filter((i) => i.includes('re-run your droptimizer and GallagioLoot')).length === 1, JSON.stringify(items.filter((i) => i.startsWith('The roll order'))))
   check(`[${label}] footer has the line "${HOLD_DELAY_LINE}"`, items.includes(HOLD_DELAY_LINE), JSON.stringify(items.filter((i) => i.startsWith('Holding'))))
   check(`[${label}] footer assumptions use no finance terms`, !/time value|npv|discount/i.test(items.join(' ')))
   check(`[${label}] no em dashes in the assumptions`, !items.join(' ').includes('\u2014'))
@@ -473,6 +504,7 @@ async function main() {
 
   // v2.09 Voidcore supply: 3 on hand, earned 1 then 2 (the priced snapshot goes stale until re-priced).
   await assertVoidcoreSupply(page, '1280', out)
+  await assertPlanDisclosure(page, '1280', out)
   await assertAssumptions(page, '1280')
   await ctx.close()
 
@@ -493,6 +525,7 @@ async function main() {
   await assertLayout(mpage, '390, priced, 1 roll')
   await mpage.screenshot({ path: 'design/live-single-page-mobile-390-priced.png', fullPage: true })
   await assertVoidcoreSupply(mpage, '390', out)
+  await assertPlanDisclosure(mpage, '390', out)
   await assertAssumptions(mpage, '390')
   await mctx.close()
 
