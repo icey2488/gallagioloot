@@ -140,9 +140,7 @@ export class InMemoryStorageAdapter implements StorageAdapter {
 
 /**
  * Records the item transmuted by a bonus roll and re-evaluates in one call, so a
- * post-kill UI screen only needs this one function. If the received item is a
- * curio constituent, the single knockout entry is enough to knock out the whole
- * collapsed curio PoolEntry -- see buildBossPools.
+ * post-kill UI screen only needs this one function.
  */
 export function reconcile(
   state: KnockoutState,

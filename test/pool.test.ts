@@ -60,25 +60,33 @@ describe('buildBossPools', () => {
     expect(boss.pool[0].rawDelta).toBe(-300)
   })
 
-  it('collapses all viaCurio rows for a boss into a single curio entry with the max value', () => {
+  it('never puts viaCurio report rows in the pool (the curio cannot be won with a bonus roll)', () => {
     const report = makeReport([
       item({ itemId: 300, name: 'Tier Head Token', encounterId: 2895, encounterName: "Ula'tek", delta: 1100, viaCurio: true, tierSlot: 'head' }),
       item({ itemId: 301, name: 'Tier Shoulder Token', encounterId: 2895, encounterName: "Ula'tek", delta: 900, viaCurio: true, tierSlot: 'shoulder' }),
+      item({ itemId: 302, name: 'Neck of Testing', encounterId: 2895, encounterName: "Ula'tek", delta: 500 }),
     ])
     const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
-    expect(boss.pool).toHaveLength(1)
-    expect(boss.pool[0].kind).toBe('curio')
-    expect(boss.pool[0].value).toBe(1100)
-    expect(boss.pool[0].itemIds.sort()).toEqual([300, 301])
-    expect(boss.notes).toContain('Curio counts as one item; value assumes you pick your best missing tier slot')
+    expect(boss.pool.map((p) => p.itemIds)).toEqual([[302]])
+    expect(boss.remaining).toBe(1)
+    expect(boss.ev).toBe(500)
+    expect(boss.bestCase?.itemIds).toEqual([302])
+    expect(boss.notes.some((n) => n.toLowerCase().includes('curio'))).toBe(false)
   })
 
-  it('collapses tier pieces into a single curio entry when only the loot table (not the report) marks them viaCurio', () => {
-    // Mirrors live Raidbots season data: a catalyst-converted tier piece keeps a normal
-    // encounter id and marks the conversion via catalystSourceId, not item.viaCurio -- so
-    // classification must come from the loot table when one is supplied (regression test
-    // for the double-count bug: each tier piece landing in the pool as both its own
-    // full-value 'item' entry AND folded into the merged curio entry).
+  it('a boss whose only rows are curio-routed has an empty pool, not an empty-but-counted curio entry', () => {
+    const report = makeReport([item({ itemId: 300, encounterId: 2895, encounterName: "Ula'tek", delta: 1100, viaCurio: true, tierSlot: 'head' })])
+    const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
+    expect(boss.pool).toHaveLength(0)
+    expect(boss.remaining).toBe(0)
+    expect(boss.deployable).toBe(false)
+  })
+
+  it('excludes tier pieces the loot table (not the report) marks viaCurio: no pool entry, not in the denominator, no phantom', () => {
+    // Mirrors live Raidbots season data: a tier piece keeps a normal encounter id in the
+    // report (conversions are marked via catalystSourceId, not item.viaCurio), so the
+    // classification comes from the loot table when one is supplied. The loot table's
+    // viaCurio-only pieces are neither pool entries nor phantom (valued 0) entries.
     const report = makeReport([
       item({ itemId: 300, name: 'Tier Head Token', encounterId: 2895, encounterName: "Ula'tek", delta: 1100, tierSlot: 'head' }),
       item({ itemId: 301, name: 'Tier Shoulder Token', encounterId: 2895, encounterName: "Ula'tek", delta: 900, tierSlot: 'shoulder' }),
@@ -90,31 +98,40 @@ describe('buildBossPools', () => {
         encounterName: "Ula'tek",
         items: [
           { itemId: 300, name: 'Tier Head Token', specSpecific: false, uniqueEquipped: false, onUseTrinket: false, isTier: true, viaCurio: true, tierSlot: 'head' },
-          {
-            itemId: 301,
-            name: 'Tier Shoulder Token',
-            specSpecific: false,
-            uniqueEquipped: false,
-            onUseTrinket: false,
-            isTier: true,
-            viaCurio: true,
-            tierSlot: 'shoulder',
-          },
+          { itemId: 301, name: 'Tier Shoulder Token', specSpecific: false, uniqueEquipped: false, onUseTrinket: false, isTier: true, viaCurio: true, tierSlot: 'shoulder' },
           { itemId: 302, name: 'Neck of Testing', specSpecific: false, uniqueEquipped: false, onUseTrinket: false, isTier: false, viaCurio: false },
         ],
       },
     ]
     const [boss] = buildBossPools(report, makeKnockout(), SETTINGS, lootTable)
-    // 1 direct item (neck) + 1 merged curio entry -- NOT 1 + 2 + 1 (double-counted tier pieces).
-    expect(boss.pool).toHaveLength(2)
-    const curio = boss.pool.find((p) => p.kind === 'curio')
-    expect(curio?.value).toBe(1100)
-    expect(curio?.itemIds.sort()).toEqual([300, 301])
-    expect(curio?.curioItems?.map((c) => c.itemId).sort()).toEqual([300, 301])
-    expect(boss.remaining).toBe(2)
+    expect(boss.pool).toHaveLength(1)
+    expect(boss.pool[0]).toMatchObject({ itemIds: [302], kind: 'item', value: 500 })
+    expect(boss.remaining).toBe(1)
+    expect(boss.notes.some((n) => n.includes('not in this boss'))).toBe(false)
   })
 
-  it('pins Ula\'tek pool size for the Iceshaman (elemental heroic) fixture: 6, not 11', () => {
+  it('ignores a stored knockout entry saved against the curio: no crash, and it does not mark the same tier piece at the boss that really drops it', () => {
+    // Older builds recorded a curio knockout as { itemId: <a tier piece>, encounterId: 2895 }.
+    // Item 300 is also a real direct drop at The Twin Fangs (2887); the stale entry must not touch it.
+    const report = makeReport([
+      item({ itemId: 300, name: 'Tier Head Token', encounterId: 2887, encounterName: 'The Twin Fangs', delta: 1100, tierSlot: 'head' }),
+      item({ itemId: 300, name: 'Tier Head Token', encounterId: 2895, encounterName: "Ula'tek", delta: 1100, viaCurio: true, tierSlot: 'head' }),
+      item({ itemId: 302, name: 'Neck of Testing', encounterId: 2895, encounterName: "Ula'tek", delta: 500 }),
+    ])
+    const stale = makeKnockout({
+      entries: [{ itemId: 300, itemName: 'Tier Head Token', encounterId: 2895, receivedAt: '', source: 'manual', state: 'rolled' }],
+      rollsSpent: { 2895: 1 },
+    })
+    const bosses = buildBossPools(report, stale, SETTINGS)
+    const twinFangs = bosses.find((b) => b.encounterId === 2887)!
+    expect(twinFangs.pool[0]).toMatchObject({ itemIds: [300], ownership: 'none', knockedOut: false })
+    expect(twinFangs.remaining).toBe(1)
+    const ulatek = bosses.find((b) => b.encounterId === 2895)!
+    expect(ulatek.pool.map((p) => p.itemIds)).toEqual([[302]])
+    expect(ulatek.pool[0].knockedOut).toBe(false)
+  })
+
+  it('pins Ula\'tek pool size for the Iceshaman (elemental heroic) fixture: 5 (curio excluded), not 11', () => {
     const report = makeReport(
       [
         item({ itemId: 268265, name: 'Aqirbane Reliquary', encounterId: 2895, encounterName: "Ula'tek", delta: 3223 }),
@@ -176,9 +193,10 @@ describe('buildBossPools', () => {
       },
     ]
     const [boss] = buildBossPools(report, makeKnockout(), { ...SETTINGS, lootSpecId: 262 }, lootTable)
-    expect(boss.pool).toHaveLength(6)
-    expect(boss.remaining).toBe(6)
-    expect(boss.pool.filter((p) => p.kind === 'curio')).toHaveLength(1)
+    // The five Ophidian Oracle pieces are the curio's contents: not roll outcomes, so 5, not 6.
+    expect(boss.pool).toHaveLength(5)
+    expect(boss.remaining).toBe(5)
+    expect(boss.pool.map((p) => p.itemIds[0]).sort()).toEqual([268265, 270168, 271092, 271093, 271876])
   })
 
   it('marks a tier-token row (has tierSlot, not viaCurio) with kind tier-token', () => {

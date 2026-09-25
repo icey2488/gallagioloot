@@ -176,7 +176,7 @@ describe('storageKey / InMemoryStorageAdapter', () => {
 })
 
 describe('reconcile', () => {
-  it('knocks out the whole curio entry when the received item is one of its constituents', () => {
+  it('a curio constituent is not a bonus-roll outcome: the curio boss has nothing to knock out', () => {
     const report = makeReport([
       item({ itemId: 300, name: 'Tier Head Token', encounterId: 2895, encounterName: "Ula'tek", delta: 1100, viaCurio: true, tierSlot: 'head' }),
       item({ itemId: 301, name: 'Tier Shoulder Token', encounterId: 2895, encounterName: "Ula'tek", delta: 900, viaCurio: true, tierSlot: 'shoulder' }),
@@ -186,11 +186,8 @@ describe('reconcile', () => {
 
     const result = reconcile(state, report, { encounterId: 2895, receivedItemId: 300, receivedAt: '2026-09-08T00:00:00Z' }, settings)
 
-    expect(result.state.entries).toHaveLength(1)
     const curioBoss = result.bossEvals.find((b) => b.encounterId === 2895)
-    expect(curioBoss?.pool).toHaveLength(1)
-    expect(curioBoss?.pool[0].kind).toBe('curio')
-    expect(curioBoss?.pool[0].knockedOut).toBe(true)
+    expect(curioBoss?.pool).toHaveLength(0)
     expect(curioBoss?.remaining).toBe(0)
     expect(curioBoss?.deployable).toBe(false)
   })

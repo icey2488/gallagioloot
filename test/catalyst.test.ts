@@ -86,7 +86,7 @@ describe('catalyst max rule (raid)', () => {
     expect(boss.pool.find((p) => p.key === 'item:268242')).toMatchObject({ value: 843, catalyst: { name: 'Crown of the Primal Leywarden' } })
   })
 
-  it('keeps catalyst rows out of the curio even when the tier piece is a curio option; they credit the source instead', () => {
+  it('keeps catalyst rows out of the pool even when the tier piece is a curio option; they credit the source instead (Cowl -> Crown)', () => {
     const table: LootTableEncounter[] = [
       {
         encounterId: 2895,
@@ -102,10 +102,9 @@ describe('catalyst max rule (raid)', () => {
       ula({ itemId: 271564, name: 'Crown', slot: 'head', delta: 2500, catalystSourceId: 271874 }),
     ])
     const [boss] = buildBossPools(rpt, createState('Icemagus', 'raid-vault-mythic'), SETTINGS, table)
-    const curio = boss.pool.find((p) => p.kind === 'curio')!
-    expect(curio.value).toBe(1903)
-    expect(boss.pool.find((p) => p.key === 'item:271874')).toMatchObject({ value: 2500, catalyst: { name: 'Crown', pct: 2.5 } })
-    expect(boss.pool).toHaveLength(2)
+    // The curio's own tier pieces (Crown/Legwraps as curio options) are not pool entries.
+    expect(boss.pool.map((p) => p.key)).toEqual(['item:271874'])
+    expect(boss.pool[0]).toMatchObject({ value: 2500, catalyst: { name: 'Crown', pct: 2.5 } })
   })
 
   it('names a source item simmed only via its catalyst row from the report, else the loot table', () => {
@@ -128,12 +127,13 @@ describe('catalyst max rule on the live fixtures', () => {
     //   Coiled Altar 0.676 -> 0.812 (pool 6 -> 5), Ula'tek 0.588 -> 0.798, Lost Explorers 0.461 -> 0.614,
     //   Twin Fangs 0.495 -> 0.366 (its phantom Manaflux entry is gone), Nek'zali 0.279 -> 0.349;
     //   Sszorak 0.648, Entombed Sentinels 0.278, Vashnik 0.245 unchanged.
+    // Then the curio stopped being a pool entry (2026-09-24): Ula'tek 0.798 (7 entries) -> 0.614 (6).
     const rpt = normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup)
     const evals = buildBossPools(rpt, createState(rpt.character, rpt.difficulty), SETTINGS, buildLootTable(1320, 62, lookup))
     const ev = Object.fromEntries(evals.map((b) => [b.encounterName, Number(b.evPct.toFixed(3))]))
     expect(ev).toEqual({
       'The Coiled Altar': 0.812,
-      "Ula'tek": 0.798,
+      "Ula'tek": 0.614,
       Sszorak: 0.648,
       'The Lost Explorers': 0.614,
       'The Twin Fangs': 0.366,

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/types'
+import { curioEntryKeys, dropCurioEntries } from '@engine/core/curio'
 import { addEntry, characterKey, createStateFor, deserialize, removeEntry, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
 import { recommend } from '@engine/core/rank'
@@ -279,8 +280,16 @@ export default function App() {
   }, [primary, loaded])
 
   useEffect(() => {
-    for (const [key, state] of Object.entries(knockoutStates)) void storageAdapter.save(key, state)
-  }, [knockoutStates])
+    // Entries saved against Ula'tek's curio (no longer a bonus-roll outcome) are ignored by the
+    // engine on load and dropped here, on the first save once the report / loot table identify them.
+    for (const [key, state] of Object.entries(knockoutStates)) {
+      const curioKeys = new Set<string>()
+      for (const s of sectionsData) {
+        if (s.loaded.stateKey === key) for (const k of curioEntryKeys(s.loaded.report, s.lootTable?.encounters)) curioKeys.add(k)
+      }
+      void storageAdapter.save(key, dropCurioEntries(state, curioKeys))
+    }
+  }, [knockoutStates, sectionsData])
 
   // Must stay after the save effect above: list() reads what save() just wrote, so the
   // first-loaded character shows up in the switcher immediately.

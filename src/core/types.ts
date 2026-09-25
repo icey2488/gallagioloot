@@ -96,7 +96,7 @@ export type PoolEntry = {
   /** The best raw delta among the collapsed rows, before flooring at zero -- kept for display. */
   rawDelta: number
   pct: number
-  kind: 'item' | 'tier-token' | 'curio'
+  kind: 'item' | 'tier-token'
   tierSlot?: string
   /**
    * True when this entry only drops for certain loot specs (the loot table's `specs`
@@ -141,13 +141,6 @@ export type PoolEntry = {
   rollsToTargetTruncated?: number
   /** Sim error for this entry's value, as a percentage of baseline (mirrors `pct`). Set only when the source report carries a per-row error (Raidbots' `mean_error`; QE Live never does). */
   errorPct?: number
-  /**
-   * For a merged curio entry (`kind: 'curio'`) only: each underlying tier piece's own
-   * name/slot/sim value, for display -- the entry's own `value`/`pct` (the best missing
-   * slot) is what counts toward EV; this is display-only detail so the UI can still show
-   * which slot is actually best instead of collapsing that information.
-   */
-  curioItems?: Array<{ itemId: number; name: string; tierSlot?: string; pct: number; notInSimReport: boolean }>
 }
 
 export type BossEval = {

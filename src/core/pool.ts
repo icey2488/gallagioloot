@@ -2,9 +2,7 @@ import type { LootTableEncounter, LootTableItem, NormalizedItem, NormalizedRepor
 import type { BossEval, KnockoutState, PoolEntry, Settings } from './types'
 import { rollsToTarget } from './vault'
 import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from './targets'
-
-const CURIO_NOTE = 'Curio counts as one item; value assumes you pick your best missing tier slot'
-const CURIO_NAME = 'Curio (any missing tier slot)'
+import { curioEntryKeys } from './curio'
 
 function bestByDelta(rows: NormalizedItem[]): NormalizedItem {
   return rows.reduce((a, b) => (b.delta > a.delta ? b : a))
@@ -145,7 +143,11 @@ function applyOwnership(entry: PoolEntry, ownership: 'none' | 'owned' | 'rolled'
 export function buildBossPools(report: NormalizedReport, knockout: KnockoutState, settings: Settings, lootTable?: LootTableEncounter[]): BossEval[] {
   const expectedDifficulty = knockoutDifficulty(report)
   const difficultyMismatch = knockout.difficulty !== expectedDifficulty
-  const knockoutEntries = difficultyMismatch ? [] : knockout.entries
+  // Stored entries that refer to a curio (recorded when it was still modeled as a pool entry)
+  // are ignored: the curio can't be won with a bonus roll, and an entry keyed by one of its
+  // tier pieces would otherwise mark that piece owned/rolled at the boss that really drops it.
+  const curioKeys = curioEntryKeys(report, lootTable)
+  const knockoutEntries = difficultyMismatch ? [] : knockout.entries.filter((e) => !curioKeys.has(`${e.encounterId}:${e.itemId}`))
   const expectedTargets = settings.expectedTargets ? new Set(settings.expectedTargets) : null
   const expectedKills = settings.expectedKills ? new Set(settings.expectedKills) : null
   const kind = targetKindOf(report)
@@ -184,39 +186,31 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
 
     const pool: PoolEntry[] = []
 
+    // Curio-routed rows (Ula'tek's Slumbering Coil Curio -> any tier slot) are not a bonus-roll
+    // outcome at all, so they never enter the pool -- see ./curio.ts. The loot table's `viaCurio`
+    // flag identifies them; the report's own `item.viaCurio` covers callers with no loot table.
+    // (Live Raidbots profileset rows mark a catalyst conversion via `catalystSourceId` on an
+    // otherwise-normal row rather than `viaCurio`, see normalize/raidbots.ts.)
     const lootDirectById = new Map<number, LootTableItem>()
-    const lootCurioById = new Map<number, LootTableItem>()
+    const lootCurioIds = new Set<number>()
     for (const row of lootItems) {
-      if (row.viaCurio) lootCurioById.set(row.itemId, row)
+      if (row.viaCurio) lootCurioIds.add(row.itemId)
       else lootDirectById.set(row.itemId, row)
     }
 
-    // Curio-ness (catalyst-converted tier pieces that count as ONE roll-pool entry) is
-    // determined from the loot table's `viaCurio` flag when one is supplied -- it's the
-    // authoritative, hand/statically-maintained source. The report's own `item.viaCurio`
-    // is only a fallback for callers with no loot table: live Raidbots profileset rows
-    // mark a catalyst conversion via `catalystSourceId` on an otherwise-normal row rather
-    // than `viaCurio` (see normalize/raidbots.ts), so without a loot table there is no way
-    // to tell a tier piece is one of several curio options rather than a direct drop.
-    //
     // Catalyst rows (`catalystSourceId` set) are the tier piece a dropped item converts
     // into. A roll yields the SOURCE item, never the tier piece, so a catalyst row is never a
     // pool entry of its own -- it only credits its source item: value = max(own delta,
     // catalyzed delta). Same rule for raid and Mythic+.
     const catalystBySource = new Map<number, NormalizedItem>()
     const directByItemId = new Map<number, NormalizedItem[]>()
-    const curioRows: NormalizedItem[] = []
     for (const item of items) {
       if (item.catalystSourceId !== undefined) {
         const existing = catalystBySource.get(item.catalystSourceId)
         if (!existing || item.delta > existing.delta) catalystBySource.set(item.catalystSourceId, item)
         continue
       }
-      const isCurio = lootTable ? lootCurioById.has(item.itemId) : item.viaCurio
-      if (isCurio) {
-        curioRows.push(item)
-        continue
-      }
+      if (item.viaCurio || lootCurioIds.has(item.itemId)) continue
       const list = directByItemId.get(item.itemId)
       if (list) list.push(item)
       else directByItemId.set(item.itemId, [item])
@@ -263,45 +257,6 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       }
       applyOwnership(entry, resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId))
       pool.push(entry)
-    }
-
-    const curioItemIds = new Set<number>([...curioRows.map((r) => r.itemId), ...lootCurioById.keys()])
-    if (curioItemIds.size > 0) {
-      const best = curioRows.length > 0 ? bestByDelta(curioRows) : undefined
-      if (lootTable) {
-        const missingFromReport = [...curioItemIds].filter((id) => !curioRows.some((r) => r.itemId === id))
-        notInSimReportCount += missingFromReport.length > 0 && curioRows.length === 0 ? 1 : 0
-      }
-      const entry = best
-        ? toEntry(`curio:${encounterId}`, [...curioItemIds], { ...best, name: CURIO_NAME }, 'curio', report.baseline, false)
-        : phantomEntry(`curio:${encounterId}`, [...curioItemIds], lootCurioById.values().next().value?.name ?? CURIO_NAME, 'curio', undefined, false)
-      entry.tierSlot = undefined
-
-      // Per-tier-piece sim value, for display only -- the entry's own `value`/`pct` (the
-      // best missing slot) is what counts for EV math; this just lets the UI show which
-      // slot is actually the best one instead of collapsing that information.
-      const bestByItemId = new Map<number, NormalizedItem>()
-      for (const row of curioRows) {
-        const existing = bestByItemId.get(row.itemId)
-        if (!existing || row.delta > existing.delta) bestByItemId.set(row.itemId, row)
-      }
-      entry.curioItems = [...curioItemIds]
-        .map((itemId) => {
-          const row = bestByItemId.get(itemId)
-          const lootRow = lootCurioById.get(itemId)
-          return {
-            itemId,
-            name: row?.name ?? lootRow?.name ?? CURIO_NAME,
-            tierSlot: row?.tierSlot ?? lootRow?.tierSlot,
-            pct: row ? (Math.max(row.delta, 0) / report.baseline) * 100 : 0,
-            notInSimReport: !row,
-          }
-        })
-        .sort((a, b) => b.pct - a.pct)
-
-      applyOwnership(entry, resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId))
-      pool.push(entry)
-      notes.push(CURIO_NOTE)
     }
 
     // Unattributed bonus rolls: a roll counted against this boss but not tied to a specific

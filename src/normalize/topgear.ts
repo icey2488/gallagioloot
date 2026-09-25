@@ -141,7 +141,8 @@ function resolveCandidateBoss(
   }
   if (dominantInstanceId !== undefined) {
     const tierMatches = resolveTierEncounters(dominantInstanceId, itemId, slot, learnedByInstance?.get(dominantInstanceId))
-    const primary = tierMatches.find((m) => !m.viaCurio) ?? tierMatches[0]
+    // The curio can't be won with a bonus roll, so it is never a candidate's roll source.
+    const primary = tierMatches.find((m) => !m.viaCurio)
     if (primary) return { instanceId: dominantInstanceId, encounterId: primary.encounterId }
   }
   return null

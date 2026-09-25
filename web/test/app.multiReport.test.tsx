@@ -161,6 +161,36 @@ describe('multi-report flow', () => {
   })
 })
 
+describe('stored knockout state that references the curio', () => {
+  it("loads without crashing, doesn't touch the boss that really drops the tier piece, and is dropped on the next save", async () => {
+    const CROWN = 271564
+    const raid: NormalizedReport = {
+      ...RAID,
+      items: [
+        item(2887, 'The Twin Fangs', CROWN, 700, 1320),
+        { ...item(2895, "Ula'tek", CROWN, 700, 1320), viaCurio: true },
+        item(2895, "Ula'tek", 268265, 900, 1320),
+      ],
+    }
+    vi.mocked(fetchReport).mockImplementation(async () => raid)
+    const key = 'gallagioloot:knockout:us:hyjal:icemagus:raid-vault-mythic'
+    const staleEntry = { itemId: CROWN, itemName: 'Crown', encounterId: 2895, receivedAt: '', source: 'manual', state: 'rolled' }
+    const keptEntry = { itemId: 268265, itemName: 'Aqirbane Reliquary', encounterId: 2895, receivedAt: '', source: 'manual', state: 'owned' }
+    localStorage.setItem(key, JSON.stringify({ character: 'Icemagus', realm: 'hyjal', region: 'us', difficulty: 'raid-vault-mythic', entries: [staleEntry, keptEntry], rollsSpent: {}, version: 2 }))
+
+    await act(async () => {
+      root.render(createElement(App))
+    })
+    await addReport(RAID_URL)
+
+    // Twin Fangs still shows its Crown as a normal, unrolled pool member (1 / 1 remaining).
+    const twinFangs = [...container.querySelectorAll('.boss-row')].find((r) => r.querySelector('.boss-row__name')?.textContent === 'The Twin Fangs')!
+    expect(twinFangs.querySelector('.boss-row__remaining')?.textContent).toContain('1 / 1')
+    const saved = JSON.parse(localStorage.getItem(key)!) as { entries: Array<{ itemId: number }> }
+    expect(saved.entries.map((e) => e.itemId)).toEqual([268265])
+  })
+})
+
 describe('report set storage', () => {
   it('round-trips and ignores junk', () => {
     expect(loadReportSet('us:hyjal:icemagus')).toBeNull()

@@ -687,7 +687,7 @@ tr.excluded .deploy-table__ev {
   }
 }
 
-/* Small-caps meta label for inline item tags (Tier / Curio) -- same visual language
+/* Small-caps meta label for inline item tags (Tier) -- same visual language
    as the header eyebrow/kicker text, distinct from the spec-specific .badge pill. */
 .item-tag {
   display: inline-block;
@@ -727,26 +727,6 @@ tr.excluded .deploy-table__ev {
   color: var(--text-muted);
   font-size: 13px;
   margin-top: 8px;
-}
-
-/* One merged curio pool entry, several tier pieces listed inside it -- one state control
-   and one "X / Y remaining" count for the whole group (see buildBossPools' curio merge). */
-.curio-group {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.curio-group__item {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--space-3);
-}
-
-.curio-group__pct {
-  color: var(--text-muted);
-  flex-shrink: 0;
 }
 
 /* Recommendation card: the strongest gold treatment on any screen (2px gold border +

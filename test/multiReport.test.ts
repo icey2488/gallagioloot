@@ -262,9 +262,9 @@ describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () 
     const ranked = [...evals].sort((a, b) => b.evPct - a.evPct).map((b) => `${b.encounterName} ${b.evPct.toFixed(3)}`)
     expect(ranked).toEqual([
       'The Coiled Altar 0.812',
-      "Ula'tek 0.798",
       'Sszorak 0.648',
       'The Lost Explorers 0.614',
+      "Ula'tek 0.614",
       'The Twin Fangs 0.366',
       'Altar of Fangs 0.354',
       "Nek'zali the Soulcoiler 0.349",
@@ -282,10 +282,10 @@ describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () 
 
   const vaultItem = { name: 'Vile Vial of Volatile Venom', gainPct: 0.7439364712473122, itemId: 273796, encounterId: 2878 }
 
-  it("1 roll: Coiled Altar, a toss-up with Ula'tek; Altar of Fangs isn't allocated, so the Vial saves no rolls (Voidcore 0.81% vs vault 0.74% = toss-up, as raid-only)", () => {
+  it("1 roll: Coiled Altar; Altar of Fangs isn't allocated, so the Vial saves no rolls (Voidcore 0.81% vs vault 0.74% = toss-up, as raid-only)", () => {
     const rec = recommend(evals, settings, [raid, mplus])
     expect(rec.allocations.map((a) => a.encounterName)).toEqual(['The Coiled Altar'])
-    expect(rec.tossUp?.bosses).toEqual(['The Coiled Altar', "Ula'tek"])
+    expect(rec.tossUp).toBeNull()
     const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings, report: raid })
     expect(vd.savedRolls).toBe(0)
     expect(vd.savedRollsNote).toBe(`Altar of Fangs isn't a target you'd roll this week, so taking "Vile Vial of Volatile Venom" saves no rolls.`)
@@ -294,13 +294,13 @@ describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () 
     expect(vd.verdict).toBe('toss-up')
   })
 
-  it("2 rolls: Coiled Altar + Ula'tek, still no saved rolls for the Vial -> Voidcore (1.61% vs 0.74%)", () => {
+  it("2 rolls: Coiled Altar + Sszorak, still no saved rolls for the Vial -> Voidcore (1.46% vs 0.74%)", () => {
     const twoRolls: Settings = { ...settings, rollsAvailable: 2 }
     const rec = recommend(evals, twoRolls, [raid, mplus])
-    expect(rec.allocations.map((a) => a.encounterName)).toEqual(['The Coiled Altar', "Ula'tek"])
+    expect(rec.allocations.map((a) => a.encounterName)).toEqual(['The Coiled Altar', 'Sszorak'])
     const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings: twoRolls, report: raid })
     expect(vd.savedRolls).toBe(0)
-    expect(vd.voidcoreGainPct).toBeCloseTo(1.6098, 3)
+    expect(vd.voidcoreGainPct).toBeCloseTo(1.4597, 3)
     expect(vd.vaultItemGainPct).toBeCloseTo(0.7439, 4)
     expect(vd.verdict).toBe('voidcore')
   })
