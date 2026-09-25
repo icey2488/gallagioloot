@@ -1,0 +1,1169 @@
+{
+  "source": "raidbots",
+  "reportId": "k3vroAKe6QvF5gN4GeCVAq",
+  "character": "Icemagus",
+  "spec": "arcane",
+  "baseline": 572828.2390761137,
+  "metric": "dps",
+  "bestSet": {
+    "delta": 4261.478188090958,
+    "pct": 0.7439364712473122,
+    "items": [
+      {
+        "itemId": 271564,
+        "name": "Crown of the Primal Leywarden",
+        "slot": "head",
+        "ilvl": 321
+      },
+      {
+        "itemId": 268250,
+        "name": "Sentinel's Vitriolic Chain",
+        "slot": "neck",
+        "ilvl": 315
+      },
+      {
+        "itemId": 268241,
+        "name": "Ornaments of the Eternal Coil",
+        "slot": "shoulder",
+        "ilvl": 308
+      },
+      {
+        "itemId": 271559,
+        "name": "Spellcloak of the Primal Leywarden",
+        "slot": "back",
+        "ilvl": 321
+      },
+      {
+        "itemId": 271567,
+        "name": "Crest of the Primal Leywarden",
+        "slot": "chest",
+        "ilvl": 321
+      },
+      {
+        "itemId": 239648,
+        "name": "Martyr's Bindings",
+        "slot": "wrist",
+        "ilvl": 331
+      },
+      {
+        "itemId": 271565,
+        "name": "Primal Leywarden's Manashapers",
+        "slot": "hands",
+        "ilvl": 318
+      },
+      {
+        "itemId": 159255,
+        "name": "Ouroborial Sash",
+        "slot": "waist",
+        "ilvl": 321
+      },
+      {
+        "itemId": 271563,
+        "name": "Primal Leywarden's Tailored Legwraps",
+        "slot": "legs",
+        "ilvl": 321
+      },
+      {
+        "itemId": 271566,
+        "name": "Battleboots of the Primal Leywarden",
+        "slot": "feet",
+        "ilvl": 334
+      },
+      {
+        "itemId": 240949,
+        "name": "Masterwork Sin'dorei Band",
+        "slot": "finger1",
+        "ilvl": 331
+      },
+      {
+        "itemId": 251148,
+        "name": "Pilfered Precious Band",
+        "slot": "finger2",
+        "ilvl": 334
+      },
+      {
+        "itemId": 270164,
+        "name": "Gebbo's Bottomless Bag",
+        "slot": "trinket1",
+        "ilvl": 334
+      },
+      {
+        "itemId": 273796,
+        "name": "Vile Vial of Volatile Venom",
+        "slot": "trinket2",
+        "ilvl": 334
+      },
+      {
+        "itemId": 245770,
+        "name": "Aln'hara Cane",
+        "slot": "main_hand",
+        "ilvl": 331
+      }
+    ]
+  },
+  "equippedItems": [
+    {
+      "itemId": 271564,
+      "name": "Crown of the Primal Leywarden",
+      "slot": "head",
+      "ilvl": 321
+    },
+    {
+      "itemId": 268250,
+      "name": "Sentinel's Vitriolic Chain",
+      "slot": "neck",
+      "ilvl": 315
+    },
+    {
+      "itemId": 268241,
+      "name": "Ornaments of the Eternal Coil",
+      "slot": "shoulder",
+      "ilvl": 308
+    },
+    {
+      "itemId": 271559,
+      "name": "Spellcloak of the Primal Leywarden",
+      "slot": "back",
+      "ilvl": 321
+    },
+    {
+      "itemId": 271567,
+      "name": "Crest of the Primal Leywarden",
+      "slot": "chest",
+      "ilvl": 321
+    },
+    {
+      "itemId": 239648,
+      "name": "Martyr's Bindings",
+      "slot": "wrist",
+      "ilvl": 331
+    },
+    {
+      "itemId": 271565,
+      "name": "Primal Leywarden's Manashapers",
+      "slot": "hands",
+      "ilvl": 318
+    },
+    {
+      "itemId": 159255,
+      "name": "Ouroborial Sash",
+      "slot": "waist",
+      "ilvl": 321
+    },
+    {
+      "itemId": 271563,
+      "name": "Primal Leywarden's Tailored Legwraps",
+      "slot": "legs",
+      "ilvl": 321
+    },
+    {
+      "itemId": 271566,
+      "name": "Battleboots of the Primal Leywarden",
+      "slot": "feet",
+      "ilvl": 334
+    },
+    {
+      "itemId": 245770,
+      "name": "Aln'hara Cane",
+      "slot": "main_hand",
+      "ilvl": 331
+    },
+    {
+      "itemId": 240949,
+      "name": "Masterwork Sin'dorei Band",
+      "slot": "finger1",
+      "ilvl": 331
+    },
+    {
+      "itemId": 251148,
+      "name": "Pilfered Precious Band",
+      "slot": "finger2",
+      "ilvl": 334
+    },
+    {
+      "itemId": 250215,
+      "name": "Freightrunner's Flask",
+      "slot": "trinket1",
+      "ilvl": 308
+    },
+    {
+      "itemId": 270164,
+      "name": "Gebbo's Bottomless Bag",
+      "slot": "trinket2",
+      "ilvl": 334
+    }
+  ],
+  "candidates": [
+    {
+      "itemId": 273796,
+      "name": "Vile Vial of Volatile Venom",
+      "slot": "trinket2",
+      "ilvl": 334,
+      "instanceId": 1322,
+      "encounterId": 2878,
+      "encounterName": "Rav'i"
+    }
+  ],
+  "allSets": [
+    {
+      "delta": 4261.478188090958,
+      "pct": 0.7439364712473122,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 315
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket1",
+          "ilvl": 334
+        },
+        {
+          "itemId": 273796,
+          "name": "Vile Vial of Volatile Venom",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 4036.6531714495504,
+      "pct": 0.7046882287018651,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 3963.953029364813,
+      "pct": 0.6919967904791281,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 3889.527709639282,
+      "pct": 0.6790041838566668,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 3839.0129899117164,
+      "pct": 0.6701857080411173,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 3802.363434349303,
+      "pct": 0.6637877071985744,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 3791.546145749744,
+      "pct": 0.6618993071753833,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 3778.162100252579,
+      "pct": 0.6595628222425259,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 3529.173408568953,
+      "pct": 0.6160962689725252,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    },
+    {
+      "delta": 3161.3561845092336,
+      "pct": 0.5518855337174069,
+      "items": [
+        {
+          "itemId": 271564,
+          "name": "Crown of the Primal Leywarden",
+          "slot": "head",
+          "ilvl": 321
+        },
+        {
+          "itemId": 268250,
+          "name": "Sentinel's Vitriolic Chain",
+          "slot": "neck",
+          "ilvl": 334
+        },
+        {
+          "itemId": 268241,
+          "name": "Ornaments of the Eternal Coil",
+          "slot": "shoulder",
+          "ilvl": 308
+        },
+        {
+          "itemId": 271559,
+          "name": "Spellcloak of the Primal Leywarden",
+          "slot": "back",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271567,
+          "name": "Crest of the Primal Leywarden",
+          "slot": "chest",
+          "ilvl": 321
+        },
+        {
+          "itemId": 239648,
+          "name": "Martyr's Bindings",
+          "slot": "wrist",
+          "ilvl": 331
+        },
+        {
+          "itemId": 271565,
+          "name": "Primal Leywarden's Manashapers",
+          "slot": "hands",
+          "ilvl": 318
+        },
+        {
+          "itemId": 159255,
+          "name": "Ouroborial Sash",
+          "slot": "waist",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271563,
+          "name": "Primal Leywarden's Tailored Legwraps",
+          "slot": "legs",
+          "ilvl": 321
+        },
+        {
+          "itemId": 271566,
+          "name": "Battleboots of the Primal Leywarden",
+          "slot": "feet",
+          "ilvl": 334
+        },
+        {
+          "itemId": 240949,
+          "name": "Masterwork Sin'dorei Band",
+          "slot": "finger1",
+          "ilvl": 331
+        },
+        {
+          "itemId": 251148,
+          "name": "Pilfered Precious Band",
+          "slot": "finger2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 250215,
+          "name": "Freightrunner's Flask",
+          "slot": "trinket1",
+          "ilvl": 308
+        },
+        {
+          "itemId": 270164,
+          "name": "Gebbo's Bottomless Bag",
+          "slot": "trinket2",
+          "ilvl": 334
+        },
+        {
+          "itemId": 245770,
+          "name": "Aln'hara Cane",
+          "slot": "main_hand",
+          "ilvl": 331
+        }
+      ]
+    }
+  ]
+}

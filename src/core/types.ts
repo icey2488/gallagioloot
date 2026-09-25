@@ -1,6 +1,8 @@
 // Decision-engine types. Pure data -- no Worker/runtime dependencies, importable
 // by a future frontend as-is.
 
+import type { TargetKind } from '../types'
+
 /**
  * How the player obtained an item, under the roll-only knockout model (operator ruling):
  * - `'rolled'`: received FROM A BONUS ROLL. Removed from that boss's roll pool -- a true
@@ -65,6 +67,13 @@ export type Settings = {
    */
   expectedKills?: number[]
   /**
+   * Target keys (see targetKey in targets.ts) the player expects to kill -- or, for a
+   * Mythic+ dungeon, will run a key for -- this week. Takes precedence over `expectedKills`
+   * when set; needed once several reports are loaded, since the same boss on two
+   * difficulties shares an encounter id.
+   */
+  expectedTargets?: string[]
+  /**
    * The loot spec currently in effect (set in-game before rolling). Used to decide
    * whether a spec-specific KnockoutEntry applies: only when its own `lootSpecId`
    * matches this one. Undefined falls back to the legacy string-`spec` comparison.
@@ -99,6 +108,14 @@ export type PoolEntry = {
   specSpecific: boolean
   /** True for a PoolEntry synthesized from the loot table with no matching report item -- see buildBossPools. */
   notInSimReport?: boolean
+  /**
+   * Set when this entry is worth more catalyzed than as-is: an item's value is
+   * max(its own sim delta, the delta of the tier piece it catalyzes into -- the report's
+   * catalyst row whose `catalystSourceId` is this item). Present only when the catalyzed
+   * value wins AND is a net upgrade, so the UI can say "Catalyze into <name>: +x%". `ownPct`
+   * is the item's own floored gain (0 when it wasn't simmed as-is).
+   */
+  catalyst?: { itemId: number; name: string; tierSlot?: string; pct: number; ownPct: number }
   /**
    * Roll-only ownership state from the knockout state:
    * - `'none'`: no knockout entry -- a normal, full-value pool member.
@@ -137,6 +154,20 @@ export type BossEval = {
   encounterId: number
   encounterName: string
   instanceId: number
+  /**
+   * Identity of this roll target across every loaded report (see targetKey in targets.ts),
+   * e.g. "raid-vault-mythic:2883" or "mplus-myth:1322". Set by buildBossPools; optional only
+   * so hand-built evals (tests, design fixtures) stay valid -- use `evalKey()` to read it.
+   */
+  targetKey?: string
+  /** 'raid': (boss, difficulty), one roll per week. 'mplus': a dungeon at a key level, repeatable. Undefined = 'raid'. */
+  kind?: TargetKind
+  /** Human label for the target's difficulty/track, e.g. "Mythic" or "+10 (Myth)". */
+  difficultyLabel?: string
+  /** Mythic+ only: the lowest key level the report's rolls come from (10 = "+10 and above"). */
+  keyLevel?: number
+  /** The source report's baseline, so EV% from different reports sits on one scale. */
+  baseline?: number
   pool: PoolEntry[]
   /**
    * Count of non-knocked-out pool entries, minus the fractional denominator taken by any
@@ -165,6 +196,11 @@ export type BossEval = {
 export type Allocation = {
   encounterId: number
   encounterName: string
+  targetKey?: string
+  kind?: TargetKind
+  difficultyLabel?: string
+  keyLevel?: number
+  /** Always 1 for a raid target (one roll per boss per difficulty per week); an M+ target can take more than one (one per key run). */
   rolls: number
   expectedGain: number
   expectedGainPct: number
@@ -184,7 +220,7 @@ export type Recommendation = {
    * the first two rolls are both allocated regardless. The allocation itself is
    * unaffected -- this only annotates the recommendation for display.
    */
-  tossUp: { bosses: [string, string]; gapPct: number } | null
+  tossUp: { bosses: [string, string]; gapPct: number; targetKeys?: [string, string] } | null
 }
 
 export type RollsToTarget = {
@@ -204,6 +240,8 @@ export type VaultDecision = {
   voidcoreGainPct: number
   vaultItemGainPct: number
   savedRolls: number
+  /** Set when the vault item was found in a loot pool but that target isn't one of this week's allocated rolls, so no saved-rolls credit was given. */
+  savedRollsNote?: string
   verdict: 'vault' | 'voidcore' | 'tokens' | 'toss-up'
   explanation: string
   notes: string[]

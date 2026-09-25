@@ -3,6 +3,7 @@ import { buildBossPools } from './pool'
 import { recommend } from './rank'
 import { DEFAULT_SETTINGS } from './types'
 import type { BossEval, KnockoutEntry, KnockoutState, Recommendation, Settings } from './types'
+import { knockoutDifficulty } from './targets'
 
 export function createState(character: string, difficulty: string, realm?: string, region?: string): KnockoutState {
   return { character, realm, region, difficulty, entries: [], rollsSpent: {}, version: 2 }
@@ -93,6 +94,25 @@ export function deserialize(raw: string): KnockoutState {
 
 export function storageKey(state: Pick<KnockoutState, 'character' | 'realm' | 'region' | 'difficulty'>): string {
   return `${state.region ?? ''}:${state.realm ?? ''}:${state.character}:${state.difficulty}`.toLowerCase()
+}
+
+/**
+ * The knockout storage key for a report: per (character, difficulty) for raid -- byte-identical
+ * to the key used before Mythic+ support, so existing saved state keeps loading -- and per
+ * (character, track) for Mythic+ (e.g. "us:hyjal:icemagus:mplus-myth"). See knockoutDifficulty.
+ */
+export function storageKeyFor(report: Pick<NormalizedReport, 'character' | 'realm' | 'region' | 'difficulty' | 'targetKind' | 'track'>): string {
+  return storageKey({ character: report.character, realm: report.realm, region: report.region, difficulty: knockoutDifficulty(report) })
+}
+
+/** A fresh knockout state keyed the way buildBossPools expects for this report. */
+export function createStateFor(report: Pick<NormalizedReport, 'character' | 'realm' | 'region' | 'difficulty' | 'targetKind' | 'track'>): KnockoutState {
+  return createState(report.character, knockoutDifficulty(report), report.realm, report.region)
+}
+
+/** `region:realm:character` (lowercase) -- a knockout storage key minus its difficulty segment. */
+export function characterKey(state: Pick<KnockoutState, 'character' | 'realm' | 'region'>): string {
+  return `${state.region ?? ''}:${state.realm ?? ''}:${state.character}`.toLowerCase()
 }
 
 export interface StorageAdapter {

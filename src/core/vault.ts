@@ -1,6 +1,7 @@
 import type { NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../types'
 import type { BossEval, PoolEntry, Recommendation, RollsToTarget, Settings, VaultDecision, VaultItemInput } from './types'
 import { isTossUpGap } from './tossup'
+import { evalKey } from './targets'
 
 function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length
@@ -96,10 +97,23 @@ function findVaultPool(vaultItem: VaultItemInput, bossEvals: BossEval[]): { boss
   return null
 }
 
+/** Why a vault item credits no saved rolls when its loot source isn't one of this week's allocated roll targets. */
+export function noSavedRollsNote(itemName: string, targetName: string): string {
+  return `${targetName} isn't a target you'd roll this week, so taking "${itemName}" saves no rolls.`
+}
+
 /**
  * Compares the Great Vault's two options for the week: take a specific vault item
  * outright, or take the Nebulous Voidcore and spend `settings.rollsAvailable` bonus
- * rolls per `recommend()`'s allocation.
+ * rolls per `recommend()`'s allocation. `bossEvals` may span several reports (raid
+ * difficulties + Mythic+): the vault item is matched against every target's pool, and the
+ * alternative roll is the best OTHER target across all of them. `report` only supplies a
+ * fallback baseline for evals built without one.
+ *
+ * The saved-rolls credit only applies when the vault item's target is among the targets
+ * `recommendation` allocates rolls to this week: you can't save rolls you would never have
+ * spent hunting there. Otherwise savedRolls is 0 and the comparison is the plain vault item
+ * gain against the Voidcore path (`savedRollsNote` says why).
  */
 export function compareVault(input: {
   vaultItem: VaultItemInput | null
@@ -122,7 +136,7 @@ export function compareVault(input: {
     notes.push(`Could not identify the loot pool for "${vaultItem.name}"; assuming 0 saved rolls.`)
   }
 
-  const thresholdValue = (settings.thresholdPct / 100) * report.baseline
+  const thresholdValue = (settings.thresholdPct / 100) * (found?.boss.baseline ?? report.baseline)
 
   // Roll-only knockout: taking the vault item X does NOT remove X from its boss's roll
   // pool -- X becomes a value-0 dud there, so next week's roll on that boss is diluted, not
@@ -131,18 +145,25 @@ export function compareVault(input: {
   // OTHER boss (altRollEvPct below already excludes X's own boss, so X's post-vault dud state
   // doesn't feed back into this figure).
   let savedRolls = 0
+  let savedRollsNote: string | undefined
   if (found) {
-    const remainingPool = found.boss.pool.filter((p) => !p.knockedOut)
-    const { expectedTruncated } = rollsToTarget(remainingPool, found.target.key, thresholdValue)
-    savedRolls = Math.min(expectedTruncated, remainingPool.length)
+    const allocated = recommendation.allocations.some((a) => evalKey(a) === evalKey(found.boss))
+    if (allocated) {
+      const remainingPool = found.boss.pool.filter((p) => !p.knockedOut)
+      const { expectedTruncated } = rollsToTarget(remainingPool, found.target.key, thresholdValue)
+      savedRolls = Math.min(expectedTruncated, remainingPool.length)
+    } else {
+      savedRollsNote = noSavedRollsNote(vaultItem!.name, found.boss.encounterName)
+      notes.push(savedRollsNote)
+    }
     notes.push(`Taking "${vaultItem!.name}" leaves it in ${found.boss.encounterName}'s roll pool as a value-0 dud (roll-only knockout).`)
   }
 
-  const excludeEncounterId = found?.boss.encounterId
+  const excludeKey = found ? evalKey(found.boss) : undefined
   let altBoss: BossEval | null = null
   for (const boss of bossEvals) {
     if (!boss.deployable) continue
-    if (excludeEncounterId !== undefined && boss.encounterId === excludeEncounterId) continue
+    if (excludeKey !== undefined && evalKey(boss) === excludeKey) continue
     if (!altBoss || boss.evPct > altBoss.evPct) altBoss = boss
   }
   const altRollEvPct = altBoss?.evPct ?? 0
@@ -173,7 +194,7 @@ export function compareVault(input: {
     }
   }
 
-  return { voidcoreGainPct, vaultItemGainPct, savedRolls, verdict, explanation, notes }
+  return { voidcoreGainPct, vaultItemGainPct, savedRolls, savedRollsNote, verdict, explanation, notes }
 }
 
 export type TopGearVaultItem = VaultItemInput & {

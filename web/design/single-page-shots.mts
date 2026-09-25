@@ -1,9 +1,11 @@
 // One-off script (not part of the test suite): captures the single-page flow's states
-// (empty / loaded+one-boss-expanded / priced / stale) at 1280px, plus 390px mobile
-// (loaded and priced), against the LOCAL fixtures (no network). Run from web/ with:
-//   npx vite preview --port 4180 --strictPort   (in one shell), then
-//   npx tsx design/single-page-shots.mts
-// or just `npx tsx design/single-page-shots.mts` which spawns the preview itself.
+// with BOTH a raid droptimizer (6PTZ7, Mythic) and the Mythic+ droptimizer (a8URT, +10 Myth)
+// loaded, plus the Top Gear vault item (k3vro): empty / loaded + one dungeon expanded /
+// priced / stale at 1280px, plus 390px mobile (loaded and priced), against the LOCAL
+// fixtures (no network; rebuild them with `npx tsx scripts/build-design-fixtures.mts`).
+// Run from web/ with:
+//   npx vite build && npx tsx design/single-page-shots.mts
+// (the script spawns `vite preview` itself, so it screenshots the last build).
 import { chromium, type Page, type Route } from 'playwright'
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
@@ -11,18 +13,30 @@ import { fileURLToPath } from 'node:url'
 
 const PREVIEW_PORT = 4180
 const APP_URL = `http://localhost:${PREVIEW_PORT}/`
-const REPORT_URL = 'https://www.raidbots.com/reports/jk6WmLFEnBpEqWueDkyRqA'
+const RAID_URL = 'https://www.raidbots.com/simbot/report/6PTZ7TjgU8PdxJhZ97bMUa'
+const MPLUS_URL = 'https://www.raidbots.com/simbot/report/a8URThoNZqEXDW3tBtavHq'
+const TOPGEAR_URL = 'https://www.raidbots.com/simbot/report/k3vroAKe6QvF5gN4GeCVAq'
+const EXPANDED_DUNGEON = 'Altar of Fangs'
 
 const fixture = (name: string) => readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), 'utf8')
-const RAIDBOTS = fixture('raidbots-jk6WmLFEnBpEqWueDkyRqA.json')
-const LOOT_TABLE = fixture('loot-table-1320-262.json')
+const RAID = fixture('raidbots-6PTZ7TjgU8PdxJhZ97bMUa.json')
+const MPLUS = fixture('raidbots-a8URThoNZqEXDW3tBtavHq.json')
+const TOPGEAR = fixture('topgear-k3vroAKe6QvF5gN4GeCVAq.json')
+const LOOT_TABLES: Record<string, string> = {
+  '1320': fixture('loot-table-1320-62.json'),
+  '-1': fixture('loot-table--1-62.json'),
+}
 
 async function fulfillFromFixtures(route: Route) {
   const path = new URL(route.request().url()).pathname
   const json = (body: string) => route.fulfill({ status: 200, contentType: 'application/json', body })
-  if (path.includes('/raidbots/')) return json(RAIDBOTS)
-  if (path.includes('/loot-table/')) return json(LOOT_TABLE)
-  if (path.includes('/topgear/')) return route.fulfill({ status: 400, contentType: 'application/json', body: '{"error":"unsupported_report"}' })
+  if (path.includes('/raidbots/')) return json(path.includes('a8URT') ? MPLUS : RAID)
+  if (path.includes('/loot-table/')) {
+    const instanceId = decodeURIComponent(path.split('/loot-table/')[1] ?? '')
+    const table = LOOT_TABLES[instanceId]
+    return table ? json(table) : route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"no fixture"}' })
+  }
+  if (path.includes('/topgear/')) return json(TOPGEAR)
   return route.continue()
 }
 
@@ -39,20 +53,34 @@ async function waitForServer(url: string, tries = 40): Promise<void> {
   throw new Error(`preview server never came up at ${url}`)
 }
 
-async function loadReport(page: Page) {
-  await page.fill('#report-url', REPORT_URL)
+async function addReport(page: Page, url: string, expectedLines: number) {
+  await page.fill('#report-url', url)
   await page.waitForSelector('text=Detected:')
-  await page.click('text=Fetch report')
-  await page.waitForSelector('text=items parsed', { timeout: 15000 })
-  await page.waitForSelector('.boss-row', { timeout: 15000 })
+  await page.locator('.fetch-button-group button').click()
+  await page.waitForFunction((n) => document.querySelectorAll('.report-line').length === n, expectedLines, { timeout: 15000 })
+}
+
+async function loadReports(page: Page) {
+  await addReport(page, RAID_URL, 1)
+  await addReport(page, MPLUS_URL, 2)
+  await page.fill('#topgear-url', TOPGEAR_URL)
+  await page.waitForSelector('text=Vault item:', { timeout: 15000 })
+  await page.waitForFunction(() => !document.body.textContent?.includes('Loading loot tables'), null, { timeout: 15000 })
+  await page.waitForSelector('.boss-section >> nth=1')
+}
+
+async function expandDungeon(page: Page) {
+  await page.locator('.boss-section').nth(1).locator('.boss-row__summary', { hasText: EXPANDED_DUNGEON }).click()
+  await page.waitForSelector('.boss-row--open .loot-item-table tbody tr', { timeout: 10000 })
 }
 
 /**
  * Real layout assertions (replacing a bare "no horizontal scroll" check): every state
  * button's bounding box sits inside both the viewport and its own card, boss-name
  * elements never overflow their own box (they should wrap, not clip/truncate), and no
- * element inside the run-settings panel exceeds that panel's edges. Throws with every
- * violation listed when any check fails.
+ * element inside the Reports or Run settings panels exceeds that panel's edges. Also
+ * checks the multi-report structure is really on screen (two parse lines, two boss-list
+ * sections, 8 dungeon rows). Throws with every violation listed when any check fails.
  */
 async function assertLayout(page: Page, label: string) {
   const result = await page.evaluate(() => {
@@ -80,17 +108,26 @@ async function assertLayout(page: Page, label: string) {
       }
     })
 
-    const runSettingsPanel = document.querySelector('.run-settings-row')?.closest('.panel')
-    if (runSettingsPanel) {
-      const panelRect = runSettingsPanel.getBoundingClientRect()
-      runSettingsPanel.querySelectorAll('*').forEach((el) => {
+    const panels = [document.querySelector('.report-list')?.closest('.panel'), document.querySelector('.run-settings-row')?.closest('.panel')]
+    for (const panel of panels) {
+      if (!panel) continue
+      const panelRect = panel.getBoundingClientRect()
+      panel.querySelectorAll('*').forEach((el) => {
         const rect = el.getBoundingClientRect()
         if (rect.width === 0 && rect.height === 0) return
         if (rect.right > panelRect.right + EPS || rect.left < panelRect.left - EPS) {
-          problems.push(`run-settings element exceeds its card: <${el.tagName.toLowerCase()}> right=${rect.right.toFixed(1)} panelRight=${panelRect.right.toFixed(1)}`)
+          problems.push(`panel element exceeds its card: <${el.tagName.toLowerCase()} class="${el.className}"> right=${rect.right.toFixed(1)} panelRight=${panelRect.right.toFixed(1)}`)
         }
       })
     }
+
+    const reportLines = document.querySelectorAll('.report-line').length
+    if (reportLines !== 2) problems.push(`expected 2 report parse lines, found ${reportLines}`)
+    const sections = [...document.querySelectorAll('.boss-section')]
+    if (sections.length !== 2) problems.push(`expected 2 boss-list sections, found ${sections.length}`)
+    const dungeonRows = sections[1]?.querySelectorAll('.boss-row').length ?? 0
+    if (dungeonRows !== 8) problems.push(`expected 8 dungeon rows in the Mythic+ section, found ${dungeonRows}`)
+    if (document.body.textContent?.includes('Weekly10')) problems.push('"Weekly10" rendered somewhere')
 
     return { problems, docWidth: document.documentElement.scrollWidth, winWidth: window.innerWidth }
   })
@@ -105,10 +142,22 @@ async function assertLayout(page: Page, label: string) {
 }
 
 async function priceTheRoll(page: Page) {
-  await page.click('summary:has-text("Advanced")')
-  await page.fill('#manual-vault-gain', '2.4')
   await page.click('text=Price my roll')
   await page.waitForSelector('.rec-card', { timeout: 10000 })
+  await page.waitForSelector('.priced-section .deploy-table tbody tr')
+}
+
+async function logCard(page: Page, label: string) {
+  const card = await page.evaluate(() => {
+    const txt = (el: Element | null | undefined) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim()
+    const c = document.querySelector('.rec-card')
+    return {
+      headline: txt(c?.querySelector('.rec-card__headline')),
+      compare: [...(c?.querySelectorAll('.rec-card__compare-option') ?? [])].map((o) => txt(o)),
+      notes: [...(c?.querySelectorAll('.rec-card__note, .rec-card__second') ?? [])].map((n) => txt(n)),
+    }
+  })
+  console.log(`card (${label}):`, JSON.stringify(card))
 }
 
 async function shootDesktop(page: Page) {
@@ -120,23 +169,20 @@ async function shootDesktop(page: Page) {
   await page.screenshot({ path: 'design/single-page-empty.png', fullPage: true })
   console.log('captured: single-page-empty.png')
 
-  await loadReport(page)
-  // Expand the first boss row so its inline loot table + state controls show.
-  await page.locator('.boss-row__summary').first().click()
-  await page.waitForSelector('.boss-row--open .loot-item-table tbody tr', { timeout: 10000 })
-  await assertLayout(page, '1280px, loaded')
+  await loadReports(page)
+  await expandDungeon(page)
+  await assertLayout(page, '1280px, loaded, dungeon expanded')
   await page.screenshot({ path: 'design/single-page-loaded.png', fullPage: true })
   console.log('captured: single-page-loaded.png')
 
-  // Give the vault comparison something to price against via a manual vault gain.
   await priceTheRoll(page)
-  await page.waitForSelector('.priced-section .deploy-table tbody tr')
   await assertLayout(page, '1280px, priced')
+  await logCard(page, '1280px')
   await page.screenshot({ path: 'design/single-page-priced.png', fullPage: true })
   console.log('captured: single-page-priced.png')
 
-  // Now make it stale: toggle an expected-kill checkbox. The snapshot dims + a re-price note appears.
-  await page.locator('.boss-row__kill input[type="checkbox"]').nth(1).click()
+  // Now make it stale: untick a dungeon's "I will run this key". The snapshot dims + a re-price note appears.
+  await page.locator('.boss-section').nth(1).locator('.boss-row__kill input[type="checkbox"]').nth(1).click()
   await page.waitForSelector('.reprice-note', { timeout: 5000 })
   await page.waitForSelector('.priced-section--stale')
   await page.screenshot({ path: 'design/single-page-stale.png', fullPage: true })
@@ -148,15 +194,13 @@ async function shootMobile(page: Page) {
   await page.route((url) => url.href.includes('/raidbots/') || url.href.includes('/loot-table/') || url.href.includes('/topgear/'), fulfillFromFixtures)
   await page.goto(APP_URL)
   await page.waitForSelector('#report-url')
-  await loadReport(page)
-  await page.locator('.boss-row__summary').first().click()
-  await page.waitForSelector('.boss-row--open')
-  await assertLayout(page, '390px, loaded')
+  await loadReports(page)
+  await expandDungeon(page)
+  await assertLayout(page, '390px, loaded, dungeon expanded')
   await page.screenshot({ path: 'design/single-page-mobile-390.png', fullPage: true })
   console.log('captured: single-page-mobile-390.png')
 
   await priceTheRoll(page)
-  await page.waitForSelector('.priced-section .deploy-table tbody tr')
   await assertLayout(page, '390px, priced')
   await page.screenshot({ path: 'design/single-page-priced-mobile-390.png', fullPage: true })
   console.log('captured: single-page-priced-mobile-390.png')
@@ -170,9 +214,12 @@ async function main() {
   try {
     await waitForServer(APP_URL)
     const browser = await chromium.launch()
-    const desktop = await browser.newPage()
+    // tsx/esbuild wraps named closures in __name(); page.evaluate bodies need it defined in the page.
+    const context = await browser.newContext()
+    await context.addInitScript('window.__name = (f) => f')
+    const desktop = await context.newPage()
     await shootDesktop(desktop)
-    const mobile = await browser.newPage()
+    const mobile = await context.newPage()
     await shootMobile(mobile)
     await browser.close()
     console.log('\nAll single-page screenshots captured.')

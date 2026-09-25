@@ -1,6 +1,7 @@
 import { resolveTierEncounters } from '../lookup/tierResolve'
 import { assertSupportedContentType, type DetectedContentType } from './contentType'
-import type { EncounterItemsLookup, NormalizedItem, NormalizedReport, Role } from '../types'
+import { maxUpgradeWarning, parseTrackInfo, type RaidbotsDifficultyOverride, type RaidbotsUpgradeInfo } from './track'
+import type { EncounterItemsLookup, NormalizedItem, NormalizedReport, Role, TargetKind } from '../types'
 
 export class UnsupportedReportError extends Error {}
 
@@ -16,7 +17,9 @@ export type RaidbotsItemLibraryEntry = {
   dropLevel?: number
   inventoryType?: number
   offSpecItem?: boolean
-  upgrade?: { fullName?: string }
+  upgrade?: RaidbotsUpgradeInfo
+  /** Per-entry copy of the report's droptimizer settings; `difficulty` carries the M+ key-level object (see track.ts). */
+  overrides?: { difficulty?: RaidbotsDifficultyOverride | string; itemLevelOverride?: number }
   /** Present on tier-set items (Raidbots' own "set information"); used to identify tier items for the learned tier cache. */
   itemSetId?: number
   sources?: Array<{ instanceId: number; encounterId: number }>
@@ -63,6 +66,8 @@ export type RaidbotsRawReport = {
           instance: number
           difficulty: string
           lootSpecId?: number
+          /** Bonus id of the upgrade step simmed (e.g. 12854 = Myth 6/6). Informational -- the step itself is read from itemLibrary[].upgrade. */
+          upgradeLevel?: number
         }
       }
       itemLibrary: RaidbotsItemLibraryEntry[]
@@ -171,12 +176,65 @@ export function normalizeRaidbotsReport(
 
   const instanceName = instanceEntry?.name ?? fallbackLookup?.instanceNames.get(instanceId)
 
+  // Mythic+ droptimizers use the aggregate "Mythic+ Dungeons" instance (-1, type
+  // "mplus-chest"): every profileset row is "-1/-1/...", so the dungeon is only recoverable
+  // by joining the row's item to its sources (see dungeonForItem). Each dungeon becomes one
+  // roll target keyed by its instance id -- the same ids `/loot-table/-1` returns as
+  // pseudo-encounters -- because an end-of-key roll draws from the whole dungeon's table.
+  const targetKind: TargetKind = contentType === 'dungeon' ? 'mplus' : 'raid'
+  const MPLUS_AGGREGATE_INSTANCE_ID = -1
+  const dungeonNameById = new Map<number, string>()
+  for (const enc of raw.simbot.meta.instanceLibrary.find((i) => i.id === MPLUS_AGGREGATE_INSTANCE_ID)?.encounters ?? []) {
+    dungeonNameById.set(enc.id, enc.name)
+  }
+  const dungeonName = (dungeonId: number) =>
+    dungeonNameById.get(dungeonId) ??
+    raw.simbot.meta.instanceLibrary.find((i) => i.id === dungeonId)?.name ??
+    fallbackLookup?.instanceNames.get(dungeonId) ??
+    `Dungeon ${dungeonId}`
+
+  /** The M+ aggregate source (`{instanceId: -1, encounterId: <dungeon id>}`) of an item, from the report's own itemLibrary first, then encounter-items.json. */
+  const dungeonForItem = (itemId: number): number | undefined => {
+    const sources = itemLibraryById.get(itemId)?.sources ?? fallbackLookup?.itemSources.get(itemId) ?? []
+    return sources.find((s) => s.instanceId === MPLUS_AGGREGATE_INSTANCE_ID)?.encounterId
+  }
+
+  const itemName = (itemId: number) => itemLibraryById.get(itemId)?.name ?? fallbackLookup?.itemMeta.get(itemId)?.name
+
   let trashExcluded = 0
   let unmappedCount = 0
   const items: NormalizedItem[] = []
 
   for (const result of raw.sim.profilesets.results) {
     const parsed = parseProfilesetName(result.name)
+
+    if (targetKind === 'mplus') {
+      // A single-dungeon report carries the real dungeon id in the row; the aggregate
+      // report needs the join. Catalyst rows are attributed by the SOURCE item (the one
+      // that actually drops), not the tier piece it converts into.
+      const dungeonId = parsed.instanceId > 0 ? parsed.instanceId : dungeonForItem(parsed.catalystSourceId ?? parsed.itemId)
+      if (dungeonId === undefined) {
+        unmappedCount++
+        continue
+      }
+      const delta = result.mean - baseline
+      items.push({
+        itemId: parsed.itemId,
+        name: itemName(parsed.itemId) ?? `Item ${parsed.itemId}`,
+        slot: parsed.slot || undefined,
+        encounterId: dungeonId,
+        encounterName: dungeonName(dungeonId),
+        instanceId: MPLUS_AGGREGATE_INSTANCE_ID,
+        ilvl: parsed.ilvl,
+        delta,
+        pct: (delta / baseline) * 100,
+        catalystSourceId: parsed.catalystSourceId,
+        catalystSourceName: parsed.catalystSourceId !== undefined ? itemName(parsed.catalystSourceId) : undefined,
+        offSpec: itemLibraryById.get(parsed.itemId)?.offSpecItem,
+        meanError: result.mean_error,
+      })
+      continue
+    }
 
     // Real trash rows keep a positive instance id (e.g. "1320/-97/...") -- only the
     // encounter id is the "Trash Drop" sentinel.
@@ -213,6 +271,7 @@ export function normalizeRaidbotsReport(
           delta,
           pct: (delta / baseline) * 100,
           catalystSourceId: parsed.catalystSourceId,
+          catalystSourceName: parsed.catalystSourceId !== undefined ? itemName(parsed.catalystSourceId) : undefined,
           offSpec: libraryEntry?.offSpecItem,
           viaCurio,
           tierSlot: parsed.slot || undefined,
@@ -239,6 +298,7 @@ export function normalizeRaidbotsReport(
       delta,
       pct: (delta / baseline) * 100,
       catalystSourceId: parsed.catalystSourceId,
+      catalystSourceName: parsed.catalystSourceId !== undefined ? itemName(parsed.catalystSourceId) : undefined,
       offSpec: libraryEntry?.offSpecItem,
       meanError: result.mean_error,
     })
@@ -250,6 +310,10 @@ export function normalizeRaidbotsReport(
   if (unmappedCount > 0) {
     warnings.push(`${unmappedCount} items had no encounter mapping`)
   }
+
+  const track = parseTrackInfo(raw.simbot.meta.itemLibrary)
+  const upgradeWarning = maxUpgradeWarning(track)
+  if (upgradeWarning) warnings.push(upgradeWarning)
 
   const { realm, region } = parseCharacterLocation(raw.simbot.input)
 
@@ -266,10 +330,14 @@ export function normalizeRaidbotsReport(
     contentType,
     difficulty,
     baseline,
-    instanceId,
-    instanceName,
+    // Every M+ target is a pseudo-encounter of the aggregate instance, so the loot table to
+    // join against is always `/loot-table/-1` -- even for a single-dungeon report.
+    instanceId: targetKind === 'mplus' ? MPLUS_AGGREGATE_INSTANCE_ID : instanceId,
+    instanceName: targetKind === 'mplus' ? dungeonName(MPLUS_AGGREGATE_INSTANCE_ID) : instanceName,
     items,
     warnings,
     lootSpecId: raw.simbot.meta.rawFormData.droptimizer.lootSpecId,
+    targetKind,
+    track,
   }
 }

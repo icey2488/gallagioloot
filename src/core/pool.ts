@@ -1,6 +1,7 @@
 import type { LootTableEncounter, LootTableItem, NormalizedItem, NormalizedReport } from '../types'
 import type { BossEval, KnockoutState, PoolEntry, Settings } from './types'
 import { rollsToTarget } from './vault'
+import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from './targets'
 
 const CURIO_NOTE = 'Curio counts as one item; value assumes you pick your best missing tier slot'
 const CURIO_NAME = 'Curio (any missing tier slot)'
@@ -142,9 +143,14 @@ function applyOwnership(entry: PoolEntry, ownership: 'none' | 'owned' | 'rolled'
  * false, no phantom entries) -- existing callers are unaffected.
  */
 export function buildBossPools(report: NormalizedReport, knockout: KnockoutState, settings: Settings, lootTable?: LootTableEncounter[]): BossEval[] {
-  const difficultyMismatch = knockout.difficulty !== report.difficulty
+  const expectedDifficulty = knockoutDifficulty(report)
+  const difficultyMismatch = knockout.difficulty !== expectedDifficulty
   const knockoutEntries = difficultyMismatch ? [] : knockout.entries
+  const expectedTargets = settings.expectedTargets ? new Set(settings.expectedTargets) : null
   const expectedKills = settings.expectedKills ? new Set(settings.expectedKills) : null
+  const kind = targetKindOf(report)
+  const label = difficultyLabel(report)
+  const keyLevel = kind === 'mplus' ? keyLevelOf(report) : undefined
 
   const groups = new Map<number, NormalizedItem[]>()
   for (const item of report.items) {
@@ -172,7 +178,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     const notes: string[] = []
     if (difficultyMismatch) {
       notes.push(
-        `Knockout state is for difficulty "${knockout.difficulty}" but report is for "${report.difficulty}"; knockout state not applied`
+        `Knockout state is for difficulty "${knockout.difficulty}" but report is for "${expectedDifficulty}"; knockout state not applied`
       )
     }
 
@@ -192,9 +198,20 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     // mark a catalyst conversion via `catalystSourceId` on an otherwise-normal row rather
     // than `viaCurio` (see normalize/raidbots.ts), so without a loot table there is no way
     // to tell a tier piece is one of several curio options rather than a direct drop.
+    //
+    // Catalyst rows (`catalystSourceId` set) are the tier piece a dropped item converts
+    // into. A roll yields the SOURCE item, never the tier piece, so a catalyst row is never a
+    // pool entry of its own -- it only credits its source item: value = max(own delta,
+    // catalyzed delta). Same rule for raid and Mythic+.
+    const catalystBySource = new Map<number, NormalizedItem>()
     const directByItemId = new Map<number, NormalizedItem[]>()
     const curioRows: NormalizedItem[] = []
     for (const item of items) {
+      if (item.catalystSourceId !== undefined) {
+        const existing = catalystBySource.get(item.catalystSourceId)
+        if (!existing || item.delta > existing.delta) catalystBySource.set(item.catalystSourceId, item)
+        continue
+      }
       const isCurio = lootTable ? lootCurioById.has(item.itemId) : item.viaCurio
       if (isCurio) {
         curioRows.push(item)
@@ -208,17 +225,37 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     let notInSimReportCount = 0
     let notInLootTableCount = 0
 
-    const directItemIds = new Set<number>([...directByItemId.keys(), ...lootDirectById.keys()])
+    const directItemIds = new Set<number>([...directByItemId.keys(), ...lootDirectById.keys(), ...catalystBySource.keys()])
     for (const itemId of directItemIds) {
       const rows = directByItemId.get(itemId)
       const lootRow = lootDirectById.get(itemId)
+      const catalystRow = catalystBySource.get(itemId)
       if (lootTable && !lootRow) notInLootTableCount++
 
       const specSpecific = lootRow?.specSpecific ?? false
       let entry: PoolEntry
-      if (rows) {
-        const best = bestByDelta(rows)
-        entry = toEntry(`item:${itemId}`, [itemId], best, best.tierSlot ? 'tier-token' : 'item', report.baseline, specSpecific)
+      if (rows || catalystRow) {
+        const own = rows ? bestByDelta(rows) : undefined
+        const ownValue = Math.max(own?.delta ?? 0, 0)
+        const catalyzedWins = !!catalystRow && catalystRow.delta > ownValue
+        const valueRow: NormalizedItem = catalyzedWins
+          ? {
+              ...catalystRow!,
+              itemId,
+              name: own?.name ?? catalystRow!.catalystSourceName ?? lootRow?.name ?? `Item ${itemId}`,
+              tierSlot: own?.tierSlot,
+            }
+          : own ?? { ...catalystRow!, itemId, name: catalystRow!.catalystSourceName ?? lootRow?.name ?? `Item ${itemId}`, delta: 0, tierSlot: undefined, meanError: undefined }
+        entry = toEntry(`item:${itemId}`, [itemId], valueRow, own?.tierSlot ? 'tier-token' : 'item', report.baseline, specSpecific)
+        if (catalyzedWins) {
+          entry.catalyst = {
+            itemId: catalystRow!.itemId,
+            name: catalystRow!.name,
+            tierSlot: catalystRow!.slot,
+            pct: entry.pct,
+            ownPct: report.baseline > 0 ? (ownValue / report.baseline) * 100 : 0,
+          }
+        }
       } else {
         // lootRow must be defined here -- itemId came from the union of both key sets.
         notInSimReportCount++
@@ -310,13 +347,19 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       notes.push(`${notInLootTableCount} item${notInLootTableCount === 1 ? '' : 's'} in sim report but not in this boss's loot table`)
     }
 
-    const inExpectedKills = !expectedKills || expectedKills.has(encounterId)
+    const key = targetKey(report, encounterId)
+    const inExpectedKills = expectedTargets ? expectedTargets.has(key) : !expectedKills || expectedKills.has(encounterId)
     if (!inExpectedKills) notes.push('not in expected kills this week')
 
     bossEvals.push({
       encounterId,
       encounterName: items[0]?.encounterName ?? lootNameByEncounter.get(encounterId) ?? `Encounter ${encounterId}`,
       instanceId: items[0]?.instanceId ?? report.instanceId ?? 0,
+      targetKey: key,
+      kind,
+      difficultyLabel: label,
+      keyLevel,
+      baseline: report.baseline,
       pool,
       remaining,
       rollsSpent: effectiveRollsSpent,

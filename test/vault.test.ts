@@ -137,9 +137,17 @@ function makeReport(overrides: Partial<NormalizedReport> = {}): NormalizedReport
   }
 }
 
-function makeRecommendation(totalExpectedGainPct: number): Recommendation {
+/** `allocated`: the boss evals `recommend()` would spend this week's rolls on (compareVault only credits saved rolls for those). */
+function makeRecommendation(totalExpectedGainPct: number, allocated: BossEval[] = []): Recommendation {
   return {
-    allocations: [],
+    allocations: allocated.map((b) => ({
+      encounterId: b.encounterId,
+      encounterName: b.encounterName,
+      targetKey: b.targetKey,
+      rolls: 1,
+      expectedGain: b.ev,
+      expectedGainPct: b.evPct,
+    })),
     totalExpectedGainPct,
     fallback: null,
     assumptions: [],
@@ -203,7 +211,7 @@ describe('compareVault', () => {
     expect(decision.explanation).toContain('Thalassian Tokens of Merit')
   })
 
-  it('computes savedRolls via rollsToTarget when the vault item matches a PoolEntry by itemId, capped at the pool size', () => {
+  it('computes savedRolls via rollsToTarget when the vault item matches a PoolEntry by itemId in an allocated target, capped at the pool size', () => {
     const targetEntry = makeEntry('item:999', 4000, { itemIds: [999] })
     const otherEntry = makeEntry('item:1', 1000, { itemIds: [1] })
     const vaultBoss = makeBoss(2888, "Nek'zali the Soulcoiler", [targetEntry, otherEntry], 0.2)
@@ -212,7 +220,7 @@ describe('compareVault', () => {
     const decision = compareVault({
       vaultItem: { name: 'Target Item', gainPct: 3.0, itemId: 999 },
       bossEvals: [vaultBoss, altBoss],
-      recommendation: makeRecommendation(6.0),
+      recommendation: makeRecommendation(6.0, [vaultBoss]),
       settings: SETTINGS,
       report: makeReport(),
     })
@@ -223,6 +231,26 @@ describe('compareVault', () => {
     expect(decision.savedRolls).toBeCloseTo(expectedSavedRolls, 10)
     // altRollEvPct excludes the vault item's own boss (2888) -- picks 2887's evPct (6%).
     expect(decision.vaultItemGainPct).toBeCloseTo(3.0 + expectedSavedRolls * 6.0, 10)
+  })
+
+  it("credits no saved rolls when the vault item's target isn't one the recommendation allocates, and says why", () => {
+    const targetEntry = makeEntry('item:999', 4000, { itemIds: [999] })
+    const otherEntry = makeEntry('item:1', 1000, { itemIds: [1] })
+    const vaultBoss = makeBoss(2888, "Nek'zali the Soulcoiler", [targetEntry, otherEntry], 0.2)
+    const altBoss = makeBoss(2887, 'The Twin Fangs', [makeEntry('item:2', 6000, { itemIds: [2] })], 0.2)
+
+    const decision = compareVault({
+      vaultItem: { name: 'Target Item', gainPct: 3.0, itemId: 999 },
+      bossEvals: [vaultBoss, altBoss],
+      recommendation: makeRecommendation(6.0, [altBoss]),
+      settings: SETTINGS,
+      report: makeReport(),
+    })
+
+    expect(decision.savedRolls).toBe(0)
+    expect(decision.vaultItemGainPct).toBe(3.0)
+    expect(decision.savedRollsNote).toBe(`Nek'zali the Soulcoiler isn't a target you'd roll this week, so taking "Target Item" saves no rolls.`)
+    expect(decision.notes).toContain(decision.savedRollsNote)
   })
 
   it('warns and assumes 0 saved rolls when the vault item pool cannot be identified', () => {

@@ -344,6 +344,10 @@ describe('normalizeRaidbotsReport', () => {
     const result = normalizeRaidbotsReport('abc', report)
     expect(result.contentType).toBe('dungeon')
     expect(result.items).toHaveLength(1)
-    expect(result.items[0].encounterName).toBe('Kagani Skysworn')
+    // An end-of-key roll draws from the whole dungeon's table, so the roll target is the
+    // dungeon (a pseudo-encounter of the M+ aggregate instance -1), not the boss that drops it.
+    expect(result.targetKind).toBe('mplus')
+    expect(result.instanceId).toBe(-1)
+    expect(result.items[0]).toMatchObject({ encounterId: 1322, encounterName: 'Altar of Fangs', instanceId: -1 })
   })
 })

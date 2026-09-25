@@ -1,23 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/types'
-import { addEntry, createState, deserialize, removeEntry, serialize, setRollsSpent, storageKey } from '@engine/core/knockout'
+import { addEntry, characterKey, createStateFor, deserialize, removeEntry, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
 import { recommend } from '@engine/core/rank'
 import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
+import { checkCandidate, checkReportSet, DEFAULT_DRIFT_LIMITS, type DriftLimits } from '@engine/core/reportSet'
+import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from '@engine/core/targets'
 import type { BossEval, KnockoutState, Settings, VaultItemInput } from '@engine/core/types'
 import { detectSource, friendlyReportMismatch, friendlyUnsupportedContent, SOURCE_LABELS, type ReportSource } from './lib/urlDetect'
 import { fetchLootTable, fetchReport, fetchTopGear, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData, type CardData } from './lib/cardData'
-import { formatDifficulty, isRecognizedDifficulty } from './lib/format'
+import { isRecognizedDifficulty } from './lib/format'
 import {
   LocalStorageAdapter,
   loadLastReportUrl,
   loadLastTopGearUrl,
+  loadReportSet,
   loadSettings,
   loadVoidcoreCount,
   migrateLegacyLocationKey,
   saveLastReportUrl,
   saveLastTopGearUrl,
+  saveReportSet,
   saveSettings,
   saveVoidcoreCount,
 } from './lib/storage'
@@ -27,7 +31,7 @@ import { Tooltip } from './components/Tooltip'
 import { ChipStack } from './components/ChipStack'
 import { LootSpecPicker } from './components/LootSpecPicker'
 import { RecommendationCard } from './components/RecommendationCard'
-import { BossList, type ItemStateChange } from './components/BossList'
+import { BossList, type BossSection, type ItemStateChange } from './components/BossList'
 import { PricedDetail } from './components/PricedDetail'
 
 const storageAdapter = new LocalStorageAdapter()
@@ -37,16 +41,53 @@ type PricedSnapshot = {
   bossEvals: BossEval[]
 }
 
+/** One loaded report: the URL it came from and the knockout storage key its targets use. */
+type LoadedReport = {
+  url: string
+  source: ReportSource
+  report: NormalizedReport
+  stateKey: string
+}
+
+/** "The Venomous Abyss · Mythic" for a raid report; "Mythic+ (+10 Myth)" for the Mythic+ report. */
+function reportTitle(report: NormalizedReport): string {
+  if (targetKindOf(report) === 'mplus') {
+    const level = keyLevelOf(report)
+    const inner = [level !== undefined ? `+${level}` : undefined, report.track?.name].filter(Boolean).join(' ')
+    return inner ? `Mythic+ (${inner})` : 'Mythic+'
+  }
+  return `${report.instanceName ?? 'Unknown instance'} · ${difficultyLabel(report)}`
+}
+
+/** Key level / track / ilvl line under a report's parse line, e.g. "+10 and above · Myth track · drops at 318, simmed at 334 (Myth 6/6)". */
+function trackLine(report: NormalizedReport): string | null {
+  const t = report.track
+  if (!t) return null
+  const parts: string[] = []
+  if (targetKindOf(report) === 'mplus') {
+    const level = keyLevelOf(report)
+    if (level !== undefined) parts.push(`+${level} and above`)
+    if (t.name) parts.push(`${t.name} track`)
+    if (t.dropIlvl !== undefined && t.simmedIlvl !== undefined) parts.push(`drops at ${t.dropIlvl}, simmed at ${t.simmedIlvl}${t.upgradeFullName ? ` (${t.upgradeFullName})` : ''}`)
+  } else {
+    if (t.upgradeFullName) parts.push(t.upgradeFullName)
+    if (t.simmedIlvl !== undefined) parts.push(`simmed at ${t.simmedIlvl}`)
+  }
+  return parts.length ? parts.join(' · ') : null
+}
+
+const lootTableKey = (instanceId: number, lootSpecId: number) => `${instanceId}:${lootSpecId}`
+
 export default function App() {
   const [reportUrl, setReportUrl] = useState('')
-  const [report, setReport] = useState<NormalizedReport | null>(null)
+  const [loaded, setLoaded] = useState<LoadedReport[]>([])
   const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [loadError, setLoadError] = useState<string | null>(null)
-  const [mismatchWarning, setMismatchWarning] = useState<string | null>(null)
+  const [driftLimits, setDriftLimits] = useState<DriftLimits>(DEFAULT_DRIFT_LIMITS)
 
   const [rollsAvailable, setRollsAvailable] = useState<1 | 2>(1)
   const [thresholdPct, setThresholdPct] = useState(0.2)
-  const [expectedKillIds, setExpectedKillIds] = useState<Set<number>>(new Set())
+  const [expectedTargetKeys, setExpectedTargetKeys] = useState<Set<string>>(new Set())
   const [manualVaultGainPct, setManualVaultGainPct] = useState('')
 
   const [topGearUrl, setTopGearUrl] = useState('')
@@ -55,11 +96,12 @@ export default function App() {
   const [topGearError, setTopGearError] = useState<string | null>(null)
 
   const [voidcoreCount, setVoidcoreCount] = useState(0)
-  const [knockoutState, setKnockoutState] = useState<KnockoutState | null>(null)
+  // One knockout state per storage key: a raid difficulty, or the Mythic+ track.
+  const [knockoutStates, setKnockoutStates] = useState<Record<string, KnockoutState>>({})
   const [characterKeys, setCharacterKeys] = useState<string[]>([])
 
   const [lootSpecId, setLootSpecId] = useState<number | null>(null)
-  const [lootTable, setLootTable] = useState<LootTable | null>(null)
+  const [lootTables, setLootTables] = useState<Record<string, LootTable>>({})
   const [lootTableStatus, setLootTableStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [lootTableError, setLootTableError] = useState<string | null>(null)
 
@@ -75,37 +117,41 @@ export default function App() {
 
   const detectedSource: ReportSource | null = useMemo(() => detectSource(reportUrl), [reportUrl])
 
-  const bossList = useMemo(() => {
-    if (!report) return [] as Array<{ encounterId: number; encounterName: string }>
-    const seen = new Map<number, string>()
-    for (const item of report.items) {
-      if (item.encounterId < 0) continue
-      if (!seen.has(item.encounterId)) seen.set(item.encounterId, item.encounterName)
-    }
-    return [...seen.entries()].map(([encounterId, encounterName]) => ({ encounterId, encounterName }))
-  }, [report])
+  const reports = useMemo(() => loaded.map((l) => l.report), [loaded])
+  const primary = reports[0] ?? null
+  // Settings, Voidcores and the Top Gear URL persist under the first loaded report's key,
+  // exactly as they did when only one report could be loaded.
+  const currentKey = loaded[0]?.stateKey ?? null
 
-  const currentKey = report
-    ? storageKey({ character: report.character, realm: report.realm, region: report.region, difficulty: report.difficulty })
-    : null
+  const setCheck = useMemo(() => checkReportSet(reports, driftLimits), [reports, driftLimits])
 
   const settings: Settings = useMemo(
     () => ({
       thresholdPct,
       rollsAvailable,
       includeOffSpec: false,
-      expectedKills: bossList.length ? [...expectedKillIds] : undefined,
+      expectedTargets: loaded.length ? [...expectedTargetKeys] : undefined,
       lootSpecId: lootSpecId ?? undefined,
     }),
-    [thresholdPct, rollsAvailable, expectedKillIds, bossList, lootSpecId]
+    [thresholdPct, rollsAvailable, expectedTargetKeys, loaded.length, lootSpecId]
   )
 
-  const bossEvals = useMemo(
-    () => (report && knockoutState ? buildBossPools(report, knockoutState, settings, lootTable?.encounters) : []),
-    [report, knockoutState, settings, lootTable]
+  const sectionsData = useMemo(
+    () =>
+      loaded.map((l) => {
+        const lootTable = lootSpecId != null && l.report.instanceId !== undefined ? lootTables[lootTableKey(l.report.instanceId, lootSpecId)] ?? null : null
+        const state = knockoutStates[l.stateKey] ?? createStateFor(l.report)
+        return { loaded: l, lootTable, evals: buildBossPools(l.report, state, settings, lootTable?.encounters) }
+      }),
+    [loaded, lootTables, lootSpecId, knockoutStates, settings]
   )
 
-  const recommendation = useMemo(() => (report && bossEvals.length ? recommend(bossEvals, settings, report) : null), [report, bossEvals, settings])
+  const bossEvals = useMemo(() => sectionsData.flatMap((s) => s.evals), [sectionsData])
+
+  const recommendation = useMemo(
+    () => (reports.length && bossEvals.length && setCheck.errors.length === 0 ? recommend(bossEvals, settings, reports) : null),
+    [reports, bossEvals, settings, setCheck]
+  )
 
   const topGearVaultItem = useMemo(() => (topGearResult ? vaultItemFromTopGear(topGearResult) : null), [topGearResult])
 
@@ -122,9 +168,9 @@ export default function App() {
   }, [manualVaultGainPct, topGearVaultItem])
 
   const vaultDecision = useMemo(() => {
-    if (!report || !recommendation || !vaultItemInput) return null
-    return compareVault({ vaultItem: vaultItemInput, bossEvals, recommendation, settings, report })
-  }, [report, recommendation, vaultItemInput, bossEvals, settings])
+    if (!primary || !recommendation || !vaultItemInput) return null
+    return compareVault({ vaultItem: vaultItemInput, bossEvals, recommendation, settings, report: primary })
+  }, [primary, recommendation, vaultItemInput, bossEvals, settings])
 
   const cardData = useMemo(() => {
     if (!recommendation) return null
@@ -137,29 +183,33 @@ export default function App() {
     })
   }, [recommendation, bossEvals, vaultDecision, vaultItemInput, topGearVaultItem])
 
-  const notInReportCount = useMemo(() => {
-    if (!report || !lootTable) return null
-    return bossEvals.reduce((sum, b) => sum + b.pool.filter((p) => p.notInSimReport).length, 0)
-  }, [report, lootTable, bossEvals])
-
   // Mark the priced snapshot stale whenever the live pricing inputs change (after the first
   // price). The button press itself changes none of these deps, so it never trips this.
   useEffect(() => {
     if (hasPricedRef.current) setStale(true)
   }, [bossEvals, recommendation, vaultDecision])
 
+  // One loot table per distinct instance among the loaded reports (the raid instance(s) and
+  // the Mythic+ aggregate, -1, whose pseudo-encounters are the dungeons).
+  const instanceIdsKey = [...new Set(reports.map((r) => r.instanceId).filter((id): id is number => id !== undefined))].join(',')
   useEffect(() => {
-    if (!report?.instanceId || lootSpecId == null) {
-      setLootTable(null)
-      return
-    }
+    if (lootSpecId == null || !instanceIdsKey) return
+    const missing = instanceIdsKey
+      .split(',')
+      .map(Number)
+      .filter((id) => !lootTables[lootTableKey(id, lootSpecId)])
+    if (missing.length === 0) return
     let cancelled = false
     setLootTableStatus('loading')
     setLootTableError(null)
-    fetchLootTable(report.instanceId, lootSpecId)
-      .then((table) => {
+    Promise.all(missing.map((id) => fetchLootTable(id, lootSpecId).then((table) => [id, table] as const)))
+      .then((results) => {
         if (cancelled) return
-        setLootTable(table)
+        setLootTables((prev) => {
+          const next = { ...prev }
+          for (const [id, table] of results) next[lootTableKey(id, lootSpecId)] = table
+          return next
+        })
         setLootTableStatus('idle')
       })
       .catch((e) => {
@@ -170,7 +220,8 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [report?.instanceId, lootSpecId])
+    // lootTables is read, not a dependency: a fetched table must not re-trigger this effect.
+  }, [instanceIdsKey, lootSpecId])
 
   useEffect(() => {
     const trimmed = topGearUrl.trim()
@@ -222,126 +273,169 @@ export default function App() {
   }, [currentKey, topGearUrl])
 
   useEffect(() => {
-    if (!currentKey || !knockoutState) return
-    storageAdapter.save(currentKey, knockoutState)
-  }, [currentKey, knockoutState])
+    if (!primary) return
+    saveReportSet(characterKey(primary), loaded.map((l) => l.url))
+  }, [primary, loaded])
+
+  useEffect(() => {
+    for (const [key, state] of Object.entries(knockoutStates)) void storageAdapter.save(key, state)
+  }, [knockoutStates])
 
   // Must stay after the save effect above: list() reads what save() just wrote, so the
   // first-loaded character shows up in the switcher immediately.
   useEffect(() => {
     storageAdapter.list().then(setCharacterKeys)
-  }, [currentKey, knockoutState])
+  }, [currentKey, knockoutStates])
 
-  async function loadReport(url: string, source: ReportSource) {
+  function invalidatePriced() {
+    hasPricedRef.current = false
+    setPriced(null)
+    setStale(false)
+  }
+
+  /**
+   * Fetches a report and adds it to `existing` (replacing a report with the same id, so
+   * re-adding a URL refreshes it). Refuses -- leaving the set unchanged -- when the report is
+   * for another character or loot spec, duplicates a loaded target set, or drifts past the
+   * baseline limit (see checkCandidate). Returns the new set, or null when nothing was added.
+   */
+  async function loadReport(url: string, source: ReportSource, existing: LoadedReport[], opts: { fromSwitch?: boolean } = {}): Promise<LoadedReport[] | null> {
     setLoadStatus('loading')
     setLoadError(null)
     try {
       const rpt = await fetchReport(source, url)
-      const key = storageKey({ character: rpt.character, realm: rpt.realm, region: rpt.region, difficulty: rpt.difficulty })
+      const others = existing.filter((l) => l.report.reportId !== rpt.reportId)
+      const check = checkCandidate(
+        others.map((l) => l.report),
+        rpt,
+        driftLimits
+      )
+      if (check.errors.length > 0) {
+        setLoadError(check.errors.join(' '))
+        setLoadStatus('error')
+        return null
+      }
+
+      const key = storageKeyFor(rpt)
       // Migrate any pre-region/realm knockout state saved under an empty-location key.
       migrateLegacyLocationKey(key)
       const stored = await storageAdapter.load(key)
+      setKnockoutStates((prev) => (prev[key] ? prev : { ...prev, [key]: stored ?? createStateFor(rpt) }))
 
-      const mismatch = knockoutState && knockoutState.difficulty && knockoutState.difficulty !== rpt.difficulty
-      setMismatchWarning(
-        mismatch
-          ? `Stored knockout state was for difficulty "${knockoutState!.difficulty}"; this report is "${rpt.difficulty}". Starting fresh for this difficulty.`
-          : null
-      )
+      // A changed report set invalidates any priced snapshot.
+      invalidatePriced()
 
-      // A new report invalidates any priced snapshot.
-      hasPricedRef.current = false
-      setPriced(null)
-      setStale(false)
+      const entry: LoadedReport = { url, source, report: rpt, stateKey: key }
+      const replaceAt = existing.findIndex((l) => l.report.reportId === rpt.reportId)
+      const next = replaceAt >= 0 ? existing.map((l, i) => (i === replaceAt ? entry : l)) : [...existing, entry]
+      setLoaded(next)
 
-      setReport(rpt)
-      setKnockoutState(stored ?? createState(rpt.character, rpt.difficulty, rpt.realm, rpt.region))
-      setLootSpecId(rpt.lootSpecId ?? null)
+      // Every target the report simmed starts checked (expected kill / "I will run this key").
+      setExpectedTargetKeys((prev) => {
+        const keys = new Set(prev)
+        for (const item of rpt.items) if (item.encounterId >= 0) keys.add(targetKey(rpt, item.encounterId))
+        return keys
+      })
 
-      const storedSettings = loadSettings(key)
-      setThresholdPct(storedSettings.thresholdPct)
-      setRollsAvailable(storedSettings.rollsAvailable)
-      setVoidcoreCount(loadVoidcoreCount(key))
-
-      const seen = new Map<number, string>()
-      for (const item of rpt.items) {
-        if (item.encounterId < 0) continue
-        if (!seen.has(item.encounterId)) seen.set(item.encounterId, item.encounterName)
-      }
-      setExpectedKillIds(new Set(seen.keys()))
-      setManualVaultGainPct('')
-
-      if (!topGearUrl.trim()) {
-        const storedTopGearUrl = loadLastTopGearUrl(key)
-        setTopGearUrl(storedTopGearUrl ?? '')
-        if (!storedTopGearUrl) {
-          setTopGearResult(null)
-          setTopGearStatus('idle')
-          setTopGearError(null)
+      if (next[0] === entry) {
+        setLootSpecId(rpt.lootSpecId ?? null)
+        const storedSettings = loadSettings(key)
+        setThresholdPct(storedSettings.thresholdPct)
+        setRollsAvailable(storedSettings.rollsAvailable)
+        setVoidcoreCount(loadVoidcoreCount(key))
+        setManualVaultGainPct('')
+        if (opts.fromSwitch || !topGearUrl.trim()) {
+          const storedTopGearUrl = loadLastTopGearUrl(key)
+          setTopGearUrl(storedTopGearUrl ?? '')
+          if (!storedTopGearUrl) {
+            setTopGearResult(null)
+            setTopGearStatus('idle')
+            setTopGearError(null)
+          }
         }
       }
 
       saveLastReportUrl(key, url)
+      setReportUrl('')
       setLoadStatus('idle')
-      return true
+      return next
     } catch (e) {
       if (e instanceof ProxyRequestError && e.code === 'unsupported_content') {
         setLoadError(friendlyUnsupportedContent(e.contentType))
         setLoadStatus('error')
-        return false
+        return null
       }
       const message = e instanceof ProxyRequestError ? e.message : (e as Error).message
       setLoadError((e instanceof ProxyRequestError && friendlyReportMismatch(message, 'sim')) || message)
       setLoadStatus('error')
-      return false
+      return null
     }
   }
 
   function handleFetch() {
     if (!detectedSource) return
-    void loadReport(reportUrl, detectedSource)
+    void loadReport(reportUrl.trim(), detectedSource, loaded)
   }
 
-  function toggleExpectedKill(encounterId: number) {
-    setExpectedKillIds((prev) => {
+  function removeReport(reportId: string) {
+    const removed = loaded.find((l) => l.report.reportId === reportId)
+    if (!removed) return
+    const next = loaded.filter((l) => l.report.reportId !== reportId)
+    setLoaded(next)
+    invalidatePriced()
+    const removedKeys = new Set(removed.report.items.map((i) => targetKey(removed.report, i.encounterId)))
+    setExpectedTargetKeys((prev) => new Set([...prev].filter((k) => !removedKeys.has(k))))
+    if (next.length === 0) saveReportSet(characterKey(removed.report), [])
+  }
+
+  function toggleExpectedTarget(key: string) {
+    setExpectedTargetKeys((prev) => {
       const next = new Set(prev)
-      if (next.has(encounterId)) next.delete(encounterId)
-      else next.add(encounterId)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
   }
 
   async function switchCharacter(key: string) {
-    const url = loadLastReportUrl(key)
-    if (!url) return
-    const source = detectSource(url)
-    if (!source) return
-    setReportUrl(url)
-    await loadReport(url, source)
-  }
-
-  function handleSetItemState(change: ItemStateChange) {
-    if (!knockoutState) return
-    if (change.state === 'none') {
-      setKnockoutState(removeEntry(knockoutState, change.itemId))
-    } else {
-      setKnockoutState(
-        addEntry(knockoutState, {
-          itemId: change.itemId,
-          itemName: change.name,
-          encounterId: change.encounterId,
-          receivedAt: new Date().toISOString(),
-          lootSpecId: lootSpecId ?? undefined,
-          source: 'manual',
-          state: change.state,
-        })
-      )
+    const charKey = key.split(':').slice(0, 3).join(':')
+    const lastUrl = loadLastReportUrl(key)
+    const urls = loadReportSet(charKey)?.length ? loadReportSet(charKey)! : lastUrl ? [lastUrl] : []
+    if (urls.length === 0) return
+    setLoaded([])
+    setExpectedTargetKeys(new Set())
+    invalidatePriced()
+    let set: LoadedReport[] = []
+    for (const url of urls) {
+      const source = detectSource(url)
+      if (!source) continue
+      const next = await loadReport(url, source, set, { fromSwitch: set.length === 0 })
+      if (next) set = next
     }
   }
 
-  function handleSetRollsSpent(encounterId: number, count: number) {
-    if (!knockoutState) return
-    setKnockoutState(setRollsSpent(knockoutState, encounterId, count))
+  function handleSetItemState(change: ItemStateChange) {
+    setKnockoutStates((prev) => {
+      const state = prev[change.stateKey]
+      if (!state) return prev
+      const next =
+        change.state === 'none'
+          ? removeEntry(state, change.itemId)
+          : addEntry(state, {
+              itemId: change.itemId,
+              itemName: change.name,
+              encounterId: change.encounterId,
+              receivedAt: new Date().toISOString(),
+              lootSpecId: lootSpecId ?? undefined,
+              source: 'manual',
+              state: change.state,
+            })
+      return { ...prev, [change.stateKey]: next }
+    })
+  }
+
+  function handleSetRollsSpent(stateKey: string, encounterId: number, count: number) {
+    setKnockoutStates((prev) => (prev[stateKey] ? { ...prev, [stateKey]: setRollsSpent(prev[stateKey], encounterId, count) } : prev))
   }
 
   function handlePrice() {
@@ -351,38 +445,58 @@ export default function App() {
     setStale(false)
   }
 
+  /** One loaded state exports as a plain knockout state (as before); several export as `{ version: 2, states: [...] }`. */
   function handleExport() {
-    if (!knockoutState || !report) return
-    const blob = new Blob([serialize(knockoutState)], { type: 'application/json' })
+    if (!primary) return
+    const states = [...new Set(loaded.map((l) => l.stateKey))].map((k) => knockoutStates[k]).filter((s): s is KnockoutState => !!s)
+    if (states.length === 0) return
+    const body = states.length === 1 ? serialize(states[0]) : JSON.stringify({ version: 2, states })
+    const blob = new Blob([body], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `gallagioloot-knockout-${report.character}-${report.difficulty}.json`
+    a.download = states.length === 1 ? `gallagioloot-knockout-${primary.character}-${states[0].difficulty}.json` : `gallagioloot-knockout-${primary.character}.json`
     a.click()
     URL.revokeObjectURL(url)
   }
 
   function handleImport() {
     setImportError(null)
-    if (!report) return
+    if (!primary) return
     try {
-      const parsed = deserialize(importText)
-      if (parsed.difficulty !== report.difficulty) {
-        setImportError(`Imported state is for difficulty "${parsed.difficulty}" but this report is "${report.difficulty}"; not applied.`)
+      const parsed = JSON.parse(importText) as { states?: unknown[] } | null
+      const states = Array.isArray(parsed?.states) ? parsed!.states.map((s) => deserialize(JSON.stringify(s))) : [deserialize(importText)]
+      const updates: Record<string, KnockoutState> = {}
+      const unmatched: string[] = []
+      for (const state of states) {
+        const target = loaded.find((l) => knockoutDifficulty(l.report) === state.difficulty)
+        if (target) updates[target.stateKey] = state
+        else unmatched.push(state.difficulty)
+      }
+      if (Object.keys(updates).length === 0) {
+        setImportError(`Imported state is for difficulty "${unmatched.join('", "')}", which matches no loaded report; not applied.`)
         return
       }
-      setKnockoutState(parsed)
+      setKnockoutStates((prev) => ({ ...prev, ...updates }))
+      if (unmatched.length) setImportError(`Skipped state for "${unmatched.join('", "')}": no loaded report matches.`)
       setImportText('')
     } catch (e) {
       setImportError((e as Error).message)
     }
   }
 
-  const itemsParsed = report?.items.length ?? 0
-  const matchedCount = report?.items.filter((i) => i.encounterId >= 0).length ?? 0
-  const reconcileWarnings = report
-    ? [...report.warnings, ...(notInReportCount ? [`${notInReportCount} loot-table item${notInReportCount === 1 ? '' : 's'} not in the sim report (valued 0)`] : [])]
-    : []
+  const sections: BossSection[] = sectionsData.map((s) => {
+    const kind = targetKindOf(s.loaded.report)
+    return {
+      key: s.loaded.report.reportId,
+      title: reportTitle(s.loaded.report),
+      hint: kind === 'mplus' ? 'Check the keys you will run. One roll per completed key; a dungeon can take more than one.' : undefined,
+      kind,
+      stateKey: s.loaded.stateKey,
+      bossEvals: s.evals,
+      lootTable: s.lootTable,
+    }
+  })
 
   return (
     <div className="app-shell">
@@ -406,7 +520,7 @@ export default function App() {
             <div className="screen-header__title-group">
               <h3>Reports</h3>
             </div>
-            <div className="screen-header__meta">Raidbots or QE Live report URL</div>
+            <div className="screen-header__meta">Raid droptimizers and one Mythic+ droptimizer, same character</div>
           </div>
           <div className="field">
             <label htmlFor="report-url" className="sr-only">
@@ -420,11 +534,85 @@ export default function App() {
               onChange={(e) => setReportUrl(e.target.value)}
             />
             <div className="field-hint" style={{ marginBottom: 0 }}>
-              {detectedSource ? `Detected: ${SOURCE_LABELS[detectedSource]}` : reportUrl ? 'Unrecognized report URL' : 'Paste a Raidbots or QE Live report URL'}
+              {detectedSource
+                ? `Detected: ${SOURCE_LABELS[detectedSource]}`
+                : reportUrl
+                  ? 'Unrecognized report URL'
+                  : loaded.length
+                    ? 'Add another difficulty or your Mythic+ droptimizer'
+                    : 'Paste a Raidbots or QE Live report URL'}
             </div>
           </div>
 
-          <div className="field">
+          <div className="fetch-button-group">
+            <button type="button" className={loaded.length ? 'btn-light--outline' : 'btn-light'} disabled={!detectedSource || loadStatus === 'loading'} onClick={handleFetch}>
+              {loadStatus === 'loading' ? 'Fetching…' : loaded.length ? 'Add report' : 'Fetch report'}
+            </button>
+            {!detectedSource && loadStatus !== 'loading' && <div className="btn-hint">Needs a report URL</div>}
+          </div>
+
+          {loadStatus === 'error' && loadError && <p className="warning-banner" style={{ marginTop: 12 }}>{loadError}</p>}
+
+          {loaded.length > 0 && (
+            <div className="report-list">
+              {sectionsData.map(({ loaded: l, lootTable, evals }) => {
+                const r = l.report
+                const matched = r.items.filter((i) => i.encounterId >= 0).length
+                const notInReport = lootTable ? evals.reduce((sum, b) => sum + b.pool.filter((p) => p.notInSimReport).length, 0) : null
+                const title = reportTitle(r)
+                const track = trackLine(r)
+                const warnings = [
+                  ...r.warnings,
+                  ...(isRecognizedDifficulty(r.difficulty, r.contentType) ? [] : [`Unrecognized difficulty ("${r.difficulty}"), treating as Unknown`]),
+                  ...(notInReport ? [`${notInReport} loot-table item${notInReport === 1 ? '' : 's'} not in the sim report (valued 0)`] : []),
+                ]
+                return (
+                  <div className="report-line" key={r.reportId}>
+                    <div className="report-line__head">
+                      <span className="report-line__title">{title}</span>
+                      <span className="report-line__source">{SOURCE_LABELS[l.source]}</span>
+                      <button type="button" className="btn-link report-line__remove" aria-label={`Remove ${title} report`} onClick={() => removeReport(r.reportId)}>
+                        Remove
+                      </button>
+                    </div>
+                    <div className="stats-line">
+                      <span>
+                        <span className="num">{r.items.length}</span> items parsed
+                      </span>
+                      <span>
+                        <span className="num">{matched}</span> matched
+                      </span>
+                      {notInReport != null && (
+                        <span>
+                          <span className="num">{notInReport}</span> not in report
+                        </span>
+                      )}
+                    </div>
+                    {track && <p className="note-line" style={{ marginTop: 4 }}>{track}</p>}
+                    {/* Reconcile: inline warning under the parse line, only when something doesn't match. */}
+                    {warnings.length > 0 && (
+                      <div className="warning-banner">
+                        <strong>Reconcile:</strong> {warnings.join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {setCheck.errors.length > 0 && (
+            <p className="warning-banner" style={{ marginTop: 12, marginBottom: 0 }}>
+              {setCheck.errors.join(' ')} Pricing is paused until this is fixed.
+            </p>
+          )}
+          {setCheck.warnings.length > 0 && (
+            <p className="warning-banner" style={{ marginTop: 12, marginBottom: 0 }}>
+              {setCheck.warnings.join(' ')}
+            </p>
+          )}
+
+          <div className="field" style={{ marginTop: 16 }}>
             <label htmlFor="topgear-url">
               <Tooltip term="topGear">Top Gear report URL (optional)</Tooltip>
             </label>
@@ -449,48 +637,13 @@ export default function App() {
             )}
           </div>
 
-          <div className="fetch-button-group">
-            <button type="button" className={report ? 'btn-light--outline' : 'btn-light'} disabled={!detectedSource || loadStatus === 'loading'} onClick={handleFetch}>
-              {loadStatus === 'loading' ? 'Fetching…' : report ? 'Re-fetch report' : 'Fetch report'}
-            </button>
-            {!detectedSource && loadStatus !== 'loading' && <div className="btn-hint">Needs a report URL</div>}
-          </div>
-
-          {loadStatus === 'error' && loadError && <p className="warning-banner" style={{ marginTop: 12 }}>{loadError}</p>}
-
-          {report && (
-            <>
-              <div className="stats-line" style={{ marginTop: 14 }}>
-                <span>
-                  <span className="num">{itemsParsed}</span> items parsed
-                </span>
-                <span>
-                  <span className="num">{matchedCount}</span> matched
-                </span>
-                {notInReportCount != null && (
-                  <span>
-                    <span className="num">{notInReportCount}</span> not in report
-                  </span>
-                )}
-              </div>
-              {/* Reconcile: inline warning under the parse line, only when something doesn't match. */}
-              {reconcileWarnings.length > 0 && (
-                <div className="warning-banner" style={{ marginTop: 12, marginBottom: 0 }}>
-                  <strong>Reconcile:</strong> {reconcileWarnings.join(' · ')}
-                </div>
-              )}
-              {mismatchWarning && (
-                <div className="warning-banner" style={{ marginTop: 12, marginBottom: 0 }}>
-                  {mismatchWarning}
-                </div>
-              )}
-              <p className="note-line">
-                <strong style={{ color: 'var(--text)' }}>{report.character}</strong>
-                {report.realm ? ` — ${report.realm}` : ''}
-                {report.region ? ` (${report.region})` : ''} · {report.charClass ? `${report.charClass} ` : ''}
-                {report.spec} ({report.role}) · {report.instanceName ?? 'Unknown instance'}
-              </p>
-            </>
+          {primary && (
+            <p className="note-line" style={{ marginBottom: 0 }}>
+              <strong style={{ color: 'var(--text)' }}>{primary.character}</strong>
+              {primary.realm ? ` — ${primary.realm}` : ''}
+              {primary.region ? ` (${primary.region})` : ''} · {primary.charClass ? `${primary.charClass} ` : ''}
+              {primary.spec} ({primary.role})
+            </p>
           )}
         </section>
 
@@ -505,7 +658,7 @@ export default function App() {
           <div className="run-settings-row">
             <div className="field" style={{ marginBottom: 0 }}>
               <span className="field-label-text">Loot spec</span>
-              {report ? (
+              {primary ? (
                 <LootSpecPicker lootSpecId={lootSpecId} onChange={setLootSpecId} />
               ) : (
                 <select disabled aria-label="Loot spec">
@@ -514,24 +667,15 @@ export default function App() {
               )}
             </div>
             <div className="field" style={{ marginBottom: 0 }}>
-              <span className="field-label-text">Difficulty</span>
-              {report ? (
-                <select aria-label="Difficulty" value={report.difficulty} onChange={() => {}}>
-                  <option value={report.difficulty}>{formatDifficulty(report.difficulty, report.contentType)}</option>
-                </select>
-              ) : (
-                <select disabled aria-label="Difficulty">
-                  <option>From report</option>
-                </select>
-              )}
+              <label htmlFor="rolls-available" className="field-label-text" style={{ marginBottom: 4 }}>
+                Rolls available
+              </label>
+              <select id="rolls-available" value={rollsAvailable} onChange={(e) => setRollsAvailable(Number(e.target.value) === 2 ? 2 : 1)}>
+                <option value={1}>1</option>
+                <option value={2}>2</option>
+              </select>
             </div>
           </div>
-
-          {report && !isRecognizedDifficulty(report.difficulty, report.contentType) && (
-            <p className="warning-banner" style={{ marginTop: 12, marginBottom: 0 }}>
-              Unrecognized difficulty ("{report.difficulty}") — treating as Unknown.
-            </p>
-          )}
 
           <div className="run-settings-row" style={{ marginTop: 14 }}>
             <div className="field" style={{ marginBottom: 0 }}>
@@ -548,29 +692,19 @@ export default function App() {
                 />
               </div>
             </div>
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label htmlFor="rolls-available" className="field-label-text" style={{ marginBottom: 4 }}>
-                Rolls available
-              </label>
-              <select id="rolls-available" value={rollsAvailable} onChange={(e) => setRollsAvailable(Number(e.target.value) === 2 ? 2 : 1)}>
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-              </select>
-            </div>
           </div>
 
           <div className="field" style={{ marginTop: 18, marginBottom: 0 }}>
-            <span className="field-label-text">Bosses · kill order</span>
+            <span className="field-label-text">Bosses and keys</span>
             <div className="field-hint" style={{ marginTop: 0, marginBottom: 8 }}>
-              Check the bosses you expect to kill. Expand a boss to mark items None / Owned / Rolled and set rolls spent.
+              Check the bosses you expect to kill and the keys you will run. Expand a row to mark items None / Owned / Rolled and set rolls spent.
             </div>
             <BossList
-              report={report}
-              bossEvals={bossEvals}
-              lootTable={lootTable}
+              sections={sections}
+              hasReports={loaded.length > 0}
               lootTableStatus={lootTableStatus}
-              expectedKillIds={expectedKillIds}
-              onToggleExpectedKill={toggleExpectedKill}
+              expectedTargetKeys={expectedTargetKeys}
+              onToggleExpectedTarget={toggleExpectedTarget}
               onSetItemState={handleSetItemState}
               onSetRollsSpent={handleSetRollsSpent}
             />
@@ -593,7 +727,31 @@ export default function App() {
               <label htmlFor="manual-vault-gain">Manual vault gain % (overrides the Top Gear report)</label>
               <input id="manual-vault-gain" type="number" step="0.01" value={manualVaultGainPct} onChange={(e) => setManualVaultGainPct(e.target.value)} />
             </div>
-            {report && (
+            <div className="run-settings-row">
+              <div className="field">
+                <label htmlFor="drift-warn">Baseline drift: warn above %</label>
+                <input
+                  id="drift-warn"
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  value={driftLimits.warnPct}
+                  onChange={(e) => setDriftLimits((d) => ({ ...d, warnPct: Number(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="drift-refuse">Baseline drift: refuse above %</label>
+                <input
+                  id="drift-refuse"
+                  type="number"
+                  step="0.1"
+                  min={0}
+                  value={driftLimits.refusePct}
+                  onChange={(e) => setDriftLimits((d) => ({ ...d, refusePct: Number(e.target.value) || 0 }))}
+                />
+              </div>
+            </div>
+            {primary && (
               <div className="field" style={{ marginBottom: 0 }}>
                 <span className="field-label-text">Knockout state</span>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>

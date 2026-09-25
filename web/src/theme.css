@@ -1683,3 +1683,90 @@ select:disabled {
   filter: saturate(0.6);
   transition: opacity 0.15s ease;
 }
+
+/* -------------------------------------------------------------------------
+   Multi-report (feat/v2-multi-report): several reports per character (raid
+   difficulties + one Mythic+ report), each with its own parse line, and the
+   boss list grouped into one section per report. Existing tokens only.
+   ------------------------------------------------------------------------- */
+
+.rec-card__qualifier {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+
+.report-list {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-7);
+  border-top: 1px solid var(--border);
+}
+
+.report-line {
+  padding: var(--space-5) 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-line__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-2);
+}
+
+.report-line__title {
+  font-weight: 600;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.report-line__source {
+  font-size: var(--text-meta);
+  color: var(--text-muted);
+}
+
+.report-line__remove {
+  margin-left: auto;
+  font-size: var(--text-meta);
+  min-height: 32px;
+}
+
+.report-line .warning-banner {
+  margin-top: var(--space-4);
+  margin-bottom: 0;
+}
+
+.boss-section + .boss-section {
+  margin-top: var(--space-8);
+}
+
+.boss-section__title {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  font-size: var(--text-meta);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+  margin: 0 0 var(--space-3);
+}
+
+.boss-section__hint {
+  font-size: var(--text-eyebrow);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}
+
+.catalyst-note {
+  display: block;
+  font-size: var(--text-eyebrow);
+  color: var(--text-muted);
+  margin-top: 2px;
+}

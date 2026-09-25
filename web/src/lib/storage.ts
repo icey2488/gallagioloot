@@ -151,3 +151,19 @@ export function loadVoidcoreCount(key: string): number {
 export function saveVoidcoreCount(key: string, count: number): void {
   localStorage.setItem(VOIDCORE_PREFIX + key, String(Math.max(0, Math.floor(count))))
 }
+
+const REPORT_SET_PREFIX = `${NS}:reportSet:`
+
+/**
+ * The set of report URLs loaded together for one character (raid difficulties + one
+ * Mythic+ report), keyed by `characterKey()` (`region:realm:character`, no difficulty).
+ * Null when nothing was saved -- callers fall back to the per-key last URL.
+ */
+export function loadReportSet(characterKey: string): string[] | null {
+  const urls = readJSON<unknown>(REPORT_SET_PREFIX + characterKey)
+  return Array.isArray(urls) ? urls.filter((u): u is string => typeof u === 'string' && u.length > 0) : null
+}
+
+export function saveReportSet(characterKey: string, urls: string[]): void {
+  localStorage.setItem(REPORT_SET_PREFIX + characterKey, JSON.stringify(urls))
+}
