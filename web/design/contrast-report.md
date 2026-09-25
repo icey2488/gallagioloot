@@ -40,11 +40,11 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Button border / focus ring on panel | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Button border / focus ring on input/select fill | `#6b7a9c` | `#0f1a33` | 4.02:1 | 3:1 (UI component) | ✅ |
 | Button border / focus ring on page background | `#6b7a9c` | `#06101f` | 4.44:1 | 3:1 (UI component) | ✅ |
-| Gold headline text on panel (rec-card) | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (large text) | ✅ |
-| Gold card border on panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |
-| Gold card border on page background | `#d4af37` | `#06101f` | 9.07:1 | 3:1 (UI component) | ✅ |
-| btn-gold label text on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
-| btn-gold:hover label text on gold-strong fill | `#17110a` | `#e4c158` | 10.77:1 | 4.5:1 (text) | ✅ |
+| Gold headline text on panel (rec-card) | `#e3b94a` | `#0b1426` | 9.90:1 | 3:1 (large text) | ✅ |
+| Gold card border on panel | `#e3b94a` | `#0b1426` | 9.90:1 | 3:1 (UI component) | ✅ |
+| Gold card border on page background | `#e3b94a` | `#06101f` | 10.26:1 | 3:1 (UI component) | ✅ |
+| btn-gold label text on gold fill | `#0b1426` | `#e3b94a` | 9.90:1 | 4.5:1 (text) | ✅ |
+| btn-gold:hover label text on gold-strong fill | `#0b1426` | `#f0c75a` | 11.40:1 | 4.5:1 (text) | ✅ |
 | Warning banner text on warning background | `#e8c98a` | `#3a2a12` | 8.65:1 | 4.5:1 (text) | ✅ |
 | Below-threshold roll flag (warn text) on the rec-card panel (v2.09 roll list) | `#e8c98a` | `#0b1426` | 11.51:1 | 4.5:1 (text) | ✅ |
 | Warning banner border on warning background | `#996f2b` | `#3a2a12` | 3.07:1 | 3:1 (UI component) | ✅ |
@@ -61,8 +61,8 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Tooltip bubble border on tooltip bubble background | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Deployable dot fill on panel | `#eef1f7` | `#0b1426` | 16.25:1 | 3:1 (UI component) | ✅ |
 | Not-deployable dot ring on panel | `#a3afca` | `#0b1426` | 8.35:1 | 3:1 (UI component) | ✅ |
-| Vault-compare winner border (gold) on compare-option fill | `#d4af37` | `#0f1a33` | 8.21:1 | 3:1 (UI component) | ✅ |
-| Vault-compare winner label (gold) on compare-option fill | `#d4af37` | `#0f1a33` | 8.21:1 | 4.5:1 (text) | ✅ |
+| Vault-compare winner border (gold) on compare-option fill | `#e3b94a` | `#0f1a33` | 9.30:1 | 3:1 (UI component) | ✅ |
+| Vault-compare winner label (gold) on compare-option fill | `#e3b94a` | `#0f1a33` | 9.30:1 | 4.5:1 (text) | ✅ |
 | Rec-card verb/meta (secondary text) on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
 | Screen-header meta (Rollable Bosses/Loot Table threshold+spec line) on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
 | Footer aside column (Delves/Prey Hunts note) text on footer background | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
@@ -72,7 +72,7 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | btn-secondary label text on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
 | btn-secondary border on panel | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Nav tab label (secondary text) on header panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
-| Active nav tab / active boss-list item text on hover fill (--bg-hover) | `#eef1f7` | `#12203c` | 14.30:1 | 4.5:1 (text) | ✅ |
+| Active nav tab / active boss-list item text on hover fill (--bg-hover) | `#eef1f7` | `#1a2748` | 13.00:1 | 4.5:1 (text) | ✅ |
 | Run-settings sidebar border on its own panel fill | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Stat-trio label (muted) on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
 | Loot boss list rank (muted) on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
@@ -83,20 +83,20 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Paste empty-state dashed border on panel | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Disabled Fetch button hint ("Needs a report URL") on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
 | Input/textarea placeholder text on input fill | `#a3afca` | `#0f1a33` | 7.85:1 | 4.5:1 (text) | ✅ |
-| Paste screen primary button (Fetch report / Price my roll) label on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
-| Paste screen primary button label on gold-strong hover fill | `#17110a` | `#e4c158` | 10.77:1 | 4.5:1 (text) | ✅ |
-| Reconcile screen Confirm button label on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
-| Loot table selected-row gold inset stripe on hover fill (--bg-hover) | `#d4af37` | `#12203c` | 7.70:1 | 3:1 (UI component) | ✅ |
-| Recommendation screen "Rollable Bosses" heading gold bar on panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |
-| App wordmark (gold text) on header panel | `#d4af37` | `#0b1426` | 8.74:1 | 4.5:1 (text) | ✅ |
-| Active nav-tab gold underline (inset box-shadow) on hover fill (--bg-hover) | `#d4af37` | `#12203c` | 7.70:1 | 3:1 (UI component) | ✅ |
-| Header Voidcores pill count (gold text) on header panel | `#d4af37` | `#0b1426` | 8.74:1 | 4.5:1 (text) | ✅ |
-| Voidcores chip-stack glyph (gold stroke) on header panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |
-| Checked checkbox (accent-color gold) on panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |
-| Checked checkbox (accent-color gold) on input/select fill | `#d4af37` | `#0f1a33` | 8.21:1 | 3:1 (UI component) | ✅ |
-| Deployability "Yes" status dot (gold fill) on panel | `#d4af37` | `#0b1426` | 8.74:1 | 3:1 (UI component) | ✅ |
-| Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold fill | `#17110a` | `#d4af37` | 8.91:1 | 4.5:1 (text) | ✅ |
-| Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold-strong hover fill | `#17110a` | `#e4c158` | 10.77:1 | 4.5:1 (text) | ✅ |
+| Paste screen primary button (Fetch report / Price my roll) label on gold fill | `#0b1426` | `#e3b94a` | 9.90:1 | 4.5:1 (text) | ✅ |
+| Paste screen primary button label on gold-strong hover fill | `#0b1426` | `#f0c75a` | 11.40:1 | 4.5:1 (text) | ✅ |
+| Reconcile screen Confirm button label on gold fill | `#0b1426` | `#e3b94a` | 9.90:1 | 4.5:1 (text) | ✅ |
+| Loot table selected-row gold inset stripe on hover fill (--bg-hover) | `#e3b94a` | `#1a2748` | 7.92:1 | 3:1 (UI component) | ✅ |
+| Recommendation screen "Rollable Bosses" heading gold bar on panel | `#e3b94a` | `#0b1426` | 9.90:1 | 3:1 (UI component) | ✅ |
+| App wordmark (gold text) on header panel | `#e3b94a` | `#0b1426` | 9.90:1 | 4.5:1 (text) | ✅ |
+| Active nav-tab gold underline (inset box-shadow) on hover fill (--bg-hover) | `#e3b94a` | `#1a2748` | 7.92:1 | 3:1 (UI component) | ✅ |
+| Header Voidcores pill count (gold text) on header panel | `#e3b94a` | `#0b1426` | 9.90:1 | 4.5:1 (text) | ✅ |
+| Voidcores chip-stack glyph (gold stroke) on header panel | `#e3b94a` | `#0b1426` | 9.90:1 | 3:1 (UI component) | ✅ |
+| Checked checkbox (accent-color gold) on panel | `#e3b94a` | `#0b1426` | 9.90:1 | 3:1 (UI component) | ✅ |
+| Checked checkbox (accent-color gold) on input/select fill | `#e3b94a` | `#0f1a33` | 9.30:1 | 3:1 (UI component) | ✅ |
+| Deployability "Yes" status dot (gold fill) on panel | `#e3b94a` | `#0b1426` | 9.90:1 | 3:1 (UI component) | ✅ |
+| Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold fill | `#0b1426` | `#e3b94a` | 9.90:1 | 4.5:1 (text) | ✅ |
+| Recommendation/Rollable-Bosses screen "Roll this boss" button label on gold-strong hover fill | `#0b1426` | `#f0c75a` | 11.40:1 | 4.5:1 (text) | ✅ |
 | Outline "Fetch report" button label (enabled) on panel | `#eef1f7` | `#0b1426` | 16.25:1 | 4.5:1 (text) | ✅ |
 | Outline "Fetch report" button border (enabled) on panel | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Outline "Fetch report" button label (disabled) on panel | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
