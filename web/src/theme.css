@@ -1714,9 +1714,110 @@ select:disabled {
   min-height: 32px;
 }
 
-.report-line .warning-banner {
+/* One compact block per report: heading + Remove, drop line, stats line, notes collapsed. */
+.report-line__head {
+  margin-bottom: var(--space-1);
+}
+
+.report-line__title {
+  font-size: var(--text-body);
+  letter-spacing: 0.02em;
+}
+
+.report-line__drops,
+.report-line__stats {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
+.report-line__drops {
+  color: var(--text);
+}
+
+.report-line__stat {
+  white-space: nowrap;
+}
+
+.report-line__stats .num {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.report-notes {
   margin-top: var(--space-4);
-  margin-bottom: 0;
+  font-size: var(--text-meta);
+}
+
+.report-notes summary {
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: var(--space-2) 0;
+}
+
+.report-notes ul {
+  margin: var(--space-2) 0 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+}
+
+.report-notes li {
+  margin: var(--space-2) 0;
+  overflow-wrap: anywhere;
+}
+
+/* Same visible-warning combo as .warning-banner (already contrast-verified). */
+.report-notes .report-notes__error {
+  list-style: none;
+  margin-left: -18px;
+  background: #3a2a12;
+  border: 1px solid #996f2b;
+  color: #e8c98a;
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+}
+
+/* Panel-level, shown once above the report blocks: Voidcores on hand (mirrors Run settings) and the
+   marginal value of one more roll this week. */
+.reports-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-4) var(--space-12);
+  margin: 0 0 var(--space-8);
+  padding-bottom: var(--space-8);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-body);
+  color: var(--text-secondary);
+}
+
+.reports-summary__voidcores {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.reports-summary__input {
+  width: 64px;
+  min-height: 44px;
+}
+
+.reports-summary__next {
+  flex: 1 1 240px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.reports-summary__ev {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.reports-summary__target {
+  color: var(--text-muted);
+  font-size: var(--text-meta);
 }
 
 .boss-section + .boss-section {

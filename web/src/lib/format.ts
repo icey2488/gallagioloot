@@ -23,3 +23,21 @@ export function formatDifficulty(difficulty: string, contentType?: 'raid' | 'dun
   const last = difficulty.split('-').pop() ?? difficulty
   return last.charAt(0).toUpperCase() + last.slice(1)
 }
+
+/**
+ * "Sep 22" for a report's sim date (year appended when it isn't `now`'s year), in the viewer's timezone
+ * unless `timeZone` is given. Undefined for a missing or unparseable date.
+ */
+export function formatSimDate(iso: string | undefined, now: Date = new Date(), timeZone?: string): string | undefined {
+  if (!iso) return undefined
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return undefined
+  const year = (d: Date) => Number(new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone }).format(d))
+  const withYear = year(date) !== year(now)
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', ...(withYear ? { year: 'numeric' } : {}), timeZone }).format(date)
+}
+
+/** "572,817": a report's baseline DPS/HPS with thousands separators. */
+export function formatBaseline(baseline: number): string {
+  return Math.round(baseline).toLocaleString('en-US')
+}

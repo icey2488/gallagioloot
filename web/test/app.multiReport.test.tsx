@@ -105,8 +105,7 @@ describe('multi-report flow', () => {
     await addReport(MPLUS_URL)
 
     const titles = [...container.querySelectorAll('.report-line__title')].map((e) => e.textContent)
-    expect(titles).toEqual(['The Venomous Abyss · Mythic', 'Mythic+ (+10 Myth)'])
-    expect(text()).toContain('+10 and above · Myth track · drops at 318, simmed at 334 (Myth 6/6)')
+    expect(titles).toEqual(['RAID · The Venomous Abyss · Mythic', 'MYTHIC+ · +10 and above'])
     expect(text()).not.toContain('Weekly10')
 
     const sections = [...container.querySelectorAll('.boss-section__title')].map((e) => e.firstChild?.textContent)
@@ -141,7 +140,7 @@ describe('multi-report flow', () => {
     await act(async () => {
       Simulate.click(remove)
     })
-    expect([...container.querySelectorAll('.report-line__title')].map((e) => e.textContent)).toEqual(['The Venomous Abyss · Mythic'])
+    expect([...container.querySelectorAll('.report-line__title')].map((e) => e.textContent)).toEqual(['RAID · The Venomous Abyss · Mythic'])
     expect(loadReportSet('us:hyjal:icemagus')).toEqual([RAID_URL])
   })
 

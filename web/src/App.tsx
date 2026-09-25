@@ -3,7 +3,7 @@ import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/typ
 import { curioEntryKeys, dropCurioEntries } from '@engine/core/curio'
 import { addEntry, characterKey, createStateFor, deserialize, removeEntry, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
-import { recommend } from '@engine/core/rank'
+import { nextRollValue, recommend } from '@engine/core/rank'
 import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
 import { checkCandidate, checkReportSet, DEFAULT_DRIFT_LIMITS, type DriftLimits } from '@engine/core/reportSet'
 import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from '@engine/core/targets'
@@ -35,6 +35,7 @@ import { RecommendationCard } from './components/RecommendationCard'
 import { orderBossEvals } from './lib/bossOrder'
 import { BossList, type BossSection, type ItemStateChange } from './components/BossList'
 import { PricedDetail } from './components/PricedDetail'
+import { ReportBlock, type ReportNote } from './components/ReportBlock'
 
 const storageAdapter = new LocalStorageAdapter()
 
@@ -59,23 +60,6 @@ function reportTitle(report: NormalizedReport): string {
     return inner ? `Mythic+ (${inner})` : 'Mythic+'
   }
   return `${report.instanceName ?? 'Unknown instance'} · ${difficultyLabel(report)}`
-}
-
-/** Key level / track / ilvl line under a report's parse line, e.g. "+10 and above · Myth track · drops at 318, simmed at 334 (Myth 6/6)". */
-function trackLine(report: NormalizedReport): string | null {
-  const t = report.track
-  if (!t) return null
-  const parts: string[] = []
-  if (targetKindOf(report) === 'mplus') {
-    const level = keyLevelOf(report)
-    if (level !== undefined) parts.push(`+${level} and above`)
-    if (t.name) parts.push(`${t.name} track`)
-    if (t.dropIlvl !== undefined && t.simmedIlvl !== undefined) parts.push(`drops at ${t.dropIlvl}, simmed at ${t.simmedIlvl}${t.upgradeFullName ? ` (${t.upgradeFullName})` : ''}`)
-  } else {
-    if (t.upgradeFullName) parts.push(t.upgradeFullName)
-    if (t.simmedIlvl !== undefined) parts.push(`simmed at ${t.simmedIlvl}`)
-  }
-  return parts.length ? parts.join(' · ') : null
 }
 
 const lootTableKey = (instanceId: number, lootSpecId: number) => `${instanceId}:${lootSpecId}`
@@ -152,6 +136,12 @@ export default function App() {
 
   const recommendation = useMemo(
     () => (reports.length && bossEvals.length && setCheck.errors.length === 0 ? recommend(bossEvals, settings, reports) : null),
+    [reports, bossEvals, settings, setCheck]
+  )
+
+  // The (rollsAvailable+1)th roll of the week under the same allocation rules: what one more Voidcore would add.
+  const nextRoll = useMemo(
+    () => (reports.length && bossEvals.length && setCheck.errors.length === 0 ? nextRollValue(bossEvals, settings) : undefined),
     [reports, bossEvals, settings, setCheck]
   )
 
@@ -532,6 +522,37 @@ export default function App() {
             </div>
             <div className="screen-header__meta">Raid droptimizers and one Mythic+ droptimizer, same character</div>
           </div>
+          {loaded.length > 0 && (
+            <div className="reports-summary">
+              <div className="reports-summary__voidcores">
+                <label htmlFor="voidcores-on-hand">Voidcores on hand:</label>
+                <input
+                  id="voidcores-on-hand"
+                  type="number"
+                  min={0}
+                  value={voidcoreCount}
+                  onChange={(e) => setVoidcoreCount(Number(e.target.value) || 0)}
+                  className="reports-summary__input num"
+                />
+              </div>
+              {nextRoll !== undefined && (
+                <div className="reports-summary__next" aria-live="polite">
+                  {nextRoll ? (
+                    <>
+                      <span>Next Voidcore worth</span> <span className="num reports-summary__ev">~{nextRoll.expectedGainPct.toFixed(2)}%</span>
+                      <span className="reports-summary__target">
+                        {' '}
+                        · roll {Math.max(1, Math.floor(rollsAvailable)) + 1} goes to {nextRoll.encounterName}
+                        {nextRoll.difficultyLabel ? ` (${nextRoll.difficultyLabel})` : ''}
+                      </span>
+                    </>
+                  ) : (
+                    <span>No target left for another roll this week</span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div className="field">
             <label htmlFor="report-url" className="sr-only">
               Report URL
@@ -567,46 +588,14 @@ export default function App() {
             <div className="report-list">
               {sectionsData.map(({ loaded: l, lootTable, evals }) => {
                 const r = l.report
-                const matched = r.items.filter((i) => i.encounterId >= 0).length
                 const notInReport = lootTable ? evals.reduce((sum, b) => sum + b.pool.filter((p) => p.notInSimReport).length, 0) : null
-                const title = reportTitle(r)
-                const track = trackLine(r)
-                const warnings = [
-                  ...r.warnings,
-                  ...(isRecognizedDifficulty(r.difficulty, r.contentType) ? [] : [`Unrecognized difficulty ("${r.difficulty}"), treating as Unknown`]),
-                  ...(notInReport ? [`${notInReport} loot-table item${notInReport === 1 ? '' : 's'} not in the sim report (valued 0)`] : []),
+                const notes: ReportNote[] = [
+                  ...(r.items.some((i) => i.encounterId >= 0) ? [] : [{ text: 'No items matched a boss or dungeon; nothing to price from this report.', error: true }]),
+                  ...r.warnings.map((text) => ({ text })),
+                  ...(isRecognizedDifficulty(r.difficulty, r.contentType) ? [] : [{ text: `Unrecognized difficulty ("${r.difficulty}"), treating as Unknown` }]),
+                  ...(notInReport ? [{ text: `${notInReport} loot-table item${notInReport === 1 ? '' : 's'} not in the sim report (valued 0)` }] : []),
                 ]
-                return (
-                  <div className="report-line" key={r.reportId}>
-                    <div className="report-line__head">
-                      <span className="report-line__title">{title}</span>
-                      <span className="report-line__source">{SOURCE_LABELS[l.source]}</span>
-                      <button type="button" className="btn-link report-line__remove" aria-label={`Remove ${title} report`} onClick={() => removeReport(r.reportId)}>
-                        Remove
-                      </button>
-                    </div>
-                    <div className="stats-line">
-                      <span>
-                        <span className="num">{r.items.length}</span> items parsed
-                      </span>
-                      <span>
-                        <span className="num">{matched}</span> matched
-                      </span>
-                      {notInReport != null && (
-                        <span>
-                          <span className="num">{notInReport}</span> not in report
-                        </span>
-                      )}
-                    </div>
-                    {track && <p className="note-line" style={{ marginTop: 4 }}>{track}</p>}
-                    {/* Reconcile: inline warning under the parse line, only when something doesn't match. */}
-                    {warnings.length > 0 && (
-                      <div className="warning-banner">
-                        <strong>Reconcile:</strong> {warnings.join(' · ')}
-                      </div>
-                    )}
-                  </div>
-                )
+                return <ReportBlock key={r.reportId} report={r} title={reportTitle(r)} notes={notes} onRemove={() => removeReport(r.reportId)} />
               })}
             </div>
           )}
