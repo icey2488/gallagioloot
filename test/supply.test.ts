@@ -202,9 +202,11 @@ describe('one more Voidcore: max(spend now as the next roll, hold)', () => {
 })
 
 describe('earning rate', () => {
-  it('defaults to 1 a week, 2 from season week 8', () => {
+  it('defaults to 1 a week, 2 once NEXT week is season week 8 or later (earning only matters for future weeks)', () => {
     expect(defaultEarnedPerWeek()).toBe(1)
-    expect(defaultEarnedPerWeek(7)).toBe(1)
+    expect(defaultEarnedPerWeek(1)).toBe(1)
+    expect(defaultEarnedPerWeek(6)).toBe(1)
+    expect(defaultEarnedPerWeek(7)).toBe(2)
     expect(defaultEarnedPerWeek(8)).toBe(2)
     expect(defaultEarnedPerWeek(12)).toBe(2)
   })

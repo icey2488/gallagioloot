@@ -33,9 +33,13 @@ export type VoidcoreSupply = {
   weeksLeft?: number
 }
 
-/** 1 a week (the Great Vault's Voidcore), 2 from season week 8 (plus the separate source). */
+/**
+ * 1 a week (the Great Vault's Voidcore), 2 from season week 8 (plus the separate source). Earning only
+ * matters for future weeks, so the default follows NEXT week's number: at season week 7 next week is
+ * week 8, which earns 2.
+ */
 export function defaultEarnedPerWeek(seasonWeek?: number): number {
-  return seasonWeek !== undefined && seasonWeek >= 8 ? 2 : 1
+  return seasonWeek !== undefined && seasonWeek + 1 >= 8 ? 2 : 1
 }
 
 /** A roll target as the plan reports it. */

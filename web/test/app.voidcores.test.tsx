@@ -114,9 +114,13 @@ describe('Run settings: Voidcore supply inputs', () => {
     expect(input('#voidcores-to-spend').value).toBe('2')
   })
 
-  it('Voidcores earned per week defaults to 1, to 2 from season week 8, and stays editable', async () => {
+  it('Voidcores earned per week defaults to 1, to 2 once next week is season week 8 (from week 7), and stays editable', async () => {
     await loadRaid()
     expect(input('#earned-per-week').value).toBe('1')
+    await set('#season-week', '6')
+    expect(input('#earned-per-week').value).toBe('1')
+    await set('#season-week', '7')
+    expect(input('#earned-per-week').value).toBe('2') // next week is week 8
     await set('#season-week', '8')
     expect(input('#earned-per-week').value).toBe('2')
     await set('#earned-per-week', '1') // skipping the vault one

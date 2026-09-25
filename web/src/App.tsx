@@ -726,7 +726,7 @@ export default function App() {
                 className="num"
               />
               <div className="field-hint" style={{ marginBottom: 0 }}>
-                1 from the Great Vault; 2 from season week 8
+                1 from the Great Vault; 2 once next week is season week 8 or later
               </div>
             </div>
           </div>
