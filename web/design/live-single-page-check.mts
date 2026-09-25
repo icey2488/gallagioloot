@@ -136,6 +136,34 @@ function assertTwoRollCard(card: Card, label: string) {
   check(`[${label}] 2 rolls: Vial still 0.74% (no saved-rolls credit)`, vial?.value === '0.74%', JSON.stringify(card.compare))
 }
 
+const JOURNAL_ORDER_1320 = [
+  "Nek'zali the Soulcoiler",
+  'Entombed Sentinels',
+  'The Lost Explorers',
+  'Vashnik the Malignant',
+  'Sszorak',
+  'The Twin Fangs',
+  'The Coiled Altar',
+  "Ula'tek",
+]
+
+/** The raid section lists bosses in Adventure Journal order, numbered 1..8 (M+ dungeons are alphabetical). */
+async function assertBossOrder(page: Page, label: string) {
+  const sections = await page.evaluate(() =>
+    [...document.querySelectorAll('.boss-section')].map((sec) =>
+      [...sec.querySelectorAll('.boss-row__summary')].map((r) => ({
+        rank: (r.querySelector('.boss-row__rank')?.textContent ?? '').trim(),
+        name: (r.querySelector('.boss-row__name')?.textContent ?? '').trim(),
+      }))
+    )
+  )
+  const raid = sections[0] ?? []
+  check(`[${label}] raid section lists bosses in Adventure Journal order`, JSON.stringify(raid.map((r) => r.name)) === JSON.stringify(JOURNAL_ORDER_1320), raid.map((r) => r.name).join(' | '))
+  check(`[${label}] raid section numbering follows journal order (1..8)`, raid.map((r) => r.rank).join(',') === '1,2,3,4,5,6,7,8', raid.map((r) => r.rank).join(','))
+  const dungeons = (sections[1] ?? []).map((r) => r.name)
+  check(`[${label}] M+ dungeons are alphabetical`, JSON.stringify(dungeons) === JSON.stringify([...dungeons].sort((a, b) => a.localeCompare(b))), dungeons.join(' | '))
+}
+
 /** The layout checks from single-page-shots.mts, adapted to the live page (2 parse lines, 2 sections, 8 dungeons). */
 async function assertLayout(page: Page, label: string) {
   const result = await page.evaluate(() => {
@@ -213,6 +241,7 @@ async function main() {
   const page = await ctx.newPage()
   await load(page, out, '1280')
   await assertLayout(page, '1280, loaded')
+  await assertBossOrder(page, '1280')
   await page.screenshot({ path: 'design/live-single-page-loaded.png', fullPage: true })
 
   await priceTheRoll(page)

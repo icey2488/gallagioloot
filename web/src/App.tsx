@@ -31,6 +31,7 @@ import { Tooltip } from './components/Tooltip'
 import { ChipStack } from './components/ChipStack'
 import { LootSpecPicker } from './components/LootSpecPicker'
 import { RecommendationCard } from './components/RecommendationCard'
+import { orderBossEvals } from './lib/bossOrder'
 import { BossList, type BossSection, type ItemStateChange } from './components/BossList'
 import { PricedDetail } from './components/PricedDetail'
 
@@ -493,7 +494,7 @@ export default function App() {
       hint: kind === 'mplus' ? 'Check the keys you will run. One roll per completed key; a dungeon can take more than one.' : undefined,
       kind,
       stateKey: s.loaded.stateKey,
-      bossEvals: s.evals,
+      bossEvals: orderBossEvals(s.evals, kind, s.lootTable),
       lootTable: s.lootTable,
     }
   })
