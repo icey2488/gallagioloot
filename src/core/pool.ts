@@ -1,7 +1,7 @@
 import type { LootTableEncounter, LootTableItem, NormalizedItem, NormalizedReport } from '../types'
 import type { BossEval, KnockoutState, PoolEntry, Settings } from './types'
 import { rollsToTarget } from './vault'
-import { difficultyLabel, knockoutDifficulty, targetKey, targetKindOf } from './targets'
+import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from './targets'
 
 const CURIO_NOTE = 'Curio counts as one item; value assumes you pick your best missing tier slot'
 const CURIO_NAME = 'Curio (any missing tier slot)'
@@ -150,6 +150,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
   const expectedKills = settings.expectedKills ? new Set(settings.expectedKills) : null
   const kind = targetKindOf(report)
   const label = difficultyLabel(report)
+  const keyLevel = kind === 'mplus' ? keyLevelOf(report) : undefined
 
   const groups = new Map<number, NormalizedItem[]>()
   for (const item of report.items) {
@@ -357,6 +358,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       targetKey: key,
       kind,
       difficultyLabel: label,
+      keyLevel,
       baseline: report.baseline,
       pool,
       remaining,

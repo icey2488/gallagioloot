@@ -125,7 +125,7 @@ describe('roll allocation across raid and Mythic+ targets', () => {
     const settings = { ...SETTINGS, rollsAvailable: 2 }
     const rec = recommend(evalsFor([raid, mplus], settings), settings, [raid, mplus])
     expect(rec.allocations).toHaveLength(1)
-    expect(rec.allocations[0]).toMatchObject({ encounterName: 'Altar of Fangs', kind: 'mplus', rolls: 2, targetKey: 'mplus-myth:1322' })
+    expect(rec.allocations[0]).toMatchObject({ encounterName: 'Altar of Fangs', kind: 'mplus', rolls: 2, targetKey: 'mplus-myth:1322', keyLevel: 10, difficultyLabel: '+10 (Myth)' })
     expect(rec.allocations[0].expectedGainPct).toBeCloseTo(2.4)
     expect(rec.totalExpectedGainPct).toBeCloseTo(2.4)
     // Toss-up boundary is the repeated dungeon vs the best target with no roll.

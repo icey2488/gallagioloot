@@ -70,6 +70,7 @@ function allocate(ranked: BossEval[], rolls: number): Allocation[] {
       targetKey: target.targetKey,
       kind: target.kind,
       difficultyLabel: target.difficultyLabel,
+      keyLevel: target.keyLevel,
       rolls: 1,
       expectedGain: target.ev,
       expectedGainPct: target.evPct,

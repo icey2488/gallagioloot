@@ -164,6 +164,8 @@ export type BossEval = {
   kind?: TargetKind
   /** Human label for the target's difficulty/track, e.g. "Mythic" or "+10 (Myth)". */
   difficultyLabel?: string
+  /** Mythic+ only: the lowest key level the report's rolls come from (10 = "+10 and above"). */
+  keyLevel?: number
   /** The source report's baseline, so EV% from different reports sits on one scale. */
   baseline?: number
   pool: PoolEntry[]
@@ -197,6 +199,7 @@ export type Allocation = {
   targetKey?: string
   kind?: TargetKind
   difficultyLabel?: string
+  keyLevel?: number
   /** Always 1 for a raid target (one roll per boss per difficulty per week); an M+ target can take more than one (one per key run). */
   rolls: number
   expectedGain: number
