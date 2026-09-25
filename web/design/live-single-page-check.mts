@@ -269,7 +269,7 @@ async function assertVoidcoreSupply(page: Page, label: string, out: Record<strin
   await priceTheRoll(page)
   const two = await readCard(page)
   out[`${label}Supply2`] = two
-  check(`[${label}] earned 2/week: roll 3 is "spend now" (a held 3rd would get Sszorak anyway), no hold clause`, two.rolls.length === 3 && two.rolls.every((r) => r.advice === 'spend now'), JSON.stringify(two.rolls.map((r) => r.advice)))
+  check(`[${label}] earned 2/week: roll 3 is "spend now" (a held 3rd would get Sszorak anyway), no hold clause`, two.rolls.length === 3 && two.rolls.every((r) => r.advice.startsWith('spend now') && !r.advice.includes('playing without') && !r.advice.includes(' vs hold')), JSON.stringify(two.rolls.map((r) => r.advice)))
   check(`[${label}] earned 2/week: strip "One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic)), playing without ~0.61% for 1 week"`, two.strip === 'One more Voidcore: ~0.65% next week (hold for Sszorak (Mythic)), playing without ~0.61% for 1 week', two.strip)
   await page.screenshot({ path: `design/live-single-page-supply-${label}.png`, fullPage: true })
 }
