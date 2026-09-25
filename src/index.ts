@@ -2,6 +2,7 @@ import { getEncounterItemsLookup, getGameDataVersionWithAge, type LookupEnv } fr
 import { extractLearnedTierData, getAllLearnedTierData, getLearnedTierData, mergeLearnedTierData, saveLearnedTierData } from './lookup/tierLearned'
 import { getAllSeedInstanceIds, getCurioEncounterId, getSeedTierMap, isKnownSeedInstance } from './lookup/tierSeed'
 import { buildLootTable } from './lookup/lootTable'
+import { LOOT_ELIGIBILITY_VERSION } from './lookup/specs'
 import { normalizeRaidbotsReport, UnsupportedReportError, type RaidbotsRawReport } from './normalize/raidbots'
 import { normalizeQELiveReport, parseQELiveResponseBody } from './normalize/qelive'
 import { normalizeTopGearReport, UnsupportedTopGearReportError, type RaidbotsTopGearRawReport } from './normalize/topgear'
@@ -300,7 +301,7 @@ async function handleLootTable(
   }
 
   const versionInfo = await getGameDataVersionWithAge(env)
-  const cacheKey = new Request(`https://cache.gallagioloot.local/loot-table/${versionInfo.version}/${instanceId}/${lootSpecId}`)
+  const cacheKey = new Request(`https://cache.gallagioloot.local/loot-table/v${LOOT_ELIGIBILITY_VERSION}/${versionInfo.version}/${instanceId}/${lootSpecId}`)
   const cached = await caches.default.match(cacheKey)
   if (cached) return withCors(cached, allowedOrigin)
 

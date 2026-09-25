@@ -1,4 +1,5 @@
 import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/types'
+import { LOOT_ELIGIBILITY_VERSION } from '@engine/lookup/specs'
 import type { ReportSource } from './urlDetect'
 
 /** Falls back to a localhost `wrangler dev` default so the app works out of the box in local dev. */
@@ -43,7 +44,7 @@ export async function fetchTopGear(urlOrId: string, baseUrl = getProxyBaseUrl())
 }
 
 export async function fetchLootTable(instanceId: number, lootSpecId: number, baseUrl = getProxyBaseUrl()): Promise<LootTable> {
-  const res = await fetch(`${baseUrl}/loot-table/${instanceId}?lootSpec=${lootSpecId}`)
+  const res = await fetch(`${baseUrl}/loot-table/${instanceId}?lootSpec=${lootSpecId}&v=${LOOT_ELIGIBILITY_VERSION}`)
 
   if (!res.ok) {
     const body = await res.json().catch(() => ({}) as { error?: string; detail?: string })

@@ -6,6 +6,12 @@
 // best inference (not yet documented in-game), noted on the entry below.
 export type Role = 'dps' | 'healer' | 'tank'
 
+/**
+ * Bump when the loot-table eligibility rules change: the proxy folds it into its cache key and the web client sends it
+ * as `v=`, because loot tables are otherwise cached (Worker cache + browser) for up to a day. 2: primary-stat rule (2026-09-24).
+ */
+export const LOOT_ELIGIBILITY_VERSION = 2
+
 export type PrimaryStat = 'agility' | 'strength' | 'intellect'
 
 export type SpecEntry = {
