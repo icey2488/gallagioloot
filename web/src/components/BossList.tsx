@@ -1,10 +1,25 @@
 import { useState } from 'react'
 import type { BossEval, ItemOwnership, PoolEntry } from '@engine/core/types'
-import type { LootTable, LootTableItem, NormalizedReport } from '@engine/types'
+import type { LootTable, LootTableItem, TargetKind } from '@engine/types'
 import { getSpecById } from '@engine/lookup/specs'
+import { evalKey } from '@engine/core/targets'
+import { catalystText } from '../lib/cardData'
 import { Tooltip } from './Tooltip'
 
-export type ItemStateChange = { itemId: number; name: string; encounterId: number; encounterName: string; state: ItemOwnership | 'none' }
+/** `stateKey` is the knockout storage key of the report the item's target belongs to (raid difficulty or M+ track). */
+export type ItemStateChange = { stateKey: string; itemId: number; name: string; encounterId: number; encounterName: string; state: ItemOwnership | 'none' }
+
+/** One report's targets: a raid difficulty's bosses, or the Mythic+ report's dungeons. */
+export type BossSection = {
+  key: string
+  title: string
+  hint?: string
+  kind: TargetKind
+  /** Knockout storage key for this report's targets. */
+  stateKey: string
+  bossEvals: BossEval[]
+  lootTable: LootTable | null
+}
 
 function findPoolEntry(boss: BossEval | undefined, itemId: number): PoolEntry | undefined {
   return boss?.pool.find((p) => p.itemIds.includes(itemId))
@@ -44,7 +59,8 @@ function StateControl(props: { current: ItemOwnership | 'none'; onChange: (state
 function BossRow(props: {
   boss: BossEval
   index: number
-  report: NormalizedReport | null
+  kind: TargetKind
+  stateKey: string
   lootItems: LootTableItem[] | null
   specName: string | null
   expanded: boolean
@@ -52,9 +68,13 @@ function BossRow(props: {
   expectedKill: boolean
   onToggleExpectedKill: () => void
   onSetItemState: (change: ItemStateChange) => void
-  onSetRollsSpent: (encounterId: number, count: number) => void
+  onSetRollsSpent: (stateKey: string, encounterId: number, count: number) => void
 }) {
-  const { boss, index, lootItems, specName, expanded, onToggleExpand, expectedKill, onToggleExpectedKill, onSetItemState, onSetRollsSpent } = props
+  const { boss, index, kind, stateKey, lootItems, specName, expanded, onToggleExpand, expectedKill, onToggleExpectedKill, onSetItemState, onSetRollsSpent } = props
+  const rowId = evalKey(boss).replace(/[^A-Za-z0-9_-]/g, '-')
+  const killLabel =
+    kind === 'mplus' ? `I will run ${boss.encounterName}${boss.keyLevel !== undefined ? ` at +${boss.keyLevel}` : ''}` : `Expect to kill ${boss.encounterName}`
+  const killTitle = kind === 'mplus' ? 'I will run this key this week' : 'Expected to kill this week'
 
   // Rows come from the full loot table when available (the true pool), else from what the
   // report simmed (the pool entries directly) so the control still works without a loot table.
@@ -84,8 +104,8 @@ function BossRow(props: {
   return (
     <div className={`boss-row${expanded ? ' boss-row--open' : ''}${boss.deployable ? '' : ' boss-row--excluded'}`}>
       <div className="boss-row__head">
-        <label className="boss-row__kill" title="Expected to kill this week">
-          <input type="checkbox" checked={expectedKill} onChange={onToggleExpectedKill} aria-label={`Expect to kill ${boss.encounterName}`} />
+        <label className="boss-row__kill" title={killTitle}>
+          <input type="checkbox" checked={expectedKill} onChange={onToggleExpectedKill} aria-label={killLabel} />
         </label>
         <button type="button" className="boss-row__summary" aria-expanded={expanded} onClick={onToggleExpand}>
           <span className="boss-row__rank num">{index + 1}</span>
@@ -108,16 +128,16 @@ function BossRow(props: {
       {expanded && (
         <div className="boss-row__body">
           <div className="boss-row__rolls">
-            <label htmlFor={`rolls-spent-${boss.encounterId}`}>
+            <label htmlFor={`rolls-spent-${rowId}`}>
               <Tooltip term="knockout">Rolls spent</Tooltip>
             </label>
             <input
-              id={`rolls-spent-${boss.encounterId}`}
+              id={`rolls-spent-${rowId}`}
               type="number"
               min={boss.rollsAttributed}
               value={boss.rollsSpent}
               className="boss-row__rolls-input num"
-              onChange={(e) => onSetRollsSpent(boss.encounterId, Number(e.target.value) || 0)}
+              onChange={(e) => onSetRollsSpent(stateKey, boss.encounterId, Number(e.target.value) || 0)}
             />
             <span className="boss-row__rolls-note">
               {boss.rollsSpent} spent, {boss.rollsAttributed} attributed
@@ -167,6 +187,7 @@ function BossRow(props: {
                           {row.name}
                           {row.item?.isTier && !row.item?.viaCurio && <span className="item-tag">Tier</span>}
                           {row.item?.viaCurio && <span className="item-tag">Curio</span>}
+                          {entry?.catalyst && <span className="catalyst-note">{catalystText(entry)}</span>}
                           {row.item?.specSpecific && specName && (
                             <>
                               {' '}
@@ -197,7 +218,7 @@ function BossRow(props: {
                         current={current}
                         label={row.name}
                         onChange={(state) =>
-                          onSetItemState({ itemId: row.itemId, name: row.name, encounterId: boss.encounterId, encounterName: boss.encounterName, state })
+                          onSetItemState({ stateKey, itemId: row.itemId, name: row.name, encounterId: boss.encounterId, encounterName: boss.encounterName, state })
                         }
                       />
                     </td>
@@ -213,43 +234,57 @@ function BossRow(props: {
 }
 
 export function BossList(props: {
-  report: NormalizedReport | null
-  bossEvals: BossEval[]
-  lootTable: LootTable | null
+  sections: BossSection[]
+  hasReports: boolean
   lootTableStatus: 'idle' | 'loading' | 'error'
-  expectedKillIds: Set<number>
-  onToggleExpectedKill: (encounterId: number) => void
+  expectedTargetKeys: Set<string>
+  onToggleExpectedTarget: (targetKey: string) => void
   onSetItemState: (change: ItemStateChange) => void
-  onSetRollsSpent: (encounterId: number, count: number) => void
+  onSetRollsSpent: (stateKey: string, encounterId: number, count: number) => void
 }) {
-  const { report, bossEvals, lootTable, lootTableStatus, expectedKillIds, onToggleExpectedKill, onSetItemState, onSetRollsSpent } = props
-  const [openId, setOpenId] = useState<number | null>(null)
+  const { sections, hasReports, lootTableStatus, expectedTargetKeys, onToggleExpectedTarget, onSetItemState, onSetRollsSpent } = props
+  const [openKey, setOpenKey] = useState<string | null>(null)
 
-  if (!report) return <div className="checklist checklist--empty">Bosses appear after you fetch a report</div>
-  if (bossEvals.length === 0) return <div className="checklist checklist--empty">No bosses in this report yet</div>
-
-  const lootByEncounter = new Map((lootTable?.encounters ?? []).map((e) => [e.encounterId, e.items]))
-  const specName = lootTable ? getSpecById(lootTable.lootSpecId)?.specName ?? null : null
+  if (!hasReports) return <div className="checklist checklist--empty">Bosses appear after you add a report</div>
+  if (sections.every((s) => s.bossEvals.length === 0)) return <div className="checklist checklist--empty">No bosses in these reports yet</div>
 
   return (
-    <div className="boss-list">
+    <div>
       {lootTableStatus === 'loading' && <div className="field-hint" style={{ marginBottom: 8 }}>{'Loading loot tables…'}</div>}
-      {bossEvals.map((boss, i) => (
-        <BossRow
-          key={boss.encounterId}
-          boss={boss}
-          index={i}
-          report={report}
-          lootItems={lootByEncounter.get(boss.encounterId) ?? null}
-          specName={specName}
-          expanded={openId === boss.encounterId}
-          onToggleExpand={() => setOpenId((prev) => (prev === boss.encounterId ? null : boss.encounterId))}
-          expectedKill={expectedKillIds.has(boss.encounterId)}
-          onToggleExpectedKill={() => onToggleExpectedKill(boss.encounterId)}
-          onSetItemState={onSetItemState}
-          onSetRollsSpent={onSetRollsSpent}
-        />
-      ))}
+      {sections.map((section) => {
+        const lootByEncounter = new Map((section.lootTable?.encounters ?? []).map((e) => [e.encounterId, e.items]))
+        const specName = section.lootTable ? getSpecById(section.lootTable.lootSpecId)?.specName ?? null : null
+        return (
+          <section className="boss-section" key={section.key} aria-label={section.title}>
+            <h4 className="boss-section__title">
+              {section.title}
+              {section.hint && <span className="boss-section__hint">{section.hint}</span>}
+            </h4>
+            <div className="boss-list">
+              {section.bossEvals.map((boss, i) => {
+                const key = evalKey(boss)
+                return (
+                  <BossRow
+                    key={key}
+                    boss={boss}
+                    index={i}
+                    kind={section.kind}
+                    stateKey={section.stateKey}
+                    lootItems={lootByEncounter.get(boss.encounterId) ?? null}
+                    specName={specName}
+                    expanded={openKey === key}
+                    onToggleExpand={() => setOpenKey((prev) => (prev === key ? null : key))}
+                    expectedKill={expectedTargetKeys.has(key)}
+                    onToggleExpectedKill={() => onToggleExpectedTarget(key)}
+                    onSetItemState={onSetItemState}
+                    onSetRollsSpent={onSetRollsSpent}
+                  />
+                )
+              })}
+            </div>
+          </section>
+        )
+      })}
     </div>
   )
 }

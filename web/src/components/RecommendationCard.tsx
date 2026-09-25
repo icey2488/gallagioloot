@@ -10,7 +10,7 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
   // "Roll <boss> or <boss>" headlines -- once a vault comparison is in play the headline is
   // rendered as complete text (see cardData.ts), since it's a full sentence, not a template.
   const tossUpPair = !card.vaultCompare && card.tossUp && card.tossUpBosses ? card.tossUpBosses : null
-  const heroVerb = card.bossName ? 'Roll' : null
+  const heroVerb = card.bossName ? card.verb ?? 'Roll' : null
 
   return (
     <section className="rec-card" aria-label="Bonus roll recommendation">
@@ -22,9 +22,9 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
         </div>
       </div>
 
-      {tossUpPair ? (
+      {tossUpPair && card.tossUpVerb ? (
         <h2 className="rec-card__headline">
-          <span className="rec-card__verb">Roll</span>{' '}
+          <span className="rec-card__verb">{card.tossUpVerb}</span>{' '}
           <span className="rec-card__boss">
             {tossUpPair[0].name} <span className="rec-card__or">or</span> {tossUpPair[1].name}
           </span>
@@ -32,6 +32,12 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
       ) : heroVerb && card.bossName ? (
         <h2 className="rec-card__headline">
           <span className="rec-card__verb">{heroVerb}</span> <span className="rec-card__boss">{card.bossName}</span>
+          {card.qualifier && (
+            <>
+              {' '}
+              <span className="rec-card__qualifier">{card.qualifier}</span>
+            </>
+          )}
         </h2>
       ) : (
         <h2 className="rec-card__headline">{card.headline}</h2>
@@ -59,7 +65,7 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
 
       {card.secondBest && !tossUpPair && card.verdict === 'roll' && (
         <div className="rec-card__second">
-          Next best: {card.secondBest.name} (~{card.secondBest.pct.toFixed(2)}%). Clear of sim noise, so the pick holds.
+          Next best: {card.secondBest.name}, ~{card.secondBest.pct.toFixed(2)}%. Clear of sim noise, so the pick holds.
         </div>
       )}
 
@@ -84,8 +90,9 @@ export function RecommendationCard({ card, onPrimaryAction, stale }: { card: Car
 
       {card.vaultCompare && card.bestRoll && (
         <div className="rec-card__note">
-          Best roll target: {card.bestRoll.name} (~{card.bestRoll.pct.toFixed(2)}%
-          {card.bestRoll.bestCaseItemName ? `, best case ${card.bestRoll.bestCaseItemName}` : ''}).
+          Best roll target: {card.bestRoll.name}, ~{card.bestRoll.pct.toFixed(2)}%
+          {card.bestRoll.bestCaseItemName ? `, best case ${card.bestRoll.bestCaseItemName}` : ''}
+          {card.bestRoll.bestCaseCatalyst ? ` (${card.bestRoll.bestCaseCatalyst})` : ''}.
         </div>
       )}
 

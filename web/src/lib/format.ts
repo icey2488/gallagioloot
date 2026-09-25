@@ -17,6 +17,9 @@ export function isRecognizedDifficulty(difficulty: string, contentType?: 'raid' 
 
 export function formatDifficulty(difficulty: string, contentType?: 'raid' | 'dungeon' | string): string {
   if (!isRecognizedDifficulty(difficulty, contentType)) return 'Unknown'
+  // Raidbots' Mythic+ id ("dungeon-mythic-weekly10") names the key level, never "Weekly10".
+  const keyLevel = difficulty.startsWith('dungeon') ? /(\d+)$/.exec(difficulty)?.[1] : undefined
+  if (keyLevel) return `+${keyLevel}`
   const last = difficulty.split('-').pop() ?? difficulty
   return last.charAt(0).toUpperCase() + last.slice(1)
 }

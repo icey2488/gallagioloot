@@ -1,4 +1,40 @@
-import type { BossEval, Recommendation, VaultDecision } from '@engine/core/types'
+import type { BossEval, PoolEntry, Recommendation, VaultDecision } from '@engine/core/types'
+import type { TargetKind } from '@engine/types'
+import { evalKey } from '@engine/core/targets'
+
+/** The fields of a BossEval/Allocation that name a roll target. */
+export type TargetLike = { encounterName: string; kind?: TargetKind; difficultyLabel?: string; keyLevel?: number; rolls?: number }
+
+/**
+ * The action that spends a roll on a target, split so the card can bold the name:
+ * raid "Roll <boss> (<difficulty>)"; Mythic+ "Run <dungeon> at +10 and roll" (a roll is
+ * spent at the end of a key, so the verb is running it). A difficulty-less raid target
+ * (older payloads) is just "Roll <boss>".
+ */
+export function targetPhrase(t: TargetLike): { verb: string; name: string; qualifier?: string } {
+  if (t.kind === 'mplus') {
+    const level = t.keyLevel !== undefined ? `+${t.keyLevel}` : 'your key level'
+    const keys = (t.rolls ?? 1) > 1 ? ` (${t.rolls} keys)` : ''
+    return { verb: 'Run', name: t.encounterName, qualifier: `at ${level} and roll${keys}` }
+  }
+  return { verb: 'Roll', name: t.encounterName, qualifier: t.difficultyLabel ? `(${t.difficultyLabel})` : undefined }
+}
+
+export function targetPhraseText(t: TargetLike): string {
+  const { verb, name, qualifier } = targetPhrase(t)
+  return [verb, name, qualifier].filter(Boolean).join(' ')
+}
+
+/** A target's name for lists and comparisons: "The Coiled Altar (Mythic)", "Altar of Fangs at +10". */
+export function targetDisplayName(t: TargetLike): string {
+  if (t.kind === 'mplus') return t.keyLevel !== undefined ? `${t.encounterName} at +${t.keyLevel}` : t.encounterName
+  return t.difficultyLabel ? `${t.encounterName} (${t.difficultyLabel})` : t.encounterName
+}
+
+/** "Catalyze into <tier piece>: +x%" for an entry whose catalyzed value wins and is a net upgrade. */
+export function catalystText(entry: Pick<PoolEntry, 'catalyst'> | null | undefined): string | undefined {
+  return entry?.catalyst ? `Catalyze into ${entry.catalyst.name}: +${entry.catalyst.pct.toFixed(2)}%` : undefined
+}
 
 export type CardVerdict = 'roll' | 'vault' | 'toss-up' | 'tokens'
 
@@ -13,7 +49,7 @@ export type CardData = {
    * ITSELF is ambiguous (`bossName` unset, `tossUpBosses` set instead) or there is no
    * rollable boss at all (the tokens verdict).
    */
-  bestRoll?: { name: string; pct: number; bestCaseItemName?: string }
+  bestRoll?: { name: string; pct: number; bestCaseItemName?: string; bestCaseCatalyst?: string }
   /**
    * Boss-vs-boss runner-up. Only set (and only meaningful to show) for a clean Voidcore
    * verdict: comparing "next-best boss to roll" against a vault or toss-up verdict would
@@ -37,6 +73,12 @@ export type CardData = {
   tossUpBosses?: [{ name: string; pct: number }, { name: string; pct: number }]
   /** Single boss name for the plain "Roll <boss>" headline (no vault comparison in play) -- lets the card split "Roll" from the boss name without parsing `headline`. Undefined whenever there's a vault comparison (that headline is rendered as complete text) or the roll target is itself ambiguous. */
   bossName?: string
+  /** Verb before `bossName`: "Roll" for a raid boss, "Run" for a Mythic+ dungeon. */
+  verb?: string
+  /** Text after `bossName`: "(Mythic)" for a raid boss, "at +10 and roll" for a dungeon. */
+  qualifier?: string
+  /** Verb for the toss-up pair headline when both sides share one ("Roll" / "Run"); undefined for a mixed raid/M+ pair, which renders `headline` as text. */
+  tossUpVerb?: string
 }
 
 /**
@@ -69,23 +111,41 @@ export function buildCardData(params: {
 
   const top = recommendation.allocations[0]
   const secondAllocation = recommendation.allocations[1]
-  const rollsAvailable = recommendation.allocations.length || 1
-  const deployableByEv = [...bossEvals].filter((b) => b.deployable && b.encounterId !== top.encounterId).sort((a, b) => b.evPct - a.evPct)
+  const rollsAvailable = recommendation.allocations.reduce((n, a) => n + a.rolls, 0) || 1
+  const topKey = top.targetKey ?? String(top.encounterId)
+  const topEval = bossEvals.find((b) => evalKey(b) === topKey)
+  const deployableByEv = [...bossEvals].filter((b) => b.deployable && evalKey(b) !== topKey).sort((a, b) => b.evPct - a.evPct)
   const secondBest = secondAllocation
-    ? { name: secondAllocation.encounterName, pct: secondAllocation.expectedGainPct }
+    ? { name: targetDisplayName(secondAllocation), pct: secondAllocation.expectedGainPct }
     : deployableByEv[0]
-      ? { name: deployableByEv[0].encounterName, pct: deployableByEv[0].evPct }
+      ? { name: targetDisplayName(deployableByEv[0]), pct: deployableByEv[0].evPct }
       : undefined
 
   const rollTossUp = recommendation.tossUp
-  const rollHeadline = rollTossUp ? `Roll ${rollTossUp.bosses[0]} or ${rollTossUp.bosses[1]}` : `Roll ${top.encounterName}`
+  // Toss-up sides by target key when the engine supplies them (names alone are ambiguous
+  // once the same boss can appear on two difficulties), else by name.
+  const tossUpEvals = rollTossUp
+    ? ([0, 1] as const).map((i) =>
+        rollTossUp.targetKeys ? bossEvals.find((b) => evalKey(b) === rollTossUp.targetKeys![i]) : bossEvals.find((b) => b.encounterName === rollTossUp.bosses[i])
+      )
+    : []
+  const tossUpSide = (i: 0 | 1): TargetLike => tossUpEvals[i] ?? { encounterName: rollTossUp!.bosses[i] }
+  const tossUpVerbs = rollTossUp ? [targetPhrase(tossUpSide(0)).verb, targetPhrase(tossUpSide(1)).verb] : []
+  const tossUpVerb = rollTossUp && tossUpVerbs[0] === tossUpVerbs[1] ? tossUpVerbs[0] : undefined
+  const topPhrase = targetPhrase(top)
+  const lowerFirst = (text: string) => text.charAt(0).toLowerCase() + text.slice(1)
+  const rollHeadline = rollTossUp
+    ? tossUpVerb
+      ? `${tossUpVerb} ${targetDisplayName(tossUpSide(0))} or ${targetDisplayName(tossUpSide(1))}`
+      : `${targetPhraseText(tossUpSide(0))} or ${lowerFirst(targetPhraseText(tossUpSide(1)))}`
+    : targetPhraseText(top)
   const rollTossUpNote = rollTossUp
     ? `Within ${rollTossUp.gapPct.toFixed(2)}%: let kill order decide; roll whichever you kill first.`
     : undefined
   const tossUpBosses: CardData['tossUpBosses'] = rollTossUp
     ? [
-        { name: rollTossUp.bosses[0], pct: top.expectedGainPct },
-        { name: rollTossUp.bosses[1], pct: bossEvals.find((b) => b.encounterName === rollTossUp.bosses[1])?.evPct ?? 0 },
+        { name: targetDisplayName(tossUpSide(0)), pct: top.expectedGainPct },
+        { name: targetDisplayName(tossUpSide(1)), pct: tossUpEvals[1]?.evPct ?? 0 },
       ]
     : undefined
 
@@ -94,9 +154,10 @@ export function buildCardData(params: {
   // razor-thin roll-vs-roll toss-up with the runner-up (rollTossUp): rank 1 is still the
   // best roll target to report, even when it's a close call against rank 2.
   const bestRoll: CardData['bestRoll'] = {
-    name: top.encounterName,
+    name: targetDisplayName(top),
     pct: top.expectedGainPct,
-    bestCaseItemName: bossEvals.find((b) => b.encounterId === top.encounterId)?.bestCase?.name,
+    bestCaseItemName: topEval?.bestCase?.name,
+    bestCaseCatalyst: catalystText(topEval?.bestCase),
   }
 
   if (!vaultDecision) {
@@ -110,7 +171,10 @@ export function buildCardData(params: {
       tossUpNote: rollTossUpNote,
       rollsAvailable,
       tossUpBosses,
-      bossName: rollTossUp ? undefined : top.encounterName,
+      tossUpVerb,
+      bossName: rollTossUp ? undefined : topPhrase.name,
+      verb: rollTossUp ? undefined : topPhrase.verb,
+      qualifier: rollTossUp ? undefined : topPhrase.qualifier,
     }
   }
 
@@ -162,7 +226,7 @@ export function buildCardData(params: {
   // vaultDecision.verdict === 'voidcore'
   return {
     verdict: 'roll',
-    headline: rollTossUp ? rollHeadline : `Take the Voidcore. Roll ${top.encounterName}.`,
+    headline: rollTossUp ? rollHeadline : `Take the Voidcore. ${targetPhraseText(top)}.`,
     pct: vaultDecision.voidcoreGainPct,
     bestRoll,
     secondBest,
@@ -171,5 +235,6 @@ export function buildCardData(params: {
     tossUpNote: rollTossUpNote,
     rollsAvailable,
     tossUpBosses,
+    tossUpVerb,
   }
 }
