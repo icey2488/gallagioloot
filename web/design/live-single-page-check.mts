@@ -300,7 +300,7 @@ async function assertEquippedRows(page: Page, label: string) {
     const row = page.locator('.boss-row--open .loot-item-table tbody tr', { hasText: item })
     const found = {
       rows: await row.count(),
-      tag: (await row.locator('.item-tag--equipped').allInnerTexts()).map((t) => t.trim()),
+      tag: (await row.locator('.item-tag--equipped').allTextContents()).map((t) => t.trim()),
       on: await row.locator('.state-seg__btn--on').allInnerTexts(),
       buttons: await row.locator('.state-seg__btn').allInnerTexts(),
       gain: ((await row.locator('td[data-label="Sim gain"]').allInnerTexts())[0] ?? '').trim(),
