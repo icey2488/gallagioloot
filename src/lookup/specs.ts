@@ -6,58 +6,64 @@
 // best inference (not yet documented in-game), noted on the entry below.
 export type Role = 'dps' | 'healer' | 'tank'
 
+export type PrimaryStat = 'agility' | 'strength' | 'intellect'
+
 export type SpecEntry = {
   specId: number
   specName: string
   classId: number
   className: string
   role: Role
+  /** The spec's main stat. Loot is filtered on it: an item carrying only another primary stat is never that spec's loot. */
+  primaryStat: PrimaryStat
 }
 
 export const SPECS: SpecEntry[] = [
-  { specId: 71, specName: 'Arms', classId: 1, className: 'Warrior', role: 'dps' },
-  { specId: 72, specName: 'Fury', classId: 1, className: 'Warrior', role: 'dps' },
-  { specId: 73, specName: 'Protection', classId: 1, className: 'Warrior', role: 'tank' },
-  { specId: 65, specName: 'Holy', classId: 2, className: 'Paladin', role: 'healer' },
-  { specId: 66, specName: 'Protection', classId: 2, className: 'Paladin', role: 'tank' },
-  { specId: 70, specName: 'Retribution', classId: 2, className: 'Paladin', role: 'dps' },
-  { specId: 253, specName: 'Beast Mastery', classId: 3, className: 'Hunter', role: 'dps' },
-  { specId: 254, specName: 'Marksmanship', classId: 3, className: 'Hunter', role: 'dps' },
-  { specId: 255, specName: 'Survival', classId: 3, className: 'Hunter', role: 'dps' },
-  { specId: 259, specName: 'Assassination', classId: 4, className: 'Rogue', role: 'dps' },
-  { specId: 260, specName: 'Outlaw', classId: 4, className: 'Rogue', role: 'dps' },
-  { specId: 261, specName: 'Subtlety', classId: 4, className: 'Rogue', role: 'dps' },
-  { specId: 256, specName: 'Discipline', classId: 5, className: 'Priest', role: 'healer' },
-  { specId: 257, specName: 'Holy', classId: 5, className: 'Priest', role: 'healer' },
-  { specId: 258, specName: 'Shadow', classId: 5, className: 'Priest', role: 'dps' },
-  { specId: 250, specName: 'Blood', classId: 6, className: 'Death Knight', role: 'tank' },
-  { specId: 251, specName: 'Frost', classId: 6, className: 'Death Knight', role: 'dps' },
-  { specId: 252, specName: 'Unholy', classId: 6, className: 'Death Knight', role: 'dps' },
-  { specId: 262, specName: 'Elemental', classId: 7, className: 'Shaman', role: 'dps' },
-  { specId: 263, specName: 'Enhancement', classId: 7, className: 'Shaman', role: 'dps' },
-  { specId: 264, specName: 'Restoration', classId: 7, className: 'Shaman', role: 'healer' },
-  { specId: 62, specName: 'Arcane', classId: 8, className: 'Mage', role: 'dps' },
-  { specId: 63, specName: 'Fire', classId: 8, className: 'Mage', role: 'dps' },
-  { specId: 64, specName: 'Frost', classId: 8, className: 'Mage', role: 'dps' },
-  { specId: 265, specName: 'Affliction', classId: 9, className: 'Warlock', role: 'dps' },
-  { specId: 266, specName: 'Demonology', classId: 9, className: 'Warlock', role: 'dps' },
-  { specId: 267, specName: 'Destruction', classId: 9, className: 'Warlock', role: 'dps' },
-  { specId: 268, specName: 'Brewmaster', classId: 10, className: 'Monk', role: 'tank' },
-  { specId: 269, specName: 'Windwalker', classId: 10, className: 'Monk', role: 'dps' },
-  { specId: 270, specName: 'Mistweaver', classId: 10, className: 'Monk', role: 'healer' },
-  { specId: 102, specName: 'Balance', classId: 11, className: 'Druid', role: 'dps' },
-  { specId: 103, specName: 'Feral', classId: 11, className: 'Druid', role: 'dps' },
-  { specId: 104, specName: 'Guardian', classId: 11, className: 'Druid', role: 'tank' },
-  { specId: 105, specName: 'Restoration', classId: 11, className: 'Druid', role: 'healer' },
-  { specId: 577, specName: 'Havoc', classId: 12, className: 'Demon Hunter', role: 'dps' },
-  { specId: 581, specName: 'Vengeance', classId: 12, className: 'Demon Hunter', role: 'tank' },
+  { specId: 71, specName: 'Arms', classId: 1, className: 'Warrior', role: 'dps', primaryStat: 'strength' },
+  { specId: 72, specName: 'Fury', classId: 1, className: 'Warrior', role: 'dps', primaryStat: 'strength' },
+  { specId: 73, specName: 'Protection', classId: 1, className: 'Warrior', role: 'tank', primaryStat: 'strength' },
+  { specId: 65, specName: 'Holy', classId: 2, className: 'Paladin', role: 'healer', primaryStat: 'intellect' },
+  { specId: 66, specName: 'Protection', classId: 2, className: 'Paladin', role: 'tank', primaryStat: 'strength' },
+  { specId: 70, specName: 'Retribution', classId: 2, className: 'Paladin', role: 'dps', primaryStat: 'strength' },
+  { specId: 253, specName: 'Beast Mastery', classId: 3, className: 'Hunter', role: 'dps', primaryStat: 'agility' },
+  { specId: 254, specName: 'Marksmanship', classId: 3, className: 'Hunter', role: 'dps', primaryStat: 'agility' },
+  { specId: 255, specName: 'Survival', classId: 3, className: 'Hunter', role: 'dps', primaryStat: 'agility' },
+  { specId: 259, specName: 'Assassination', classId: 4, className: 'Rogue', role: 'dps', primaryStat: 'agility' },
+  { specId: 260, specName: 'Outlaw', classId: 4, className: 'Rogue', role: 'dps', primaryStat: 'agility' },
+  { specId: 261, specName: 'Subtlety', classId: 4, className: 'Rogue', role: 'dps', primaryStat: 'agility' },
+  { specId: 256, specName: 'Discipline', classId: 5, className: 'Priest', role: 'healer', primaryStat: 'intellect' },
+  { specId: 257, specName: 'Holy', classId: 5, className: 'Priest', role: 'healer', primaryStat: 'intellect' },
+  { specId: 258, specName: 'Shadow', classId: 5, className: 'Priest', role: 'dps', primaryStat: 'intellect' },
+  { specId: 250, specName: 'Blood', classId: 6, className: 'Death Knight', role: 'tank', primaryStat: 'strength' },
+  { specId: 251, specName: 'Frost', classId: 6, className: 'Death Knight', role: 'dps', primaryStat: 'strength' },
+  { specId: 252, specName: 'Unholy', classId: 6, className: 'Death Knight', role: 'dps', primaryStat: 'strength' },
+  { specId: 262, specName: 'Elemental', classId: 7, className: 'Shaman', role: 'dps', primaryStat: 'intellect' },
+  { specId: 263, specName: 'Enhancement', classId: 7, className: 'Shaman', role: 'dps', primaryStat: 'agility' },
+  { specId: 264, specName: 'Restoration', classId: 7, className: 'Shaman', role: 'healer', primaryStat: 'intellect' },
+  { specId: 62, specName: 'Arcane', classId: 8, className: 'Mage', role: 'dps', primaryStat: 'intellect' },
+  { specId: 63, specName: 'Fire', classId: 8, className: 'Mage', role: 'dps', primaryStat: 'intellect' },
+  { specId: 64, specName: 'Frost', classId: 8, className: 'Mage', role: 'dps', primaryStat: 'intellect' },
+  { specId: 265, specName: 'Affliction', classId: 9, className: 'Warlock', role: 'dps', primaryStat: 'intellect' },
+  { specId: 266, specName: 'Demonology', classId: 9, className: 'Warlock', role: 'dps', primaryStat: 'intellect' },
+  { specId: 267, specName: 'Destruction', classId: 9, className: 'Warlock', role: 'dps', primaryStat: 'intellect' },
+  { specId: 268, specName: 'Brewmaster', classId: 10, className: 'Monk', role: 'tank', primaryStat: 'agility' },
+  { specId: 269, specName: 'Windwalker', classId: 10, className: 'Monk', role: 'dps', primaryStat: 'agility' },
+  { specId: 270, specName: 'Mistweaver', classId: 10, className: 'Monk', role: 'healer', primaryStat: 'intellect' },
+  { specId: 102, specName: 'Balance', classId: 11, className: 'Druid', role: 'dps', primaryStat: 'intellect' },
+  { specId: 103, specName: 'Feral', classId: 11, className: 'Druid', role: 'dps', primaryStat: 'agility' },
+  { specId: 104, specName: 'Guardian', classId: 11, className: 'Druid', role: 'tank', primaryStat: 'agility' },
+  { specId: 105, specName: 'Restoration', classId: 11, className: 'Druid', role: 'healer', primaryStat: 'intellect' },
+  { specId: 577, specName: 'Havoc', classId: 12, className: 'Demon Hunter', role: 'dps', primaryStat: 'agility' },
+  { specId: 581, specName: 'Vengeance', classId: 12, className: 'Demon Hunter', role: 'tank', primaryStat: 'agility' },
   // Inferred, not confirmed in-game: Demon Hunter already has a dps (Havoc) and a
   // tank (Vengeance) spec, and "Devourer" reads as a dps theme (devouring souls) --
-  // see README/final summary for this being flagged as uncertain.
-  { specId: 1480, specName: 'Devourer', classId: 12, className: 'Demon Hunter', role: 'dps' },
-  { specId: 1467, specName: 'Devastation', classId: 13, className: 'Evoker', role: 'dps' },
-  { specId: 1468, specName: 'Preservation', classId: 13, className: 'Evoker', role: 'healer' },
-  { specId: 1473, specName: 'Augmentation', classId: 13, className: 'Evoker', role: 'dps' },
+  // see README/final summary for this being flagged as uncertain. Its primary stat is
+  // inferred too: intellect (a ranged caster spec); the one Demon-Hunter-only glaive in
+  // The Venomous Abyss carries an intellect variant alongside the agility one.
+  { specId: 1480, specName: 'Devourer', classId: 12, className: 'Demon Hunter', role: 'dps', primaryStat: 'intellect' },
+  { specId: 1467, specName: 'Devastation', classId: 13, className: 'Evoker', role: 'dps', primaryStat: 'intellect' },
+  { specId: 1468, specName: 'Preservation', classId: 13, className: 'Evoker', role: 'healer', primaryStat: 'intellect' },
+  { specId: 1473, specName: 'Augmentation', classId: 13, className: 'Evoker', role: 'dps', primaryStat: 'intellect' },
 ]
 
 export function getSpecById(specId: number): SpecEntry | undefined {
@@ -71,6 +77,40 @@ export function getSpecByName(specName: string, className?: string): SpecEntry |
   return SPECS.find(
     (spec) => spec.specName.toLowerCase() === nameLower && (classLower === undefined || spec.className.toLowerCase() === classLower)
   )
+}
+
+/**
+ * Raidbots encounter-items.json `stats[].id` values that are a primary stat, mapped to the
+ * spec primary stats they satisfy. 3/4/5 are Agility/Strength/Intellect; 71-74 are the
+ * multi-stat variants Blizzard uses on shared-stat gear (verified against live data
+ * 2026-09-24: cloaks carry 71, leather/mail 73, plate 74, and the Demon-Hunter-only glaive
+ * lists Intellect plus 73). Every other stat id (stamina 7, crit 32, haste 36, ...) is not
+ * a primary stat.
+ */
+const PRIMARY_STAT_IDS: Record<number, PrimaryStat[]> = {
+  3: ['agility'],
+  4: ['strength'],
+  5: ['intellect'],
+  71: ['agility', 'strength', 'intellect'],
+  72: ['agility', 'strength'],
+  73: ['agility', 'intellect'],
+  74: ['strength', 'intellect'],
+}
+
+/**
+ * The primary stats an item grants, from its raw `stats` list -- the union over every primary
+ * stat id it carries -- or `undefined` when it carries none (rings, necks and other stat-less
+ * or secondary-only items have no primary stat to restrict on).
+ */
+export function itemPrimaryStats(stats: ReadonlyArray<{ id: number }> | undefined): Set<PrimaryStat> | undefined {
+  let result: Set<PrimaryStat> | undefined
+  for (const stat of stats ?? []) {
+    const grants = PRIMARY_STAT_IDS[stat.id]
+    if (!grants) continue
+    result ??= new Set()
+    for (const g of grants) result.add(g)
+  }
+  return result
 }
 
 export type ArmorType = 'cloth' | 'leather' | 'mail' | 'plate'

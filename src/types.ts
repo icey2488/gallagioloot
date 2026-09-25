@@ -99,6 +99,8 @@ export type EncounterItemEntry = {
   itemSetId?: number
   uniqueEquipped?: boolean
   onUseTrinket?: boolean
+  /** Raw item stats (Raidbots stat ids, e.g. 5 = Intellect, 3 = Agility, 4 = Strength, 71-74 = multi-primary). Used to tell whose primary stat an item carries. */
+  stats?: Array<{ id: number; alloc?: number }>
   /** WoW spec ids that can receive/use this item, when the item is spec-restricted (trinkets, cantrip weapons, Maze-roa). */
   specs?: number[]
   /** WoW class ids that can use this item, when class-restricted (tokens). */

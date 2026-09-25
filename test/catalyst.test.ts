@@ -127,18 +127,20 @@ describe('catalyst max rule on the live fixtures', () => {
     //   Coiled Altar 0.676 -> 0.812 (pool 6 -> 5), Ula'tek 0.588 -> 0.798, Lost Explorers 0.461 -> 0.614,
     //   Twin Fangs 0.495 -> 0.366 (its phantom Manaflux entry is gone), Nek'zali 0.279 -> 0.349;
     //   Sszorak 0.648, Entombed Sentinels 0.278, Vashnik 0.245 unchanged.
-    // Then the curio stopped being a pool entry (2026-09-24): Ula'tek 0.798 (7 entries) -> 0.614 (6).
+    // 2026-09-24: the curio stopped being a pool entry (Ula'tek 0.798 (7 entries) -> 0.614 (6)), then loot
+    // eligibility gained the primary-stat rule (Ula'tek loses Jaw of the Shackled Goddess and Zatha'tek: 6 -> 4,
+    // 0.921; Twin Fangs 0.366 -> 0.458 and Entombed Sentinels 0.278 -> 0.348 each lose an Agility dagger).
     const rpt = normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup)
     const evals = buildBossPools(rpt, createState(rpt.character, rpt.difficulty), SETTINGS, buildLootTable(1320, 62, lookup))
     const ev = Object.fromEntries(evals.map((b) => [b.encounterName, Number(b.evPct.toFixed(3))]))
     expect(ev).toEqual({
       'The Coiled Altar': 0.812,
-      "Ula'tek": 0.614,
+      "Ula'tek": 0.921,
       Sszorak: 0.648,
       'The Lost Explorers': 0.614,
-      'The Twin Fangs': 0.366,
+      'The Twin Fangs': 0.458,
       "Nek'zali the Soulcoiler": 0.349,
-      'Entombed Sentinels': 0.278,
+      'Entombed Sentinels': 0.348,
       'Vashnik the Malignant': 0.245,
     })
     const altar = evals.find((b) => b.encounterId === 2883)!
@@ -155,6 +157,6 @@ describe('catalyst max rule on the live fixtures', () => {
     expect(source.pct).toBeCloseTo(1.12, 2)
     // No tier piece becomes a pool entry of its own: every dungeon pool is exactly its loot table.
     for (const b of evals) expect(b.pool.every((p) => !p.itemIds.some((id) => [271562, 271563, 271564, 271565, 271567].includes(id)))).toBe(true)
-    expect(evals.reduce((n, b) => n + b.pool.length, 0)).toBe(80)
+    expect(evals.reduce((n, b) => n + b.pool.length, 0)).toBe(67)
   })
 })

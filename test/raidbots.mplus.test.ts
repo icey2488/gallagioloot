@@ -51,10 +51,10 @@ describe('normalizeRaidbotsReport: Mythic+ droptimizer (a8URThoNZqEXDW3tBtavHq)'
     })
   })
 
-  it('joins against /loot-table/-1: 8 dungeon pseudo-encounters, 80 Arcane items, every direct simmed item inside its dungeon pool', () => {
+  it('joins against /loot-table/-1: 8 dungeon pseudo-encounters, 67 Arcane items (wrong-primary-stat gear excluded), every direct simmed item inside its dungeon pool', () => {
     const table = buildLootTable(-1, ARCANE, loadLookup())
     expect(table).toHaveLength(8)
-    expect(table.reduce((n, e) => n + e.items.length, 0)).toBe(80)
+    expect(table.reduce((n, e) => n + e.items.length, 0)).toBe(67)
     for (const item of report.items.filter((i) => i.catalystSourceId === undefined)) {
       const dungeon = table.find((e) => e.encounterId === item.encounterId)
       expect(dungeon?.items.some((li) => li.itemId === item.itemId), `${item.name} in ${item.encounterName}`).toBe(true)

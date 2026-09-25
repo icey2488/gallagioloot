@@ -261,46 +261,54 @@ describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () 
     expect(evals).toHaveLength(16)
     const ranked = [...evals].sort((a, b) => b.evPct - a.evPct).map((b) => `${b.encounterName} ${b.evPct.toFixed(3)}`)
     expect(ranked).toEqual([
+      "Ula'tek 0.921",
       'The Coiled Altar 0.812',
       'Sszorak 0.648',
       'The Lost Explorers 0.614',
-      "Ula'tek 0.614",
-      'The Twin Fangs 0.366',
-      'Altar of Fangs 0.354',
+      'The Twin Fangs 0.458',
+      'Altar of Fangs 0.433',
+      'Murder Row 0.381',
       "Nek'zali the Soulcoiler 0.349",
+      'Entombed Sentinels 0.348',
       'Den of Nalorakk 0.348',
-      'Murder Row 0.312',
-      'Ruby Life Pools 0.290',
-      'Temple of Sethraliss 0.284',
-      'Entombed Sentinels 0.278',
-      "Kings' Rest 0.277",
-      'Voidscar Arena 0.266',
+      'Temple of Sethraliss 0.341',
+      'Ruby Life Pools 0.338',
+      'Voidscar Arena 0.333',
+      "Kings' Rest 0.305",
       'Vashnik the Malignant 0.245',
-      'The Blinding Vale 0.154',
+      'The Blinding Vale 0.212',
     ])
   })
 
   const vaultItem = { name: 'Vile Vial of Volatile Venom', gainPct: 0.7439364712473122, itemId: 273796, encounterId: 2878 }
 
-  it("1 roll: Coiled Altar; Altar of Fangs isn't allocated, so the Vial saves no rolls (Voidcore 0.81% vs vault 0.74% = toss-up, as raid-only)", () => {
+  it("Ula'tek's pool is the journal's 4 items (curio and the wrong-stat Jaw / Zatha'tek out): 4/4, 0.921%", () => {
+    const ulatek = evals.find((b) => b.encounterId === 2895)!
+    expect(ulatek.pool.map((p) => p.name).sort()).toEqual(["Aqirbane Reliquary", "Font of Venomous Rage", "Jan'thrazet, the Soul Fang", "Venomkeeper's Horrific Cowl"])
+    expect(ulatek.remaining).toBe(4)
+    expect(ulatek.evPct).toBeCloseTo((1.47 + 1.77 + 0 + 0.44) / 4, 1)
+    expect(ulatek.evPct).toBeGreaterThan(evals.find((b) => b.encounterId === 2883)!.evPct)
+  })
+
+  it("1 roll: Ula'tek (0.92%), a toss-up with The Coiled Altar; Altar of Fangs isn't allocated, so the Vial saves no rolls", () => {
     const rec = recommend(evals, settings, [raid, mplus])
-    expect(rec.allocations.map((a) => a.encounterName)).toEqual(['The Coiled Altar'])
-    expect(rec.tossUp).toBeNull()
+    expect(rec.allocations.map((a) => a.encounterName)).toEqual(["Ula'tek"])
+    expect(rec.tossUp?.bosses).toEqual(["Ula'tek", 'The Coiled Altar'])
     const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings, report: raid })
     expect(vd.savedRolls).toBe(0)
     expect(vd.savedRollsNote).toBe(`Altar of Fangs isn't a target you'd roll this week, so taking "Vile Vial of Volatile Venom" saves no rolls.`)
-    expect(vd.voidcoreGainPct).toBeCloseTo(0.8117, 3)
+    expect(vd.voidcoreGainPct).toBeCloseTo(0.9206, 3)
     expect(vd.vaultItemGainPct).toBeCloseTo(0.7439, 4)
-    expect(vd.verdict).toBe('toss-up')
+    expect(vd.verdict).toBe('voidcore') // 0.92% vs 0.74%: gap 0.18 is past the vault toss-up band
   })
 
-  it("2 rolls: Coiled Altar + Sszorak, still no saved rolls for the Vial -> Voidcore (1.46% vs 0.74%)", () => {
+  it("2 rolls: Ula'tek + Coiled Altar, still no saved rolls for the Vial -> Voidcore (1.73% vs 0.74%)", () => {
     const twoRolls: Settings = { ...settings, rollsAvailable: 2 }
     const rec = recommend(evals, twoRolls, [raid, mplus])
-    expect(rec.allocations.map((a) => a.encounterName)).toEqual(['The Coiled Altar', 'Sszorak'])
+    expect(rec.allocations.map((a) => a.encounterName)).toEqual(["Ula'tek", 'The Coiled Altar'])
     const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings: twoRolls, report: raid })
     expect(vd.savedRolls).toBe(0)
-    expect(vd.voidcoreGainPct).toBeCloseTo(1.4597, 3)
+    expect(vd.voidcoreGainPct).toBeCloseTo(1.7323, 3)
     expect(vd.vaultItemGainPct).toBeCloseTo(0.7439, 4)
     expect(vd.verdict).toBe('voidcore')
   })
