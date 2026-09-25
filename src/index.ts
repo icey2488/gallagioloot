@@ -332,8 +332,11 @@ function extractId(input: string, pattern: RegExp): string | null {
   return match ? match[0] : null
 }
 
+/** Bump when the normalized report shape gains fields, so cached reports (10 min TTL) don't hide them after a deploy. v2: equippedItemIds. */
+const REPORT_CACHE_VERSION = 2
+
 function reportCacheKey(source: string, id: string): Request {
-  return new Request(`https://cache.gallagioloot.local/report/${source}/${id}`)
+  return new Request(`https://cache.gallagioloot.local/report/v${REPORT_CACHE_VERSION}/${source}/${id}`)
 }
 
 async function respondAndCache(
