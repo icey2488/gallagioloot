@@ -71,13 +71,14 @@ export function PricedDetail(props: { bossEvals: BossEval[]; thresholdPct: numbe
                   </td>
                   <td data-label="Best case">
                     {b.bestCase ? (
-                      <>
+                      // One wrapper so the folded (mobile) cell keeps name, pct and catalyst note together.
+                      <span>
                         {b.bestCase.name}{' '}
                         <span className="num" style={{ fontWeight: 600 }}>
                           ({b.bestCase.pct.toFixed(2)}%)
                         </span>
                         {b.bestCase.catalyst && <span className="catalyst-note">{catalystText(b.bestCase)}</span>}
-                      </>
+                      </span>
                     ) : (
                       '—'
                     )}

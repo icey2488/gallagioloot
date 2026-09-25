@@ -184,10 +184,16 @@ function BossRow(props: {
                         </div>
                       ) : (
                         <>
-                          {row.name}
+                          {entry?.catalyst ? (
+                            <span>
+                              {row.name}
+                              <span className="catalyst-note">{catalystText(entry)}</span>
+                            </span>
+                          ) : (
+                            row.name
+                          )}
                           {row.item?.isTier && !row.item?.viaCurio && <span className="item-tag">Tier</span>}
                           {row.item?.viaCurio && <span className="item-tag">Curio</span>}
-                          {entry?.catalyst && <span className="catalyst-note">{catalystText(entry)}</span>}
                           {row.item?.specSpecific && specName && (
                             <>
                               {' '}
