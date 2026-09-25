@@ -18,6 +18,17 @@ const MPLUS_URL = 'https://www.raidbots.com/simbot/report/a8URThoNZqEXDW3tBtavHq
 const TOPGEAR_URL = 'https://www.raidbots.com/simbot/report/k3vroAKe6QvF5gN4GeCVAq'
 const EXPANDED_DUNGEON = 'Altar of Fangs'
 
+// v2.12: the whole flow runs once per theme. Expected page background = the theme's --bg-base (Claude Design export);
+// the picker must be present and sit inside the viewport, and nothing in the header may overflow it.
+const THEMES: Array<{ id: 'midnight' | 'green' | 'red'; label: string; bg: string }> = [
+  { id: 'midnight', label: 'Midnight', bg: 'rgb(6, 16, 31)' },
+  { id: 'green', label: 'Felt green', bg: 'rgb(3, 20, 12)' },
+  { id: 'red', label: 'Craps red', bg: 'rgb(42, 5, 8)' },
+]
+let THEME = THEMES[0]
+/** Midnight keeps the historical file names; the other themes get a -green / -red suffix. */
+const out = (path: string) => (THEME.id === 'midnight' ? path : path.replace(/.png$/, `-${THEME.id}.png`))
+
 const fixture = (name: string) => readFileSync(fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)), 'utf8')
 const RAID = fixture('raidbots-6PTZ7TjgU8PdxJhZ97bMUa.json')
 const MPLUS = fixture('raidbots-a8URThoNZqEXDW3tBtavHq.json')
@@ -108,7 +119,7 @@ async function assertEquippedRow(page: Page, label: string, shot: string) {
  * sections, 8 dungeon rows). Throws with every violation listed when any check fails.
  */
 async function assertLayout(page: Page, label: string) {
-  const result = await page.evaluate(() => {
+  const result = await page.evaluate((expectedTheme) => {
     const problems: string[] = []
     const viewportW = window.innerWidth
     const EPS = 0.5
@@ -146,6 +157,22 @@ async function assertLayout(page: Page, label: string) {
       })
     }
 
+    const picker = document.querySelector('select[aria-label="Theme"]') as HTMLSelectElement | null
+    if (!picker) problems.push('theme picker missing')
+    else {
+      const pr = picker.getBoundingClientRect()
+      if (pr.left < -EPS || pr.right > viewportW + EPS) problems.push(`theme picker outside the viewport: [${pr.left.toFixed(1)},${pr.right.toFixed(1)}]`)
+      const names = [...picker.options].map((o) => o.textContent)
+      if (names.join() !== 'Midnight,Felt green,Craps red') problems.push(`theme options: ${names.join()}`)
+    }
+    document.querySelectorAll('.app-header *').forEach((el) => {
+      const r = el.getBoundingClientRect()
+      if (r.width === 0 && r.height === 0) return
+      if (r.right > viewportW + EPS || r.left < -EPS) problems.push(`header element outside the viewport: <${el.tagName.toLowerCase()} class="${el.className}"> [${r.left.toFixed(1)},${r.right.toFixed(1)}]`)
+    })
+    if (document.documentElement.dataset.theme !== expectedTheme.id) problems.push(`data-theme is ${document.documentElement.dataset.theme}, expected ${expectedTheme.id}`)
+    const bgNow = getComputedStyle(document.body).backgroundColor
+    if (bgNow !== expectedTheme.bg) problems.push(`page background ${bgNow}, expected ${expectedTheme.bg}`)
     const reportLines = document.querySelectorAll('.report-line').length
     if (reportLines !== 2) problems.push(`expected 2 report parse lines, found ${reportLines}`)
     const sections = [...document.querySelectorAll('.boss-section')]
@@ -155,7 +182,7 @@ async function assertLayout(page: Page, label: string) {
     if (document.body.textContent?.includes('Weekly10')) problems.push('"Weekly10" rendered somewhere')
 
     return { problems, docWidth: document.documentElement.scrollWidth, winWidth: window.innerWidth }
-  })
+  }, THEME)
 
   if (result.docWidth > result.winWidth) {
     result.problems.push(`horizontal scroll: scrollWidth ${result.docWidth} > innerWidth ${result.winWidth}`)
@@ -163,7 +190,7 @@ async function assertLayout(page: Page, label: string) {
   if (result.problems.length > 0) {
     throw new Error(`layout assertions failed (${label}):\n${result.problems.join('\n')}`)
   }
-  console.log(`layout assertions passed (${label}) ✓`)
+  console.log(`layout assertions passed (${THEME.label}, ${label}) ✓`)
 }
 
 /**
@@ -331,31 +358,31 @@ async function shootDesktop(page: Page) {
 
   await page.goto(APP_URL)
   await page.waitForSelector('#report-url')
-  await page.screenshot({ path: 'design/single-page-empty.png', fullPage: true })
-  console.log('captured: single-page-empty.png')
+  await page.screenshot({ path: out('design/single-page-empty.png'), fullPage: true })
+  console.log('captured: ' + out('design/single-page-empty.png'))
 
   await loadReports(page)
-  await assertReportsPanel(page, '1280px', 'design/single-page-reports-panel-1280.png')
+  await assertReportsPanel(page, '1280px', out('design/single-page-reports-panel-1280.png'))
   await expandDungeon(page)
   await assertLayout(page, '1280px, loaded, dungeon expanded')
-  await page.screenshot({ path: 'design/single-page-loaded.png', fullPage: true })
-  console.log('captured: single-page-loaded.png')
-  await assertEquippedRow(page, '1280px', 'design/single-page-equipped.png')
+  await page.screenshot({ path: out('design/single-page-loaded.png'), fullPage: true })
+  console.log('captured: ' + out('design/single-page-loaded.png'))
+  await assertEquippedRow(page, '1280px', out('design/single-page-equipped.png'))
 
   await priceTheRoll(page)
   await assertLayout(page, '1280px, priced')
   await logCard(page, '1280px')
-  await page.screenshot({ path: 'design/single-page-priced.png', fullPage: true })
-  console.log('captured: single-page-priced.png')
-  await assertRollList(page, '1280px', 'design/single-page-card-rolls-1280.png')
+  await page.screenshot({ path: out('design/single-page-priced.png'), fullPage: true })
+  console.log('captured: ' + out('design/single-page-priced.png'))
+  await assertRollList(page, '1280px', out('design/single-page-card-rolls-1280.png'))
   await priceTheRoll(page)
 
   // Now make it stale: untick a dungeon's "I will run this key". The snapshot dims + a re-price note appears.
   await page.locator('.boss-section').nth(1).locator('.boss-row__kill input[type="checkbox"]').nth(1).click()
   await page.waitForSelector('.reprice-note', { timeout: 5000 })
   await page.waitForSelector('.priced-section--stale')
-  await page.screenshot({ path: 'design/single-page-stale.png', fullPage: true })
-  console.log('captured: single-page-stale.png')
+  await page.screenshot({ path: out('design/single-page-stale.png'), fullPage: true })
+  console.log('captured: ' + out('design/single-page-stale.png'))
 }
 
 async function shootMobile(page: Page) {
@@ -364,18 +391,18 @@ async function shootMobile(page: Page) {
   await page.goto(APP_URL)
   await page.waitForSelector('#report-url')
   await loadReports(page)
-  await assertReportsPanel(page, '390px', 'design/single-page-reports-panel-390.png')
+  await assertReportsPanel(page, '390px', out('design/single-page-reports-panel-390.png'))
   await expandDungeon(page)
   await assertLayout(page, '390px, loaded, dungeon expanded')
-  await page.screenshot({ path: 'design/single-page-mobile-390.png', fullPage: true })
-  console.log('captured: single-page-mobile-390.png')
-  await assertEquippedRow(page, '390px', 'design/single-page-equipped-mobile-390.png')
+  await page.screenshot({ path: out('design/single-page-mobile-390.png'), fullPage: true })
+  console.log('captured: ' + out('design/single-page-mobile-390.png'))
+  await assertEquippedRow(page, '390px', out('design/single-page-equipped-mobile-390.png'))
 
   await priceTheRoll(page)
   await assertLayout(page, '390px, priced')
-  await page.screenshot({ path: 'design/single-page-priced-mobile-390.png', fullPage: true })
-  console.log('captured: single-page-priced-mobile-390.png')
-  await assertRollList(page, '390px', 'design/single-page-card-rolls-390.png')
+  await page.screenshot({ path: out('design/single-page-priced-mobile-390.png'), fullPage: true })
+  console.log('captured: ' + out('design/single-page-priced-mobile-390.png'))
+  await assertRollList(page, '390px', out('design/single-page-card-rolls-390.png'))
 }
 
 async function main() {
@@ -386,14 +413,22 @@ async function main() {
   try {
     await waitForServer(APP_URL)
     const browser = await chromium.launch()
-    // tsx/esbuild wraps named closures in __name(); page.evaluate bodies need it defined in the page.
-    // Pin the timezone: the sim dates are shown in the viewer's local time (the M+ report was written 01:39 UTC on the 25th).
-    const context = await browser.newContext({ timezoneId: 'America/Los_Angeles' })
-    await context.addInitScript('window.__name = (f) => f')
-    const desktop = await context.newPage()
-    await shootDesktop(desktop)
-    const mobile = await context.newPage()
-    await shootMobile(mobile)
+    for (const theme of THEMES) {
+      THEME = theme
+      console.log(`
+=== theme: ${theme.label} ===`)
+      // Pin the timezone: the sim dates are shown in the viewer's local time (the M+ report was written 01:39 UTC on the 25th).
+      const context = await browser.newContext({ timezoneId: 'America/Los_Angeles' })
+      // tsx/esbuild wraps named closures in __name(); page.evaluate bodies need it defined in the page. The stored choice is
+      // what a returning visitor has; the inline script in index.html applies it before first paint.
+      await context.addInitScript('window.__name = (f) => f')
+      await context.addInitScript(`localStorage.setItem('gallagioloot:theme', '${theme.id}')`)
+      const desktop = await context.newPage()
+      await shootDesktop(desktop)
+      const mobile = await context.newPage()
+      await shootMobile(mobile)
+      await context.close()
+    }
     await browser.close()
     console.log('\nAll single-page screenshots captured.')
   } finally {

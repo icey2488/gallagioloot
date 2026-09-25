@@ -24,8 +24,11 @@
 //   - the footer's assumptions list carries the nine Voidcore supply assumptions, including "Holding delays the upgrade: ..."
 //   - the spec-specific pill renders inline (a wide pill, not a circle) at 390px
 //   - layout: no horizontal scroll, controls inside their cards, names wrap, nothing exceeds its panel
+//   - v2.12 theme picker (fresh context at 1280 and 390): Midnight default, Felt green and Craps red each set the root data-theme,
+//     the page background and the wordmark gold (computed styles), keep the header inside the viewport, persist across a reload;
+//     an unknown stored value falls back to Midnight
 // Screenshots + a JSON dump land in design/live-single-page-* (gitignored).
-import { chromium, type Page } from 'playwright'
+import { chromium, type Browser, type Page } from 'playwright'
 import { writeFileSync } from 'node:fs'
 import { VOIDCORE_ASSUMPTIONS } from '../../src/core/supply'
 
@@ -480,6 +483,61 @@ async function assertTargetEvs(page: Page, label: string) {
   check(`[${label}] per-target EVs match the pre-v2.06 values (Sszorak 0.65, Twin Fangs 0.46, Vashnik 0.25, Murder Row 0.38, Temple 0.34, ...)`, off.length === 0, JSON.stringify({ off, evs }))
 }
 
+// v2.12 theme picker: fresh browser = Midnight; each theme sets the root attribute, the page background and the wordmark gold
+// (computed styles, so the token sets really reach the rendered page), keeps the header inside the viewport, and survives a
+// reload; an unknown stored value falls back to Midnight.
+const THEME_CASES = [
+  { id: 'midnight', label: 'Midnight', bg: 'rgb(6, 16, 31)', gold: 'rgb(227, 185, 74)' },
+  { id: 'green', label: 'Felt green', bg: 'rgb(3, 20, 12)', gold: 'rgb(227, 185, 74)' },
+  { id: 'red', label: 'Craps red', bg: 'rgb(42, 5, 8)', gold: 'rgb(240, 199, 90)' },
+]
+async function assertThemes(browser: Browser, width: number, label: string) {
+  const ctx = await browser.newContext({ viewport: { width, height: 900 }, timezoneId: 'America/Los_Angeles' })
+  const page = await ctx.newPage()
+  const read = () =>
+    page.evaluate(() => {
+      const wordmark = document.querySelector('.app-header__brand')!
+      const picker = document.querySelector('select[aria-label="Theme"]') as HTMLSelectElement | null
+      const pr = picker?.getBoundingClientRect()
+      const overflow = [...document.querySelectorAll('.app-header *')].filter((el) => {
+        const r = el.getBoundingClientRect()
+        return (r.width > 0 || r.height > 0) && (r.right > innerWidth + 0.5 || r.left < -0.5)
+      }).length
+      return {
+        attr: document.documentElement.dataset.theme,
+        bg: getComputedStyle(document.body).backgroundColor,
+        gold: getComputedStyle(wordmark).color,
+        options: picker ? [...picker.options].map((o) => o.textContent) : null,
+        value: picker?.value,
+        stored: localStorage.getItem('gallagioloot:theme'),
+        pickerInside: !!pr && pr.left >= -0.5 && pr.right <= innerWidth + 0.5,
+        overflow,
+        docFits: document.documentElement.scrollWidth <= innerWidth,
+      }
+    })
+  await page.goto(APP_URL)
+  await page.waitForSelector('select[aria-label="Theme"]')
+  const first = await read()
+  check(`[${label}] theme picker present with Midnight, Felt green, Craps red`, JSON.stringify(first.options) === JSON.stringify(['Midnight', 'Felt green', 'Craps red']), JSON.stringify(first.options))
+  check(`[${label}] fresh browser defaults to Midnight (attribute, picker value, nothing stored)`, first.attr === 'midnight' && first.value === 'midnight' && first.stored === null, JSON.stringify(first))
+  for (const t of THEME_CASES) {
+    await page.selectOption('select[aria-label="Theme"]', t.id)
+    const got = await read()
+    check(`[${label}] ${t.label}: root data-theme=${t.id}, page background ${t.bg}, wordmark gold ${t.gold}, stored`, got.attr === t.id && got.bg === t.bg && got.gold === t.gold && got.stored === t.id, JSON.stringify(got))
+    check(`[${label}] ${t.label}: picker and header inside the viewport, no horizontal scroll`, got.pickerInside && got.overflow === 0 && got.docFits, JSON.stringify(got))
+    await page.reload()
+    await page.waitForSelector('select[aria-label="Theme"]')
+    const again = await read()
+    check(`[${label}] ${t.label}: persists across reload (attribute, background, picker value)`, again.attr === t.id && again.bg === t.bg && again.value === t.id, JSON.stringify(again))
+  }
+  await page.evaluate(() => localStorage.setItem('gallagioloot:theme', 'chartreuse'))
+  await page.reload()
+  await page.waitForSelector('select[aria-label="Theme"]')
+  const bad = await read()
+  check(`[${label}] unknown stored value falls back to Midnight`, bad.attr === 'midnight' && bad.bg === THEME_CASES[0].bg && bad.value === 'midnight', JSON.stringify(bad))
+  await ctx.close()
+}
+
 async function main() {
   const browser = await chromium.launch()
   const out: Record<string, unknown> = {}
@@ -528,6 +586,9 @@ async function main() {
   await assertPlanDisclosure(mpage, '390', out)
   await assertAssumptions(mpage, '390')
   await mctx.close()
+
+  await assertThemes(browser, 1280, '1280 themes')
+  await assertThemes(browser, 390, '390 themes')
 
   await browser.close()
   writeFileSync('design/live-single-page-check.json', JSON.stringify(out, null, 2))
