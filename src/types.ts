@@ -56,6 +56,11 @@ export type TrackInfo = {
   upgradeFullName?: string
   /** True when every item carrying upgrade info was simmed at max upgrade of its track; undefined when the report carries no upgrade info. */
   atMaxUpgrade?: boolean
+  /**
+   * Upgrade label per item level, as the report labels its own items (ilvl -> "Myth 6/6"). A step past the
+   * track max is labelled over the max ("Myth 9" on the report's 344 items -> "Myth 9/6"). Only levels the itemLibrary labels.
+   */
+  upgradeLabelsByIlvl?: Record<string, string>
 }
 
 export type NormalizedReport = {
@@ -71,6 +76,11 @@ export type NormalizedReport = {
   contentType: ContentType
   difficulty: string
   baseline: number
+  /**
+   * When the report was simmed, ISO 8601: Raidbots' `data.json` `Last-Modified` header (the report file is written when
+   * the sim finishes; the payload itself carries no date), QE Live's payload `timeCreated`. Undefined when unavailable.
+   */
+  simmedAt?: string
   instanceId?: number
   instanceName?: string
   items: NormalizedItem[]

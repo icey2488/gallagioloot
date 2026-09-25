@@ -1,6 +1,7 @@
 import { resolveTierEncounters } from '../lookup/tierResolve'
 import { extractEquippedItemIds } from './equipped'
 import { assertSupportedContentType, type DetectedContentType } from './contentType'
+import { toIsoDate } from './simDate'
 import { maxUpgradeWarning, parseTrackInfo, type RaidbotsDifficultyOverride, type RaidbotsUpgradeInfo } from './track'
 import type { EncounterItemsLookup, NormalizedItem, NormalizedReport, Role, TargetKind } from '../types'
 
@@ -20,7 +21,7 @@ export type RaidbotsItemLibraryEntry = {
   offSpecItem?: boolean
   upgrade?: RaidbotsUpgradeInfo
   /** Per-entry copy of the report's droptimizer settings; `difficulty` carries the M+ key-level object (see track.ts). */
-  overrides?: { difficulty?: RaidbotsDifficultyOverride | string; itemLevelOverride?: number }
+  overrides?: { difficulty?: RaidbotsDifficultyOverride | string; itemLevelOverride?: number; itemLevel?: string }
   /** Present on tier-set items (Raidbots' own "set information"); used to identify tier items for the learned tier cache. */
   itemSetId?: number
   sources?: Array<{ instanceId: number; encounterId: number }>
@@ -150,7 +151,9 @@ export function parseProfilesetName(name: string): {
 export function normalizeRaidbotsReport(
   reportId: string,
   raw: RaidbotsRawReport,
-  fallbackLookup?: EncounterItemsLookup
+  fallbackLookup?: EncounterItemsLookup,
+  /** `lastModified`: the `data.json` response's `Last-Modified` header, the report's only date (the payload has none). */
+  meta: { lastModified?: string | null } = {}
 ): NormalizedReport {
   if (raw.simbot.simType !== 'droptimizer') {
     throw new UnsupportedReportError(`Unsupported simType: ${raw.simbot.simType} (expected "droptimizer")`)
@@ -333,6 +336,7 @@ export function normalizeRaidbotsReport(
     contentType,
     difficulty,
     baseline,
+    simmedAt: toIsoDate(meta.lastModified),
     // Every M+ target is a pseudo-encounter of the aggregate instance, so the loot table to
     // join against is always `/loot-table/-1` -- even for a single-dungeon report.
     instanceId: targetKind === 'mplus' ? MPLUS_AGGREGATE_INSTANCE_ID : instanceId,

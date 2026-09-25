@@ -14,7 +14,7 @@ export type TrackLibraryEntry = {
   itemLevel?: number
   dropLevel?: number
   upgrade?: RaidbotsUpgradeInfo
-  overrides?: { difficulty?: RaidbotsDifficultyOverride | string; itemLevelOverride?: number }
+  overrides?: { difficulty?: RaidbotsDifficultyOverride | string; itemLevelOverride?: number; itemLevel?: string }
 }
 
 type UpgradedEntry = TrackLibraryEntry & { upgrade: RaidbotsUpgradeInfo & { level: number; max: number } }
@@ -34,6 +34,16 @@ function modeOf(values: number[]): number | undefined {
   return best
 }
 
+/**
+ * `overrides.itemLevel` is the report's own upgrade label for an item: "Myth 6/6", or, on items dropping past the
+ * track's max step (the last two Mythic bosses' 344 items, which carry no `upgrade` object), "Myth 9" with no max.
+ */
+function parseUpgradeLabel(label: unknown): { name: string; level: number; max?: number } | undefined {
+  if (typeof label !== 'string') return undefined
+  const m = /^(\S+)\s+(\d+)(?:\/(\d+))?$/.exec(label.trim())
+  return m ? { name: m[1], level: Number(m[2]), max: m[3] !== undefined ? Number(m[3]) : undefined } : undefined
+}
+
 function numbers(values: Array<number | undefined>): number[] {
   return values.filter((v): v is number => typeof v === 'number')
 }
@@ -43,9 +53,11 @@ function numbers(values: Array<number | undefined>): number[] {
  *
  * Verified against live reports 2026-09-24: both the raid droptimizer (6PTZ7TjgU8PdxJhZ97bMUa)
  * and the Mythic+ droptimizer (a8URThoNZqEXDW3tBtavHq) carry `upgrade: { name: "Myth", level: 6,
- * max: 6, fullName: "Myth 6/6", itemLevel: 334 }` on every upgradeable entry (the raid report's
- * very-rare 344 items have none). Only the M+ report has a difficulty OBJECT with `keyLevels`.
- * There is no key-level field anywhere else in the report.
+ * max: 6, fullName: "Myth 6/6", itemLevel: 334 }` on every upgradeable entry. The raid report's 344
+ * items (the last two Mythic bosses' bonus-roll drops, one step past the track max) carry no `upgrade`
+ * object, only `overrides.itemLevel: "Myth 9"`; that label counts as a step too (9 >= max 6, so it is
+ * never a "not at max upgrade" case) and yields `upgradeLabelsByIlvl[344] = "Myth 9/6"`. Only the M+
+ * report has a difficulty OBJECT with `keyLevels`. There is no key-level field anywhere else in the report.
  */
 export function parseTrackInfo(itemLibrary: TrackLibraryEntry[]): TrackInfo {
   const upgraded = itemLibrary.filter(
@@ -67,14 +79,33 @@ export function parseTrackInfo(itemLibrary: TrackLibraryEntry[]): TrackInfo {
   }
 
   const keyLevel = difficulty?.keyLevels?.[0]
+
+  // Every item's step against the track max, including label-only items ("Myth 9": past max, so never a
+  // "not at max upgrade" case) that carry no `upgrade` object. A label with no max borrows the track's.
+  const trackMax = lowest?.upgrade.max
+  let lowestStep = lowest && { name: lowest.upgrade.name, level: lowest.upgrade.level, max: lowest.upgrade.max, fullName: lowest.upgrade.fullName }
+  const steps: Array<{ level: number; max: number }> = upgraded.map((e) => ({ level: e.upgrade.level, max: e.upgrade.max }))
+  const labelsByIlvl: Record<string, string> = {}
+  for (const e of itemLibrary) {
+    if (e.upgrade?.fullName && typeof e.itemLevel === 'number') labelsByIlvl[e.itemLevel] ??= e.upgrade.fullName
+    if (typeof e.upgrade?.level === 'number') continue
+    const label = parseUpgradeLabel(e.overrides?.itemLevel)
+    const max = label?.max ?? trackMax
+    if (!label || max === undefined) continue
+    steps.push({ level: label.level, max })
+    if (!lowestStep || label.level < lowestStep.level) lowestStep = { name: label.name, level: label.level, max, fullName: `${label.name} ${label.level}/${max}` }
+    if (typeof e.itemLevel === 'number') labelsByIlvl[e.itemLevel] ??= `${label.name} ${label.level}/${max}`
+  }
+
   const ilvlSource = upgraded.length > 0 ? upgraded : itemLibrary
 
   return {
-    name: lowest?.upgrade.name,
-    upgradeFullName: lowest?.upgrade.fullName,
-    upgradeLevel: lowest?.upgrade.level,
-    upgradeMax: lowest?.upgrade.max,
-    atMaxUpgrade: upgraded.length > 0 ? upgraded.every((e) => e.upgrade.level >= e.upgrade.max) : undefined,
+    name: lowestStep?.name,
+    upgradeFullName: lowestStep?.fullName,
+    upgradeLevel: lowestStep?.level,
+    upgradeMax: lowestStep?.max,
+    atMaxUpgrade: steps.length > 0 ? steps.every((s) => s.level >= s.max) : undefined,
+    upgradeLabelsByIlvl: Object.keys(labelsByIlvl).length > 0 ? labelsByIlvl : undefined,
     simmedIlvl: modeOf(numbers(ilvlSource.map((e) => e.itemLevel))),
     keyLevelMin: typeof keyLevel === 'number' ? keyLevel : undefined,
     dropIlvl: typeof difficulty?.itemLevelOverride === 'number' ? difficulty.itemLevelOverride : modeOf(numbers(upgraded.map((e) => e.dropLevel))),

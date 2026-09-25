@@ -221,3 +221,10 @@ describe('normalizeQELiveReport tier fallback', () => {
     expect(result.warnings).toContain('Item 555555 had no encounter mapping')
   })
 })
+
+describe('normalizeQELiveReport simmedAt', () => {
+  it("reads the payload's timeCreated as ISO, and leaves it undefined when the report has none", () => {
+    expect(normalizeQELiveReport('wzfyzqxqjqej', makeReport({ timeCreated: 'Tue, 08 Sep 2026 19:21:08 GMT' }), makeLookup()).simmedAt).toBe('2026-09-08T19:21:08.000Z')
+    expect(normalizeQELiveReport('wzfyzqxqjqej', makeReport(), makeLookup()).simmedAt).toBeUndefined()
+  })
+})

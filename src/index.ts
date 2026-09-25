@@ -133,7 +133,7 @@ async function handleRaidbots(
   let normalized: NormalizedReport
   try {
     const lookup = await getEncounterItemsLookup(env)
-    normalized = normalizeRaidbotsReport(id, raw, lookup)
+    normalized = normalizeRaidbotsReport(id, raw, lookup, { lastModified: upstream.headers.get('last-modified') })
   } catch (e) {
     if (e instanceof UnsupportedContentError) {
       return jsonResponse(unsupportedContentResponseBody(e), 422, allowedOrigin)
@@ -332,8 +332,8 @@ function extractId(input: string, pattern: RegExp): string | null {
   return match ? match[0] : null
 }
 
-/** Bump when the normalized report shape gains fields, so cached reports (10 min TTL) don't hide them after a deploy. v2: equippedItemIds. */
-const REPORT_CACHE_VERSION = 2
+/** Bump when the normalized report shape gains fields, so cached reports (10 min TTL) don't hide them after a deploy. v2: equippedItemIds. v3: simmedAt, track.upgradeLabelsByIlvl. */
+const REPORT_CACHE_VERSION = 3
 
 function reportCacheKey(source: string, id: string): Request {
   return new Request(`https://cache.gallagioloot.local/report/v${REPORT_CACHE_VERSION}/${source}/${id}`)

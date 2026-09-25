@@ -45,6 +45,7 @@ describe('normalizeRaidbotsReport: Mythic+ droptimizer (a8URThoNZqEXDW3tBtavHq)'
       upgradeLevel: 6,
       upgradeMax: 6,
       atMaxUpgrade: true,
+      upgradeLabelsByIlvl: { '334': 'Myth 6/6' },
       simmedIlvl: 334,
       keyLevelMin: 10,
       dropIlvl: 318,

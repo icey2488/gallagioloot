@@ -1,6 +1,7 @@
 import { pickBestSource } from '../lookup/encounterItems'
 import { resolveTierEncounters } from '../lookup/tierResolve'
 import { getSpecByName } from '../lookup/specs'
+import { toIsoDate } from './simDate'
 import { assertSupportedContentType, type DetectedContentType } from './contentType'
 import type { LearnedTierData } from '../lookup/tierLearned'
 import type { EncounterItemsLookup, NormalizedItem, NormalizedReport } from '../types'
@@ -23,6 +24,8 @@ export type QELiveRawReport = {
   region?: string
   spec: string
   contentType: 'Raid' | 'Dungeon' | string
+  /** RFC 7231 date the report was created, e.g. "Tue, 08 Sep 2026 19:21:08 GMT". (`dateCreated` is a lossy "2026 - 9 - 8".) */
+  timeCreated?: string
   results: QELiveResult[]
 }
 
@@ -232,6 +235,7 @@ export function normalizeQELiveReport(
     contentType,
     difficulty,
     baseline,
+    simmedAt: toIsoDate(raw.timeCreated),
     instanceId: dominantInstanceId,
     instanceName: dominantInstanceId !== undefined ? lookup.instanceNames.get(dominantInstanceId) : undefined,
     items,
