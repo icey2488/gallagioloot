@@ -245,8 +245,9 @@ describe('compareVault across reports: saved-rolls credit only for allocated tar
 
 describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () => {
   const lookup = loadLookup()
-  const raid = normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup)
-  const mplus = normalizeRaidbotsReport(MPLUS_REPORT_ID, loadMplusRaw(), lookup)
+  // Equipped-gear defaults are pinned in equipped.test.ts; the ranking here is evaluated as if no gear were equipped.
+  const raid = { ...normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup), equippedItemIds: undefined }
+  const mplus = { ...normalizeRaidbotsReport(MPLUS_REPORT_ID, loadMplusRaw(), lookup), equippedItemIds: undefined }
   const settings: Settings = { thresholdPct: 0.2, rollsAvailable: 1, includeOffSpec: false, lootSpecId: 62 }
   const evals = [
     ...buildBossPools(raid, createStateFor(raid), settings, buildLootTable(1320, 62, lookup)),

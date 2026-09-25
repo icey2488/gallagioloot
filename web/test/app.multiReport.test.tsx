@@ -200,3 +200,21 @@ describe('report set storage', () => {
     expect(loadReportSet('bad')).toBeNull()
   })
 })
+
+describe('items equipped in the sim profile', () => {
+  it('shows Equipped + Owned by default and never writes that default to the stored knockout state', async () => {
+    vi.mocked(fetchReport).mockImplementation(async () => ({ ...RAID, equippedItemIds: [1] }))
+    await act(async () => {
+      root.render(createElement(App))
+    })
+    await addReport(RAID_URL)
+
+    const altar = [...container.querySelectorAll('.boss-row')].find((r) => r.querySelector('.boss-row__name')?.textContent === 'The Coiled Altar')!
+    act(() => Simulate.click(altar.querySelector('.boss-row__summary')!))
+    expect(altar.querySelector('.item-tag--equipped')?.textContent).toBe('Equipped')
+    expect(altar.querySelector('.state-seg__btn--on')?.textContent).toBe('Owned')
+
+    const stored = localStorage.getItem('gallagioloot:knockout:us:hyjal:icemagus:raid-vault-mythic')
+    expect(stored === null || (JSON.parse(stored) as { entries: unknown[] }).entries.length === 0).toBe(true)
+  })
+})

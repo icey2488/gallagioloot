@@ -286,6 +286,44 @@ async function assertSpecPillInline(page: Page, label: string, out: Record<strin
   }
 }
 
+/**
+ * Items equipped in the sim profile are auto-marked Owned: Icemagus has Pilfered Precious Band on finger2, so in
+ * Den of Nalorakk its row shows the muted "Equipped" label with Owned preselected (no None option), and the
+ * auto default isn't written to localStorage. Gebbo's Bottomless Bag (trinket2 in the profile) is likewise Equipped
+ * in The Lost Explorers.
+ */
+async function assertEquippedRows(page: Page, label: string) {
+  const inspect = async (boss: string, item: string) => {
+    const summary = page.locator('.boss-row', { has: page.locator('.boss-row__name', { hasText: new RegExp(`^${boss}$`) }) }).locator('.boss-row__summary')
+    await summary.click()
+    await page.waitForSelector('.boss-row--open .loot-item-table tbody tr', { timeout: 10000 })
+    const row = page.locator('.boss-row--open .loot-item-table tbody tr', { hasText: item })
+    const found = {
+      rows: await row.count(),
+      tag: (await row.locator('.item-tag--equipped').allInnerTexts()).map((t) => t.trim()),
+      on: await row.locator('.state-seg__btn--on').allInnerTexts(),
+      buttons: await row.locator('.state-seg__btn').allInnerTexts(),
+      gain: ((await row.locator('td[data-label="Sim gain"]').allInnerTexts())[0] ?? '').trim(),
+    }
+    return { summary, found }
+  }
+  const den = await inspect('Den of Nalorakk', 'Pilfered Precious Band')
+  check(`[${label}] Pilfered Precious Band shows Equipped in Den of Nalorakk`, den.found.rows === 1 && den.found.tag.join() === 'Equipped', JSON.stringify(den.found))
+  check(`[${label}] Pilfered Precious Band is preselected Owned (Owned / Rolled offered, no None)`, den.found.on.join() === 'Owned' && den.found.buttons.join() === 'Owned,Rolled', JSON.stringify(den.found))
+  await assertLayout(page, `${label}, Equipped label visible`)
+  await page.screenshot({ path: `design/live-single-page-equipped-${label}.png`, fullPage: true })
+  const stored = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith('gallagioloot:knockout:'))
+      .flatMap((k) => (JSON.parse(localStorage.getItem(k) ?? '{}') as { entries?: unknown[] }).entries ?? [])
+  )
+  check(`[${label}] the equipped default is not written to the stored knockout state`, stored.length === 0, JSON.stringify(stored))
+  await den.summary.click()
+  const bag = await inspect('The Lost Explorers', "Gebbo's Bottomless Bag")
+  check(`[${label}] Gebbo's Bottomless Bag (equipped trinket2) shows Equipped / Owned`, bag.found.tag.join() === 'Equipped' && bag.found.on.join() === 'Owned', JSON.stringify(bag.found))
+  await bag.summary.click()
+}
+
 async function main() {
   const browser = await chromium.launch()
   const out: Record<string, unknown> = {}
@@ -296,6 +334,7 @@ async function main() {
   await load(page, out, '1280')
   await assertLayout(page, '1280, loaded')
   await assertBossOrder(page, '1280')
+  await assertEquippedRows(page, '1280')
   await page.screenshot({ path: 'design/live-single-page-loaded.png', fullPage: true })
 
   await priceTheRoll(page)
@@ -323,6 +362,7 @@ async function main() {
   await load(mpage, out, '390')
   await assertLayout(mpage, '390, loaded')
   await assertSpecPillInline(mpage, '390', out)
+  await assertEquippedRows(mpage, '390')
   await assertLayout(mpage, '390, loaded, row expanded')
   await mpage.screenshot({ path: 'design/live-single-page-mobile-390.png', fullPage: true })
 

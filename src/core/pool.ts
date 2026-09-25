@@ -148,6 +148,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
   // tier pieces would otherwise mark that piece owned/rolled at the boss that really drops it.
   const curioKeys = curioEntryKeys(report, lootTable)
   const knockoutEntries = difficultyMismatch ? [] : knockout.entries.filter((e) => !curioKeys.has(`${e.encounterId}:${e.itemId}`))
+  const equippedIds = new Set(report.equippedItemIds ?? [])
   const expectedTargets = settings.expectedTargets ? new Set(settings.expectedTargets) : null
   const expectedKills = settings.expectedKills ? new Set(settings.expectedKills) : null
   const kind = targetKindOf(report)
@@ -255,7 +256,16 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
         notInSimReportCount++
         entry = phantomEntry(`item:${itemId}`, [itemId], lootRow!.name, lootRow!.isTier ? 'tier-token' : 'item', lootRow!.tierSlot, specSpecific)
       }
-      applyOwnership(entry, resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId))
+      let ownership = resolveOwnership(entry.itemIds, entry.specSpecific, knockoutEntries, report.spec, settings.lootSpecId)
+      // Equipped gear defaults to Owned (a value-0 dud) -- but only when the user hasn't set a state of their own.
+      if (entry.itemIds.some((id) => equippedIds.has(id))) {
+        entry.equipped = true
+        if (ownership === 'none') {
+          ownership = 'owned'
+          entry.autoOwned = true
+        }
+      }
+      applyOwnership(entry, ownership)
       pool.push(entry)
     }
 

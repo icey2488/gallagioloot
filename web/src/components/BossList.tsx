@@ -36,10 +36,12 @@ const STATE_OPTIONS: Array<{ value: ItemOwnership | 'none'; label: string; title
   { value: 'rolled', label: 'Rolled', title: 'Received from a bonus roll -- removed from this boss’s roll pool' },
 ]
 
-function StateControl(props: { current: ItemOwnership | 'none'; onChange: (state: ItemOwnership | 'none') => void; label: string }) {
+function StateControl(props: { current: ItemOwnership | 'none'; onChange: (state: ItemOwnership | 'none') => void; label: string; equipped?: boolean }) {
+  // An equipped item is owned by definition, so "None" isn't offered: it would only fall back to the Owned default.
+  const options = props.equipped ? STATE_OPTIONS.filter((opt) => opt.value !== 'none') : STATE_OPTIONS
   return (
     <div className="state-seg" role="group" aria-label={`Ownership of ${props.label}`}>
-      {STATE_OPTIONS.map((opt) => (
+      {options.map((opt) => (
         <button
           key={opt.value}
           type="button"
@@ -167,6 +169,7 @@ function BossRow(props: {
                         row.name
                       )}
                       {row.item?.isTier && <span className="item-tag">Tier</span>}
+                      {entry?.equipped && <span className="item-tag item-tag--equipped">Equipped</span>}
                       {row.item?.specSpecific && specName && (
                         <>
                           {' '}
@@ -194,9 +197,16 @@ function BossRow(props: {
                       <StateControl
                         current={current}
                         label={row.name}
-                        onChange={(state) =>
+                        equipped={entry?.equipped}
+                        onChange={(state) => {
+                          if (entry?.equipped && state === 'owned') {
+                            // Owned is the automatic default for equipped gear: it isn't stored, so already showing
+                            // it is a no-op, and coming back from Rolled drops the stored entry.
+                            if (current === 'owned') return
+                            state = 'none'
+                          }
                           onSetItemState({ stateKey, itemId: row.itemId, name: row.name, encounterId: boss.encounterId, encounterName: boss.encounterName, state })
-                        }
+                        }}
                       />
                     </td>
                   </tr>

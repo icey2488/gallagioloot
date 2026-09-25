@@ -1,4 +1,5 @@
 import { resolveTierEncounters } from '../lookup/tierResolve'
+import { extractEquippedItemIds } from './equipped'
 import { assertSupportedContentType, type DetectedContentType } from './contentType'
 import { maxUpgradeWarning, parseTrackInfo, type RaidbotsDifficultyOverride, type RaidbotsUpgradeInfo } from './track'
 import type { EncounterItemsLookup, NormalizedItem, NormalizedReport, Role, TargetKind } from '../types'
@@ -68,6 +69,8 @@ export type RaidbotsRawReport = {
           lootSpecId?: number
           /** Bonus id of the upgrade step simmed (e.g. 12854 = Myth 6/6). Informational -- the step itself is read from itemLibrary[].upgrade. */
           upgradeLevel?: number
+          /** The character's equipped gear: slot name -> item object with a numeric `id` (see extractEquippedItemIds). */
+          equipped?: unknown
         }
       }
       itemLibrary: RaidbotsItemLibraryEntry[]
@@ -339,5 +342,6 @@ export function normalizeRaidbotsReport(
     lootSpecId: raw.simbot.meta.rawFormData.droptimizer.lootSpecId,
     targetKind,
     track,
+    equippedItemIds: extractEquippedItemIds(raw.simbot.meta.rawFormData.droptimizer.equipped),
   }
 }

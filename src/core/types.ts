@@ -123,6 +123,14 @@ export type PoolEntry = {
    * - `'rolled'`: received via a bonus roll -- removed from the pool (`knockedOut: true`).
    */
   ownership: 'none' | 'owned' | 'rolled'
+  /** True when one of this entry's item ids is equipped in the report's sim profile (`NormalizedReport.equippedItemIds`), whatever its ownership state. */
+  equipped?: boolean
+  /**
+   * True when `ownership` is `'owned'` only because the item is equipped -- the automatic
+   * default. Never stored: a stored knockout entry (the user's own choice) always wins over
+   * it, and it is re-derived from each report's gear on every evaluation.
+   */
+  autoOwned?: boolean
   /** True when this entry is a dud (owned but not rolled): kept in the pool denominator, but contributes 0 to EV. */
   isDud: boolean
   /**

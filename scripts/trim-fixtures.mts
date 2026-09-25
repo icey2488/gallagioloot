@@ -49,7 +49,13 @@ function trimReport(raw: Json): Json {
       meta: {
         title: meta.title,
         rawFormData: {
-          droptimizer: pick(rawFormData.droptimizer as Json, ['instance', 'encounter', 'difficulty', 'upgradeLevel', 'classId', 'specId', 'lootSpecId', 'includeConversions']),
+          droptimizer: {
+            ...pick(rawFormData.droptimizer as Json, ['instance', 'encounter', 'difficulty', 'upgradeLevel', 'classId', 'specId', 'lootSpecId', 'includeConversions']),
+            // Equipped gear, trimmed to slot -> { id, itemLevel } (all the normalizer reads is the id).
+            equipped: Object.fromEntries(
+              Object.entries((rawFormData.droptimizer as Json).equipped as Record<string, Json>).map(([slot, item]) => [slot, pick(item, ['id', 'itemLevel'])])
+            ),
+          },
         },
         itemLibrary: (meta.itemLibrary as Json[]).map((e) => ({
           ...pick(e, ['id', 'name', 'inventoryType', 'itemLevel', 'dropLevel', 'offSpecItem', 'itemSetId', 'sources', 'instanceId', 'encounterId', 'difficulty']),

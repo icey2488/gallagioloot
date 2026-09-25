@@ -86,6 +86,12 @@ export type NormalizedReport = {
   targetKind?: TargetKind
   /** Raidbots only. */
   track?: TrackInfo
+  /**
+   * Item ids of the gear the sim profile has equipped (Raidbots `rawFormData.droptimizer.equipped`),
+   * sorted and de-duplicated. Raidbots only -- QE Live's payload carries no equipped gear. Matched by
+   * item id alone: no unique-equip / ring-and-trinket pairing logic.
+   */
+  equippedItemIds?: number[]
 }
 
 /** Encounter-items.json entry (Raidbots static data). Trimmed to the fields we use. */

@@ -130,7 +130,8 @@ describe('catalyst max rule on the live fixtures', () => {
     // 2026-09-24: the curio stopped being a pool entry (Ula'tek 0.798 (7 entries) -> 0.614 (6)), then loot
     // eligibility gained the primary-stat rule (Ula'tek loses Jaw of the Shackled Goddess and Zatha'tek: 6 -> 4,
     // 0.921; Twin Fangs 0.366 -> 0.458 and Entombed Sentinels 0.278 -> 0.348 each lose an Agility dagger).
-    const rpt = normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup)
+    // Equipped-gear defaults are out of scope here (pinned in equipped.test.ts): evaluate as if no gear were equipped.
+    const rpt = { ...normalizeRaidbotsReport(RAID_REPORT_ID, loadRaidRaw(), lookup), equippedItemIds: undefined }
     const evals = buildBossPools(rpt, createState(rpt.character, rpt.difficulty), SETTINGS, buildLootTable(1320, 62, lookup))
     const ev = Object.fromEntries(evals.map((b) => [b.encounterName, Number(b.evPct.toFixed(3))]))
     expect(ev).toEqual({

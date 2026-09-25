@@ -75,6 +75,31 @@ async function expandDungeon(page: Page) {
 }
 
 /**
+ * Items equipped in the sim profile: expand Den of Nalorakk (Pilfered Precious Band, equipped as finger2) and
+ * assert its row carries the muted "Equipped" label with Owned preselected, on-screen and unclipped.
+ */
+async function assertEquippedRow(page: Page, label: string, shot: string) {
+  await page.locator('.boss-section').nth(1).locator('.boss-row__summary', { hasText: 'Den of Nalorakk' }).click()
+  await page.waitForSelector('.boss-row--open .loot-item-table tbody tr', { timeout: 10000 })
+  const row = page.locator('.boss-row--open .loot-item-table tbody tr', { hasText: 'Pilfered Precious Band' })
+  const tag = row.locator('.item-tag--equipped')
+  const problems: string[] = []
+  if ((await tag.count()) !== 1 || (await tag.innerText()).trim().toLowerCase() !== 'equipped') problems.push('no "Equipped" label on Pilfered Precious Band')
+  const on = await row.locator('.state-seg__btn--on').allInnerTexts()
+  if (on.join() !== 'Owned') problems.push(`state control shows ${JSON.stringify(on)}, expected Owned`)
+  const box = await tag.boundingBox()
+  const vp = page.viewportSize()!
+  if (!box || box.x < 0 || box.x + box.width > vp.width) problems.push(`Equipped label outside the viewport: ${JSON.stringify(box)}`)
+  if (problems.length > 0) throw new Error(`equipped-row assertions failed (${label}): ${problems.join('; ')}`)
+  console.log(`equipped-row assertions passed (${label}) ✓`)
+  await assertLayout(page, `${label}, Equipped label visible`)
+  await page.screenshot({ path: shot, fullPage: true })
+  console.log(`captured: ${shot}`)
+  // Back to the state the next steps expect (Altar of Fangs open).
+  await expandDungeon(page)
+}
+
+/**
  * Real layout assertions (replacing a bare "no horizontal scroll" check): every state
  * button's bounding box sits inside both the viewport and its own card, boss-name
  * elements never overflow their own box (they should wrap, not clip/truncate), and no
@@ -174,6 +199,7 @@ async function shootDesktop(page: Page) {
   await assertLayout(page, '1280px, loaded, dungeon expanded')
   await page.screenshot({ path: 'design/single-page-loaded.png', fullPage: true })
   console.log('captured: single-page-loaded.png')
+  await assertEquippedRow(page, '1280px', 'design/single-page-equipped.png')
 
   await priceTheRoll(page)
   await assertLayout(page, '1280px, priced')
@@ -199,6 +225,7 @@ async function shootMobile(page: Page) {
   await assertLayout(page, '390px, loaded, dungeon expanded')
   await page.screenshot({ path: 'design/single-page-mobile-390.png', fullPage: true })
   console.log('captured: single-page-mobile-390.png')
+  await assertEquippedRow(page, '390px', 'design/single-page-equipped-mobile-390.png')
 
   await priceTheRoll(page)
   await assertLayout(page, '390px, priced')
