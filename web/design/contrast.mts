@@ -1,7 +1,7 @@
 // Reproducible WCAG 2.1 contrast audit for every color pair used in web/src/theme.css.
 // Run with `npx tsx design/contrast.mts` from web/. Writes design/contrast-report.md
 // and prints the same table to stdout. No dependencies beyond Node's fs.
-import { writeFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 
 export function hexToRgb(hex: string): [number, number, number] {
   let h = hex.replace(/^#/, '')
@@ -64,27 +64,54 @@ type Pair = {
 // Every color pair actually rendered in web/src/theme.css and the components that
 // consume it, grouped by where it shows up. `fg`/`bg` are the CURRENT (post-fix) hex
 // values -- see contrast-report.md for the before/after on the ones that changed.
-const COLORS = {
-  bgBase: '#06101f',
-  bgPanel: '#0b1426',
-  bgPanelAlt: '#0f1a33',
-  bgHover: '#1a2748',
-  border: '#6b7a9c',
-  borderStrong: '#6b7a9c',
-  text: '#eef1f7',
-  textSecondary: '#a3afca',
-  textMuted: '#a3afca',
-  gold: '#e3b94a',
-  goldStrong: '#f0c75a',
-  goldTextOn: '#0b1426',
-  warnBg: '#3a2a12',
-  warnBorder: '#996f2b',
-  warnText: '#e8c98a',
-  badgeYesBorder: '#467655',
-  badgeYesText: '#8fd6a4',
+// The palettes are READ FROM src/theme.css (:root = Midnight, :root[data-theme='...'] = the others), so the audit
+// cannot drift from what ships. Tokens a theme block doesn't define (the warn-*/ok-* status colors) fall back to :root.
+export const THEME_LABELS = { midnight: 'Midnight', green: 'Felt green', red: 'Craps red' } as const
+export type ThemeId = keyof typeof THEME_LABELS
+
+const CSS = readFileSync(new URL('../src/theme.css', import.meta.url), 'utf8')
+
+function tokensOf(selector: string): Record<string, string> {
+  const start = CSS.indexOf(selector + ' {')
+  if (start < 0) throw new Error('theme.css has no ' + selector + ' block')
+  const end = CSS.indexOf('\n}', start)
+  const body = CSS.slice(start, end).replace(/\/\*[\s\S]*?\*\//g, '')
+  const out: Record<string, string> = {}
+  for (const m of body.matchAll(/(--[\w-]+):\s*(#[0-9a-fA-F]{6})\s*;/g)) out[m[1]] = m[2].toLowerCase()
+  return out
 }
 
-const PAIRS: Pair[] = [
+function colorsFor(theme: ThemeId) {
+  const t = { ...tokensOf(':root'), ...(theme === 'midnight' ? {} : tokensOf(":root[data-theme='" + theme + "']")) }
+  const need = (k: string) => {
+    if (!t[k]) throw new Error('missing token ' + k + ' for ' + theme)
+    return t[k]
+  }
+  return {
+    bgBase: need('--bg-base'),
+    bgPanel: need('--bg-panel'),
+    bgPanelAlt: need('--bg-panel-alt'),
+    bgHover: need('--bg-hover'),
+    border: need('--border'),
+    borderStrong: need('--border-strong'),
+    text: need('--text'),
+    textSecondary: need('--text-secondary'),
+    textMuted: need('--text-muted'),
+    gold: need('--gold'),
+    goldStrong: need('--gold-strong'),
+    goldTextOn: need('--gold-text-on'),
+    warnBg: need('--warn-bg'),
+    warnBorder: need('--warn-border'),
+    warnText: need('--warn-text'),
+    badgeYesBorder: need('--ok-border'),
+    badgeYesText: need('--ok-text'),
+  }
+}
+type Colors = ReturnType<typeof colorsFor>
+
+
+function buildPairs(COLORS: Colors): Pair[] {
+return [
   { name: 'Body text on page background', fg: COLORS.text, bg: COLORS.bgBase, requirement: 'text' },
   { name: 'Body text on panel', fg: COLORS.text, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Body text on input/select fill', fg: COLORS.text, bg: COLORS.bgPanelAlt, requirement: 'text' },
@@ -117,6 +144,7 @@ const PAIRS: Pair[] = [
   { name: 'btn-gold:hover label text on gold-strong fill', fg: COLORS.goldTextOn, bg: COLORS.goldStrong, requirement: 'text' },
   { name: 'Warning banner text on warning background', fg: COLORS.warnText, bg: COLORS.warnBg, requirement: 'text' },
   { name: 'Below-threshold roll flag (warn text) on the rec-card panel (v2.09 roll list)', fg: COLORS.warnText, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Warning banner border on panel (the banner sits on the panel fill)', fg: COLORS.warnBorder, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Warning banner border on warning background', fg: COLORS.warnBorder, bg: COLORS.warnBg, requirement: 'ui' },
   { name: 'Badge-yes text on panel', fg: COLORS.badgeYesText, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Badge-yes border on panel', fg: COLORS.badgeYesBorder, bg: COLORS.bgPanel, requirement: 'ui' },
@@ -213,10 +241,11 @@ const PAIRS: Pair[] = [
   { name: 'Top Gear "Vault item: name · pct% · boss" summary line on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Top Gear "Also added: ..." extra-candidates line (11px, inherits parent color) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
 ]
+}
 
 // Every CSS variable/rule this audit changed, old -> new, with why. Kept here (rather
 // than only in git history) so the report is self-contained.
-const CHANGES: Array<{ what: string; before: string; after: string; why: string }> = [
+const CHANGES = (COLORS: Colors): Array<{ what: string; before: string; after: string; why: string }> => [
   { what: '--border', before: '#26355e', after: COLORS.border, why: 'was 1.24-1.51:1 against panel/input/page backgrounds, under the 3:1 UI-component floor' },
   {
     what: '--border-strong',
@@ -247,6 +276,12 @@ const CHANGES: Array<{ what: string; before: string; after: string; why: string 
     why: 'audited because the brief called it out explicitly, but it already clears both the 4.5:1 text and 3:1 border floors with margin to spare',
   },
   {
+    what: 'v2.12 Midnight gold set (--gold/--gold-strong/--gold-text-on/--bg-hover) + two new themes',
+    before: '#d4af37 / #e4c158 / #17110a / #12203c',
+    after: [COLORS.gold, COLORS.goldStrong, COLORS.goldTextOn, COLORS.bgHover].join(' / '),
+    why: "adopted the Claude Design export's brighter gold; Felt green and Craps red added as data-theme token sets; every pair re-audited on all three",
+  },
+  {
     what: 'v4b darker-base palette swap (--bg-base/--bg-panel/--bg-panel-alt/--bg-hover/--border/--border-strong/--text/--text-secondary/--text-muted)',
     before: '#0b1530 / #121f42 / #16264c / #1b2c56 / #5870aa / #647aad / #f5f3ec / #b7bdda / #858fb0',
     after: '#06101f / #0b1426 / #0f1a33 / #12203c / #6b7a9c / #6b7a9c / #eef1f7 / #a3afca / #a3afca',
@@ -259,46 +294,59 @@ function requirementLabel(r: WcagRequirement): string {
 }
 
 function main() {
-  const rows = PAIRS.map((p) => {
-    const ratio = contrastRatio(p.fg, p.bg)
-    const pass = passesWCAG(ratio, p.requirement)
-    return { ...p, ratio, pass }
+  const themes = Object.keys(THEME_LABELS) as ThemeId[]
+  const results = themes.map((theme) => {
+    const colors = colorsFor(theme)
+    const rows = buildPairs(colors).map((p) => {
+      const ratio = contrastRatio(p.fg, p.bg)
+      return { ...p, ratio, pass: passesWCAG(ratio, p.requirement) }
+    })
+    return { theme, colors, rows }
   })
-
-  const passCount = rows.filter((r) => r.pass).length
-  const failCount = rows.length - passCount
+  // The one documented pre-fix regression example is EXPECTED to fail (it exists to show what the audit caught).
+  const isHistorical = (name: string) => name.includes('OLD approach')
+  const failing = results.flatMap((r) => r.rows.filter((x) => !x.pass && !isHistorical(x.name)).map((x) => ({ theme: r.theme, ...x })))
 
   const lines: string[] = []
   lines.push('# Contrast audit')
   lines.push('')
   lines.push(
-    `Computed with \`design/contrast.mts\` (WCAG 2.1 relative-luminance formula, no eyeballing). ${passCount}/${rows.length} pairs pass; ${failCount} fail.`
+    'Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eyeballing) for every theme (v2.12: Midnight, Felt green, Craps red). Palettes are read from `src/theme.css`, so this cannot drift from what ships.'
   )
+  lines.push('')
+  lines.push('| Theme | Pairs | Pass | Fail (excluding the documented pre-fix example) |')
+  lines.push('|---|---|---|---|')
+  for (const r of results) {
+    const fails = r.rows.filter((x) => !x.pass && !isHistorical(x.name)).length
+    lines.push(`| ${THEME_LABELS[r.theme]} | ${r.rows.length} | ${r.rows.filter((x) => x.pass).length} | ${fails} |`)
+  }
   lines.push('')
   lines.push('## Changes made')
   lines.push('')
   lines.push('| What | Before | After | Why |')
   lines.push('|---|---|---|---|')
-  for (const c of CHANGES) {
+  for (const c of CHANGES(results[0].colors)) {
     lines.push(`| ${c.what} | ${c.before} | ${c.after} | ${c.why} |`)
   }
-  lines.push('')
-  lines.push('## All pairs')
-  lines.push('')
-  lines.push('| Pair | Foreground | Background | Ratio | Requirement | Pass |')
-  lines.push('|---|---|---|---|---|---|')
-  for (const r of rows) {
-    const note = r.note ? ` (${r.note})` : ''
-    lines.push(`| ${r.name}${note} | \`${r.fg}\` | \`${r.bg}\` | ${r.ratio.toFixed(2)}:1 | ${requirementLabel(r.requirement)} | ${r.pass ? '✅' : '❌'} |`)
+  for (const r of results) {
+    lines.push('')
+    lines.push(`## ${THEME_LABELS[r.theme]} -- all pairs`)
+    lines.push('')
+    lines.push('| Pair | Foreground | Background | Ratio | Requirement | Pass |')
+    lines.push('|---|---|---|---|---|---|')
+    for (const x of r.rows) {
+      const note = x.note ? ` (${x.note})` : ''
+      const mark = x.pass ? '✅' : isHistorical(x.name) ? '❌ (expected)' : '❌'
+      lines.push(`| ${x.name}${note} | \`${x.fg}\` | \`${x.bg}\` | ${x.ratio.toFixed(2)}:1 | ${requirementLabel(x.requirement)} | ${mark} |`)
+    }
   }
   lines.push('')
 
-  const failing = rows.filter((r) => !r.pass)
   if (failing.length > 0) {
     lines.push('## Failing pairs')
     lines.push('')
     for (const r of failing) {
-      lines.push(`- **${r.name}**: ${r.ratio.toFixed(2)}:1, needs ${requirementLabel(r.requirement)}`)
+      lines.push(`- **${THEME_LABELS[r.theme]}: ${r.name}**: ${r.ratio.toFixed(2)}:1, needs ${requirementLabel(r.requirement)}`)
     }
     lines.push('')
   }
@@ -326,6 +374,7 @@ function main() {
   const report = lines.join('\n')
   console.log(report)
   writeFileSync(new URL('./contrast-report.md', import.meta.url), report + '\n')
+  if (failing.length > 0) process.exit(1)
 }
 
 main()

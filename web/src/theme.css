@@ -22,6 +22,14 @@
   --gold: #e3b94a;
   --gold-strong: #f0c75a;
   --gold-text-on: #0b1426;
+  /* Semantic status colors (were hardcoded hex in .warning-banner, .badge-yes and friends). Same amber/green
+     in every theme: each passes its pairs on all three palettes (design/contrast.mts iterates the themes). */
+  --warn-bg: #3a2a12;
+  --warn-border: #996f2b;
+  --warn-text: #e8c98a;
+  --ok-border: #467655;
+  --ok-text: #8fd6a4;
+  --shadow: rgba(0, 0, 0, 0.35);
   /* v2.12 (2026-09-25): Midnight adopts the Claude Design export's brighter gold set. To revert
      ("too garish"), swap these four values back in the block above:
        --bg-hover: #12203c;
@@ -69,6 +77,39 @@
   --radius: 12px;
   --radius-sm: 8px;
   --radius-xs: 4px;
+}
+
+/* Themes (v2.12, Claude Design export 2026-09-25): color tokens only. Midnight is the :root default above; the picker
+   sets data-theme on <html> (inline script in index.html before first paint, then App). Values are the export's
+   THEMES table under the live token names (themes-source.js.txt wins over the *.live-names.css copies). */
+:root[data-theme='green'] {
+  --bg-base: #03140c;
+  --bg-panel: #082116;
+  --bg-panel-alt: #0c2c1d;
+  --bg-hover: #16402c;
+  --border: #6a9682;
+  --border-strong: #6a9682;
+  --text: #f1f5ec;
+  --text-secondary: #a9c6b4;
+  --text-muted: #a9c6b4;
+  --gold: #e3b94a;
+  --gold-strong: #f0c75a;
+  --gold-text-on: #082116;
+}
+
+:root[data-theme='red'] {
+  --bg-base: #2a0508;
+  --bg-panel: #3d0810;
+  --bg-panel-alt: #520b16;
+  --bg-hover: #6e1220;
+  --border: #c07880;
+  --border-strong: #c07880;
+  --text: #fff3f0;
+  --text-secondary: #f0c4c4;
+  --text-muted: #f0c4c4;
+  --gold: #f0c75a;
+  --gold-strong: #f8d470;
+  --gold-text-on: #3d0810;
 }
 
 * {
@@ -213,6 +254,29 @@ input[type='checkbox']:checked {
 
 .app-header__controls .voidcore-pill {
   flex: none;
+}
+
+/* Theme picker (v2.12): a labeled select beside the Voidcores pill. The controls row wraps rather than
+   pushing the header past a 390px viewport. */
+.app-header__controls {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.theme-picker {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex: 0 1 auto;
+  min-width: 0;
+  color: var(--text-secondary);
+  font-size: var(--text-eyebrow);
+}
+
+.theme-picker select {
+  min-width: 0;
+  min-height: 44px;
+  padding: var(--space-3) var(--space-4);
 }
 
 /* Screen tab bar (Paste/Reconcile/Loot table/Recommendation), from the v2 design export.
@@ -721,8 +785,8 @@ tr.excluded .deploy-table__ev {
 
 .badge-yes {
   /* #3f6b4d measured 2.63:1 against --bg-panel, under the 3:1 border floor. */
-  border-color: #467655;
-  color: #8fd6a4;
+  border-color: var(--ok-border);
+  color: var(--ok-text);
 }
 
 .badge-no {
@@ -792,9 +856,9 @@ tr.excluded .deploy-table__ev {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  background: #3a2a12;
-  border: 1px solid #996f2b;
-  color: #e8c98a;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-text);
   white-space: nowrap;
 }
 
@@ -1018,7 +1082,7 @@ tr.excluded .deploy-table__ev {
 }
 
 .roll-list__row--below .roll-list__advice {
-  color: #e8c98a;
+  color: var(--warn-text);
 }
 
 .roll-list__note {
@@ -1171,7 +1235,7 @@ tr.excluded .deploy-table__ev {
   font-weight: normal;
   text-decoration: none;
   line-height: 1.4;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 4px 12px var(--shadow);
 }
 
 .app-header__meta,
@@ -1529,10 +1593,10 @@ select:disabled {
 }
 
 .warning-banner {
-  background: #3a2a12;
+  background: var(--warn-bg);
   /* #6b4e1e measured 1.80:1 against this background, under the 3:1 border floor. */
-  border: 1px solid #996f2b;
-  color: #e8c98a;
+  border: 1px solid var(--warn-border);
+  color: var(--warn-text);
   border-radius: var(--radius-sm);
   padding: 10px 12px;
   font-size: 13px;
@@ -1857,9 +1921,9 @@ select:disabled {
 .report-notes .report-notes__error {
   list-style: none;
   margin-left: -18px;
-  background: #3a2a12;
-  border: 1px solid #996f2b;
-  color: #e8c98a;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-border);
+  color: var(--warn-text);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
 }
