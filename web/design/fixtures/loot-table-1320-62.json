@@ -79,18 +79,6 @@
           "viaCurio": false
         },
         {
-          "itemId": 268204,
-          "name": "Ancient Construct's Venomshiv",
-          "icon": "inv_knife_1h_ulatek_d_01",
-          "itemClass": 2,
-          "itemSubClass": 15,
-          "specSpecific": false,
-          "uniqueEquipped": false,
-          "onUseTrinket": false,
-          "isTier": false,
-          "viaCurio": false
-        },
-        {
           "itemId": 268228,
           "name": "Venom-Singed Cuffs",
           "icon": "inv_bracer_cloth_raidmageulatek_d_01",
@@ -313,18 +301,6 @@
           "viaCurio": false
         },
         {
-          "itemId": 268264,
-          "name": "Ravenous Feaster's Fang",
-          "icon": "inv_knife_1h_ulatek_d_02",
-          "itemClass": 2,
-          "itemSubClass": 15,
-          "specSpecific": false,
-          "uniqueEquipped": false,
-          "onUseTrinket": false,
-          "isTier": false,
-          "viaCurio": false
-        },
-        {
           "itemId": 270170,
           "name": "Vexhul's Everflowing Gland",
           "icon": "inv_11_0_misc_organmass_color3",
@@ -428,18 +404,6 @@
       "encounterName": "Ula'tek",
       "items": [
         {
-          "itemId": 268202,
-          "name": "Jaw of the Shackled Goddess",
-          "icon": "inv_sword_1h_ulatek_d_01",
-          "itemClass": 2,
-          "itemSubClass": 7,
-          "specSpecific": false,
-          "uniqueEquipped": true,
-          "onUseTrinket": false,
-          "isTier": false,
-          "viaCurio": false
-        },
-        {
           "itemId": 268265,
           "name": "Aqirbane Reliquary",
           "icon": "inv_121_jewelry_neck03_green",
@@ -469,18 +433,6 @@
           "itemId": 271092,
           "name": "Jan'thrazet, the Soul Fang",
           "icon": "inv_knife_1h_ulatekfang_d_01_spirit",
-          "itemClass": 2,
-          "itemSubClass": 15,
-          "specSpecific": false,
-          "uniqueEquipped": true,
-          "onUseTrinket": false,
-          "isTier": false,
-          "viaCurio": false
-        },
-        {
-          "itemId": 271093,
-          "name": "Zatha'tek, Breath of Corruption",
-          "icon": "inv_knife_1h_ulatekfang_d_01_poison",
           "itemClass": 2,
           "itemSubClass": 15,
           "specSpecific": false,

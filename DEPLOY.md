@@ -39,7 +39,7 @@ npx wrangler deploy        # uses web/wrangler.toml, uploads dist/
 
 ## Smoke test
 
-**Run `npm run check:live` (in `web/`) after every deploy** — it drives the live site at 1280px and 390px with a real raid droptimizer + Mythic+ droptimizer + Top Gear report and asserts (PASS/FAIL per check, non-zero exit on any failure) the parse lines, the M+ section, target EVs, the 1-roll toss-up card and its no-saved-rolls explanation, the 2-roll Voidcore verdict, the spec-specific pill, and layout (screenshots/JSON land gitignored in `web/design/live-single-page-*`).
+**Run `npm run check:live` (in `web/`) after every deploy** — it drives the live site at 1280px and 390px with a real raid droptimizer + Mythic+ droptimizer + Top Gear report and asserts (PASS/FAIL per check, non-zero exit on any failure) the parse lines, the M+ section, target EVs, Ula'tek's 4-item pool (4 / 4, no Curio row, the curio note), the 1-roll kill-order card (Ula'tek or The Coiled Altar, Voidcore 0.92% vs the Vial 0.74%) and its no-saved-rolls explanation, the 2-roll Voidcore verdict (1.73%), the spec-specific pill, and layout (screenshots/JSON land gitignored in `web/design/live-single-page-*`).
 
 ```bash
 cd web

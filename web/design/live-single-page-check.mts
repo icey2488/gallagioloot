@@ -3,10 +3,13 @@
 // droptimizer + a Mythic+ droptimizer + a Top Gear vault item, loot spec Arcane. Asserts (prints
 // PASS/FAIL per check, exits 1 if any fail) at 1280px and 390px:
 //   - both reports load with parse lines; the M+ section has 8 dungeons and reads "Mythic+ (+10 Myth)", never "Weekly10"
-//   - EV: Coiled Altar ~0.81%, Ula'tek ~0.80%, Altar of Fangs ~0.35%
-//   - 1 roll: Toss-up card, "Voidcore roll" label on the big number, Voidcore 0.81% vs Vile Vial 0.74%,
-//     with the no-saved-rolls explanation
-//   - 2 rolls + re-price: Voidcore verdict whose headline names both The Coiled Altar and Ula'tek
+//   - EV: Ula'tek ~0.92%, The Coiled Altar ~0.81%, Altar of Fangs ~0.43%
+//   - Ula'tek's roll pool is the journal's 4 items (4 / 4 remaining): its expanded table lists exactly Aqirbane
+//     Reliquary, Font of Venomous Rage, Jan'thrazet the Soul Fang and Venomkeeper's Horrific Cowl (no Curio row,
+//     no Jaw of the Shackled Goddess / Zatha'tek) plus the note that the Slumbering Coil Curio can't be won with a roll
+//   - 1 roll: "Roll Ula'tek (Mythic) or The Coiled Altar (Mythic)" (toss-up on kill order), "Voidcore roll" 0.92% vs
+//     Vile Vial 0.74%, with the no-saved-rolls explanation
+//   - 2 rolls + re-price: Voidcore verdict whose headline names Ula'tek and The Coiled Altar
 //   - the spec-specific pill renders inline (a wide pill, not a circle) at 390px
 //   - layout: no horizontal scroll, controls inside their cards, names wrap, nothing exceeds its panel
 // Screenshots + a JSON dump land in design/live-single-page-* (gitignored).
@@ -80,9 +83,50 @@ async function load(page: Page, out: Record<string, unknown>, label: string) {
     const v = ev(name)
     check(`[${label}] ${name} ~${expected.toFixed(2)}%`, Math.abs(v - expected) <= 0.01, `got ${v}`)
   }
+  near("Ula'tek", 0.92)
   near('The Coiled Altar', 0.81)
-  near("Ula'tek", 0.8)
-  near('Altar of Fangs', 0.35)
+  near('Altar of Fangs', 0.43)
+  await assertUlatekTable(page, label)
+}
+
+const ULATEK_ITEMS = ['Aqirbane Reliquary', "Venomkeeper's Horrific Cowl", 'Font of Venomous Rage', "Jan'thrazet, the Soul Fang"]
+const CURIO_NOTE = "Slumbering Coil Curio drops from Ula'tek but can't be won with a bonus roll."
+
+/** Ula'tek is 4 / 4 remaining; its expanded table has the 4 journal items, no Curio row, and the curio note. */
+async function assertUlatekTable(page: Page, label: string) {
+  const summary = page.locator('.boss-row', { has: page.locator('.boss-row__name', { hasText: /^Ula'tek$/ }) }).locator('.boss-row__summary')
+  await summary.click()
+  await page.waitForSelector('.boss-row--open .loot-item-table tbody tr', { timeout: 10000 })
+  const ulatek = await page.evaluate(() => {
+    const txt = (el: Element | null | undefined) => (el?.textContent ?? '').replace(/\s+/g, ' ').trim()
+    const open = document.querySelector('.boss-row--open')
+    return {
+      remaining: txt(open?.querySelector('.boss-row__remaining')),
+      // The item name is the cell's text once the annotations (spec-specific pill, catalyst credit, tier tag) are removed.
+      items: [...(open?.querySelectorAll('.loot-item-table tbody tr') ?? [])].map((r) => {
+        const cell = r.querySelector('td')?.cloneNode(true) as HTMLElement
+        cell.querySelectorAll('.badge, .note-line, .catalyst-note, .item-tag').forEach((n) => n.remove())
+        return (cell.textContent ?? '').replace(/\s+/g, ' ').trim()
+      }),
+      rowText: [...(open?.querySelectorAll('.loot-item-table tbody tr') ?? [])].map((r) => txt(r.querySelector('td'))),
+      notes: [...(open?.querySelectorAll('.note-line') ?? [])].map((n) => txt(n)),
+      text: txt(open),
+    }
+  })
+  check(`[${label}] Ula'tek shows 4 / 4 remaining`, /^4 \/ 4/.test(ulatek.remaining), ulatek.remaining)
+  check(
+    `[${label}] Ula'tek's table lists exactly the 4 journal items (no Jaw of the Shackled Goddess / Zatha'tek)`,
+    JSON.stringify([...ulatek.items].sort()) === JSON.stringify([...ULATEK_ITEMS].sort()),
+    JSON.stringify(ulatek.items)
+  )
+  check(
+    `[${label}] Ula'tek's table has no Curio row (4 rows, no Curio tag; the Cowl's catalyst credit is not a row)`,
+    ulatek.rowText.length === 4 && !ulatek.rowText.some((t) => /Curio/.test(t)) && !/Curio \(any missing tier slot\)/.test(ulatek.text),
+    JSON.stringify(ulatek.rowText)
+  )
+  check(`[${label}] Ula'tek's curio note is present`, ulatek.notes.includes(CURIO_NOTE), JSON.stringify(ulatek.notes))
+  await page.screenshot({ path: `design/live-single-page-ulatek-${label}.png`, fullPage: true })
+  await summary.click() // collapse again so later steps start from the same layout
 }
 
 async function priceTheRoll(page: Page) {
@@ -116,11 +160,15 @@ async function readCard(page: Page) {
 type Card = Awaited<ReturnType<typeof readCard>>
 
 function assertOneRollCard(card: Card, label: string) {
-  check(`[${label}] 1 roll: card is Toss-up`, card.headline === 'Toss-up', card.headline)
-  check(`[${label}] 1 roll: "Voidcore roll" label on the toss-up number`, card.pctLabel === 'Voidcore roll', card.pctLabel)
+  check(`[${label}] 1 roll: headline is the kill-order toss-up between Ula'tek and The Coiled Altar`, card.headline === "Roll Ula'tek (Mythic) or The Coiled Altar (Mythic)", card.headline)
+  check(
+    `[${label}] 1 roll: kill-order toss-up note (Next best: The Coiled Altar ~0.81%)`,
+    card.notes.some((n) => n.includes('Next best: The Coiled Altar (Mythic), ~0.81%')) && card.notes.some((n) => n.includes('let kill order decide')),
+    JSON.stringify(card.notes)
+  )
   const voidcore = card.compare.find((o) => o.label === 'Voidcore roll')
   const vial = card.compare.find((o) => o.label === VAULT_ITEM)
-  check(`[${label}] 1 roll: Voidcore 0.81% vs ${VAULT_ITEM} 0.74%`, voidcore?.value === '0.81%' && vial?.value === '0.74%', JSON.stringify(card.compare))
+  check(`[${label}] 1 roll: Voidcore 0.92% vs ${VAULT_ITEM} 0.74%`, voidcore?.value === '0.92%' && vial?.value === '0.74%', JSON.stringify(card.compare))
   check(
     `[${label}] 1 roll: no-saved-rolls explanation`,
     card.notes.some((n) => n.includes("Altar of Fangs isn't a target you'd roll this week") && n.includes('saves no rolls')),
@@ -131,9 +179,11 @@ function assertOneRollCard(card: Card, label: string) {
 function assertTwoRollCard(card: Card, label: string) {
   check(`[${label}] 2 rolls: Voidcore verdict`, /^Take the Voidcore/.test(card.headline), card.headline)
   check(`[${label}] 2 rolls: 2 Voidcores`, card.meta === '2 Voidcores', card.meta)
+  const twoRollVoidcore = card.compare.find((o) => o.label === 'Voidcore roll')
+  check(`[${label}] 2 rolls: Voidcore 1.73%`, twoRollVoidcore?.value === '1.73%', JSON.stringify(card.compare))
   check(
     `[${label}] 2 rolls: headline names both targets`,
-    card.headline === "Take the Voidcores. Roll The Coiled Altar (Mythic) and Ula'tek (Mythic).",
+    card.headline === "Take the Voidcores. Roll Ula'tek (Mythic) and The Coiled Altar (Mythic).",
     card.headline
   )
   const vial = card.compare.find((o) => o.label === VAULT_ITEM)
