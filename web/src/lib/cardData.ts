@@ -25,6 +25,18 @@ export function targetPhraseText(t: TargetLike): string {
   return [verb, name, qualifier].filter(Boolean).join(' ')
 }
 
+/**
+ * Two roll targets in one phrase: a shared verb is said once ("Roll A (Mythic) and B (Mythic)",
+ * "Run A at +10 and B at +10 and roll"); differing verbs read as two actions.
+ */
+export function twoTargetPhrase(a: TargetLike, b: TargetLike): string {
+  const pa = targetPhrase(a)
+  const pb = targetPhrase(b)
+  if (pa.verb !== pb.verb) return `${targetPhraseText(a)} and ${targetPhraseText(b).replace(/^./, (c) => c.toLowerCase())}`
+  if (pa.verb === 'Run') return `Run ${targetDisplayName(a)} and ${targetDisplayName(b)} and roll`
+  return `${pa.verb} ${targetDisplayName(a)} and ${targetDisplayName(b)}`
+}
+
 /** A target's name for lists and comparisons: "The Coiled Altar (Mythic)", "Altar of Fangs at +10". */
 export function targetDisplayName(t: TargetLike): string {
   if (t.kind === 'mplus') return t.keyLevel !== undefined ? `${t.encounterName} at +${t.keyLevel}` : t.encounterName
@@ -121,6 +133,8 @@ export function buildCardData(params: {
       ? { name: targetDisplayName(deployableByEv[0]), pct: deployableByEv[0].evPct }
       : undefined
 
+  // Two rolls on two different targets: the headline names both, not just the first.
+  const twoTargets = !!secondAllocation && (secondAllocation.targetKey ?? String(secondAllocation.encounterId)) !== topKey
   const rollTossUp = recommendation.tossUp
   // Toss-up sides by target key when the engine supplies them (names alone are ambiguous
   // once the same boss can appear on two difficulties), else by name.
@@ -227,7 +241,7 @@ export function buildCardData(params: {
   // vaultDecision.verdict === 'voidcore'
   return {
     verdict: 'roll',
-    headline: rollTossUp ? rollHeadline : `Take the Voidcore. ${targetPhraseText(top)}.`,
+    headline: rollTossUp ? rollHeadline : twoTargets ? `Take the Voidcores. ${twoTargetPhrase(top, secondAllocation!)}.` : `Take the Voidcore. ${targetPhraseText(top)}.`,
     pct: vaultDecision.voidcoreGainPct,
     bestRoll,
     secondBest,

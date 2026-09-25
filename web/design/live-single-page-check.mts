@@ -6,7 +6,7 @@
 //   - EV: Coiled Altar ~0.81%, Ula'tek ~0.80%, Altar of Fangs ~0.35%
 //   - 1 roll: Toss-up card, "Voidcore roll" label on the big number, Voidcore 0.81% vs Vile Vial 0.74%,
 //     with the no-saved-rolls explanation
-//   - 2 rolls + re-price: Voidcore verdict naming The Coiled Altar and Ula'tek
+//   - 2 rolls + re-price: Voidcore verdict whose headline names both The Coiled Altar and Ula'tek
 //   - the spec-specific pill renders inline (a wide pill, not a circle) at 390px
 //   - layout: no horizontal scroll, controls inside their cards, names wrap, nothing exceeds its panel
 // Screenshots + a JSON dump land in design/live-single-page-* (gitignored).
@@ -131,7 +131,11 @@ function assertOneRollCard(card: Card, label: string) {
 function assertTwoRollCard(card: Card, label: string) {
   check(`[${label}] 2 rolls: Voidcore verdict`, /^Take the Voidcore/.test(card.headline), card.headline)
   check(`[${label}] 2 rolls: 2 Voidcores`, card.meta === '2 Voidcores', card.meta)
-  check(`[${label}] 2 rolls: names The Coiled Altar and Ula'tek`, card.full.includes('The Coiled Altar') && card.full.includes("Ula'tek"), card.full)
+  check(
+    `[${label}] 2 rolls: headline names both targets`,
+    card.headline === "Take the Voidcores. Roll The Coiled Altar (Mythic) and Ula'tek (Mythic).",
+    card.headline
+  )
   const vial = card.compare.find((o) => o.label === VAULT_ITEM)
   check(`[${label}] 2 rolls: Vial still 0.74% (no saved-rolls credit)`, vial?.value === '0.74%', JSON.stringify(card.compare))
 }
