@@ -1,8 +1,25 @@
-# GallagioLoot Proxy
+# GallagioLoot
 
-A Cloudflare Worker that fetches Raidbots droptimizer reports and Questionably Epic (QE) Live upgrade reports, and normalizes both into a single common shape (`NormalizedReport`). Data layer only — no ranking, EV, or UI logic lives here.
+GallagioLoot prices your World of Warcraft **bonus roll**: given your Raidbots droptimizer (or QE Live upgrade) reports, it works out which boss or Mythic+ dungeon gives the best chance of a real upgrade for a Voidcore, and how to order your rolls. Live at **https://gallagioloot.icehunter.net**.
 
-Companion site: `gallagioloot.icehunter.net`. This worker is intended to run at `gallagioloot-proxy.icehunter.net` (not deployed by this job — config only).
+## How to use it
+
+1. Open <https://gallagioloot.icehunter.net> and paste one or more droptimizer report URLs (Raidbots or QE Live; up to 8 rows, one Mythic+ droptimizer allowed alongside the raid difficulties) and choose **Fetch**.
+2. Optionally paste a Raidbots **Top Gear** report so your best-set items are credited too.
+3. Set what you have in Run settings (Voidcores on hand, loot spec) and mark items you already own or rolled.
+4. Read the recommendation card (the best boss or dungeon to roll, and how sure it is), the ranking of every target, and the roll plan for the Voidcores you have. Re-run your droptimizer after a win and paste the new report.
+
+## License
+
+Source-available, **all rights reserved**; this is not open source. You may use the site for your own play and read, link to, or discuss the code. Copying, hosting, modifying or reusing it needs the author's written permission. See [LICENSE](LICENSE).
+
+## What is in this repo
+
+- **Data layer** (this Cloudflare Worker, `src/`): fetches Raidbots droptimizer reports and Questionably Epic (QE) Live upgrade reports and normalizes both into a single common shape (`NormalizedReport`). Runs at `gallagioloot-proxy.icehunter.net`.
+- **Decision engine** (`src/core/`): pure TypeScript with no runtime dependencies; turns a normalized report and a knockout state into a bonus-roll recommendation.
+- **Web UI** (`web/`): the static site served at `gallagioloot.icehunter.net`.
+
+The rest of this file documents the proxy endpoints, the normalized schema, upstream shape notes and the decision engine.
 
 ---
 
@@ -441,10 +458,10 @@ An optional `ENCOUNTER_ITEMS_KV` KV namespace binding enables persistent caching
 
 ---
 
-### Web footer version stamp (v2.14)
+### Web footer version stamp
 
-The web footer shows `v2.14 · <short sha> · Source`. `APP_VERSION` (`web/src/lib/buildInfo.ts`) is the version; the sha comes from `git` at build time (Vite `define`), with `-dirty` appended for an unclean tree. The sha links to the commit on <https://github.com/icey2488/gallagioloot>, "Source" to the repo. See DEPLOY.md for building from the pushed commit.
+The web footer shows `v2.15 · <short sha> · Source · License`. `APP_VERSION` (`web/src/lib/buildInfo.ts`) is the version; the sha comes from `git` at build time (Vite `define`), with `-dirty` appended for an unclean tree. The sha links to the commit on <https://github.com/icey2488/gallagioloot>, "Source" to the repo and "License" to `LICENSE` on `main`. See DEPLOY.md for building from the pushed commit.
 
 ## Deployment
 
-Not deployed by this job. `wrangler.toml` includes a commented-out `[[routes]]` block for `gallagioloot-proxy.icehunter.net/*` — fill in a `zone_name`/`zone_id` and deploy manually or wire up Cloudflare's Git integration when ready.
+Both Workers (the proxy at `gallagioloot-proxy.icehunter.net` and the site at `gallagioloot.icehunter.net`) are deployed manually with the Wrangler CLI; nothing deploys from git. See DEPLOY.md.

@@ -1,0 +1,30 @@
+GallagioLoot. Copyright (c) 2026 icey2488. All rights reserved.
+
+GallagioLoot and its source code are the property of the author. The source is
+public so people can see how the tool works and check its math, not as an
+open-source grant.
+
+You MAY:
+  * Use GallagioLoot at https://gallagioloot.icehunter.net for your own play.
+  * Read the source, and link to or discuss it.
+
+You MAY NOT, without the author's prior written permission:
+  * Copy, redistribute, re-upload, republish, host, or mirror GallagioLoot or
+    its source, in whole or in part.
+  * Modify, adapt, or create derivative works from its code or assets.
+  * Reuse its code or assets in another project, or sell or sublicense them.
+
+Want to build on it or collaborate? Open an issue or reach out on GitHub.
+
+--------------------------------------------------------------------------------
+Third-party components
+
+GallagioLoot uses material that is NOT the author's own work. The terms above
+do not apply to it:
+
+  * World of Warcraft item, encounter, and loot data (names, ids, item levels,
+    loot tables) is the property of Blizzard Entertainment.
+  * Simulation reports read by the tool belong to their respective services
+    (Raidbots, QE Live) and the players who ran them.
+  * Open-source packages and fonts used by the site remain under their own
+    licenses, as listed in their package metadata.

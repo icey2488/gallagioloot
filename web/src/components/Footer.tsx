@@ -46,6 +46,10 @@ export function Footer({ version = APP_VERSION, build = BUILD_INFO }: { version?
         <a href={stamp.sourceUrl} target="_blank" rel="noopener noreferrer" aria-label="Source code on GitHub (opens in a new tab)">
           Source
         </a>
+        <span aria-hidden="true"> · </span>
+        <a href={stamp.licenseUrl} target="_blank" rel="noopener noreferrer" aria-label="License on GitHub (opens in a new tab)">
+          License
+        </a>
       </p>
     </footer>
   )

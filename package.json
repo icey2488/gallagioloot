@@ -2,6 +2,7 @@
   "name": "gallagioloot-proxy",
   "version": "0.1.0",
   "description": "Cloudflare Worker proxy + normalizers for GallagioLoot (WoW bonus roll optimizer)",
+  "private": true,
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
@@ -20,5 +21,5 @@
     "vitest": "^2.1.0",
     "wrangler": "^4.130.0"
   },
-  "license": "MIT"
+  "license": "SEE LICENSE IN LICENSE"
 }

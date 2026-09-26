@@ -158,10 +158,10 @@ return [
   { name: 'Report row error status (warn text) on panel', fg: COLORS.warnText, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Report row loaded status (ok text) on panel', fg: COLORS.badgeYesText, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Report row invalid-input border (warn border) on input fill', fg: COLORS.warnBorder, bg: COLORS.bgPanelAlt, requirement: 'ui' },
-  // Footer version stamp (v2.14): "v2.14 · <sha> · Source". Muted text with the global secondary-text links, a --border hairline above it, and the
+  // Footer version stamp (v2.14, License link added v2.15): "v2.15 · <sha> · Source · License". Muted text with the global secondary-text links, a --border hairline above it, and the
   // --border-strong focus ring on the links. Existing tokens only; listed so the new locations are traceable.
   { name: 'Footer stamp text (version, separators) on footer background (13px)', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
-  { name: 'Footer stamp links (sha, Source) on footer background (13px)', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Footer stamp links (sha, Source, License) on footer background (13px)', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Footer stamp rule (--border) on footer background', fg: COLORS.border, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Footer stamp link focus ring on footer background', fg: COLORS.borderStrong, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Chip-stack glyph (bottom bar) on header panel', fg: COLORS.borderStrong, bg: COLORS.bgPanel, requirement: 'ui' },

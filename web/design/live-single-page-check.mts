@@ -33,9 +33,9 @@
 //     ("Duplicate of row 1") is blocked and never fetched, a bad URL fails on its own row while the good one loads, "Already loaded" blocks
 //     a loaded report, removing rows keeps loaded reports; two real reports (the raid + Mythic+ droptimizers) fetch in parallel via "Fetch all"
 //     and land as their own blocks with per-row status
-//   - v2.14 footer stamp (fresh context per theme x width, all three themes at 1280 and 390): the footer reads "v2.14 · <sha> · Source" with the
+//   - v2.14/v2.15 footer stamp (fresh context per theme x width, all three themes at 1280 and 390): the footer reads "v2.15 · <sha> · Source · License" with the
 //     sha equal to `git rev-parse --short HEAD` (the commit that was built and deployed; no -dirty), the sha link is the full-commit URL on
-//     github.com/icey2488/gallagioloot, Source is the repo URL, both open in a new tab with rel="noopener noreferrer", accessible names, theme tokens,
+//     github.com/icey2488/gallagioloot, Source is the repo URL, License is blob/main/LICENSE, all open in a new tab with rel="noopener noreferrer", accessible names, theme tokens,
 //     Tab order + focus ring, target size, and the stamp fits the footer and the viewport
 // Screenshots + a JSON dump land in design/live-single-page-* (gitignored).
 import { chromium, type Browser, type Page } from 'playwright'
