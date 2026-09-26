@@ -383,6 +383,80 @@ input[type='checkbox']:checked {
   margin: -4px 0 12px;
 }
 
+/* Report URL rows (v2.13): 1-8 inputs, each with its own status line; + adds a row, - removes one.
+   Color tokens only. The controls reuse the audited button pairs (--text on --bg-panel, --border-strong
+   border/focus ring); row errors use --warn-text and loaded messages --ok-text, both on the panel fill. */
+.report-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.report-row {
+  margin-bottom: 10px;
+}
+
+.report-row__line {
+  display: flex;
+  gap: var(--space-4);
+  align-items: stretch;
+}
+
+.report-row__line input {
+  flex: 1;
+  min-width: 0;
+}
+
+.report-row__line input[aria-invalid='true'] {
+  border-color: var(--warn-border);
+}
+
+.report-row__status {
+  margin-bottom: 0;
+}
+
+.report-row__status--error {
+  color: var(--warn-text);
+}
+
+.report-row__status--ok {
+  color: var(--ok-text);
+}
+
+.report-row__btn {
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.report-row__btn:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.report-row__btn:disabled {
+  color: var(--text-muted);
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.report-rows__add {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  margin-bottom: 14px;
+}
+
+.report-rows__cap {
+  margin: 0;
+}
+
 /* Expected-kills checklist: numbered rows separated by hairlines, matching v2's 2a
    mockup (border-top on the list, border-bottom per row rather than a flex gap). */
 .checklist {

@@ -9,7 +9,8 @@ import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
 import { checkCandidate, checkReportSet, DEFAULT_DRIFT_LIMITS, type DriftLimits } from '@engine/core/reportSet'
 import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from '@engine/core/targets'
 import type { BossEval, KnockoutState, Settings, VaultItemInput } from '@engine/core/types'
-import { detectSource, friendlyReportMismatch, friendlyUnsupportedContent, SOURCE_LABELS, type ReportSource } from './lib/urlDetect'
+import { detectSource, friendlyReportMismatch, friendlyUnsupportedContent, type ReportSource } from './lib/urlDetect'
+import { addRow, checkRows, removeRow, type ReportRow } from './lib/reportRows'
 import { fetchLootTable, fetchReport, fetchTopGear, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData, extraVoidcoreText, type CardData } from './lib/cardData'
 import { isRecognizedDifficulty } from './lib/format'
@@ -39,6 +40,7 @@ import { orderBossEvals } from './lib/bossOrder'
 import { BossList, type BossSection, type ItemStateChange } from './components/BossList'
 import { PricedDetail } from './components/PricedDetail'
 import { ReportBlock, type ReportNote } from './components/ReportBlock'
+import { ReportUrlRows, type RowStatus } from './components/ReportUrlRows'
 
 const storageAdapter = new LocalStorageAdapter()
 
@@ -65,10 +67,22 @@ function reportTitle(report: NormalizedReport): string {
   return `${report.instanceName ?? 'Unknown instance'} · ${difficultyLabel(report)}`
 }
 
+/** User-facing text for a failed report fetch (unsupported content type, wrong report kind, or the raw upstream message). */
+function describeFetchError(e: unknown): string {
+  if (e instanceof ProxyRequestError && e.code === 'unsupported_content') return friendlyUnsupportedContent(e.contentType)
+  const message = e instanceof ProxyRequestError ? e.message : (e as Error).message
+  return (e instanceof ProxyRequestError && friendlyReportMismatch(message, 'sim')) || message
+}
+
 const lootTableKey = (instanceId: number, lootSpecId: number) => `${instanceId}:${lootSpecId}`
 
 export default function App() {
-  const [reportUrl, setReportUrl] = useState('')
+  // Report URL inputs (1-8), each with its own inline status; `touched` rows have been left or fetched, so
+  // their duplicate / already-loaded error shows. Removing a row never touches a loaded report.
+  const [rows, setRows] = useState<ReportRow[]>([{ id: 0, url: '' }])
+  const nextRowId = useRef(1)
+  const [rowStatus, setRowStatus] = useState<Record<number, RowStatus>>({})
+  const [touchedRows, setTouchedRows] = useState<Set<number>>(new Set())
   const [loaded, setLoaded] = useState<LoadedReport[]>([])
   const [loadStatus, setLoadStatus] = useState<'idle' | 'loading' | 'error'>('idle')
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -111,9 +125,14 @@ export default function App() {
   const [importText, setImportText] = useState('')
   const [importError, setImportError] = useState<string | null>(null)
 
-  const detectedSource: ReportSource | null = useMemo(() => detectSource(reportUrl), [reportUrl])
-
   const reports = useMemo(() => loaded.map((l) => l.report), [loaded])
+  const loadedRef = useRef(loaded)
+  loadedRef.current = loaded
+  const loadedKeys = useMemo(() => new Set(loaded.map((l) => `${l.source}:${l.report.reportId}`)), [loaded])
+  const rowIssues = useMemo(() => checkRows(rows, loadedKeys), [rows, loadedKeys])
+  const shownRowIssues = useMemo(() => Object.fromEntries(Object.entries(rowIssues).filter(([id]) => touchedRows.has(Number(id)))), [rowIssues, touchedRows])
+  const filledRows = rows.filter((r) => r.url.trim())
+  const anyRecognized = filledRows.some((r) => detectSource(r.url))
   const primary = reports[0] ?? null
   // Settings, Voidcores and the Top Gear URL persist under the first loaded report's key,
   // exactly as they did when only one report could be loaded.
@@ -313,27 +332,43 @@ export default function App() {
   }
 
   /**
-   * Fetches a report and adds it to `existing` (replacing a report with the same id, so
-   * re-adding a URL refreshes it). Refuses -- leaving the set unchanged -- when the report is
-   * for another character or loot spec, duplicates a loaded target set, or drifts past the
-   * baseline limit (see checkCandidate). Returns the new set, or null when nothing was added.
+   * Fetches a report and adds it to `existing` (see commitReport). Failures land in the panel-level
+   * banner (used by the character switcher; the URL rows show their own inline status instead).
+   * Returns the new set, or null when nothing was added.
    */
   async function loadReport(url: string, source: ReportSource, existing: LoadedReport[], opts: { fromSwitch?: boolean } = {}): Promise<LoadedReport[] | null> {
     setLoadStatus('loading')
     setLoadError(null)
+    let result: LoadedReport[] | string
     try {
-      const rpt = await fetchReport(source, url)
+      result = await commitReport(await fetchReport(source, url), url, source, existing, opts)
+    } catch (e) {
+      result = describeFetchError(e)
+    }
+    if (typeof result === 'string') {
+      setLoadError(result)
+      setLoadStatus('error')
+      return null
+    }
+    setLoadStatus('idle')
+    return result
+  }
+
+  /**
+   * Adds an already-fetched report to `existing` (replacing a report with the same id). Refuses --
+   * leaving the set unchanged and returning the refusal text -- when the report is for another
+   * character or loot spec, duplicates a loaded target set, or drifts past the baseline limit
+   * (see checkCandidate). Returns the new set otherwise.
+   */
+  async function commitReport(rpt: NormalizedReport, url: string, source: ReportSource, existing: LoadedReport[], opts: { fromSwitch?: boolean } = {}): Promise<LoadedReport[] | string> {
+    try {
       const others = existing.filter((l) => l.report.reportId !== rpt.reportId)
       const check = checkCandidate(
         others.map((l) => l.report),
         rpt,
         driftLimits
       )
-      if (check.errors.length > 0) {
-        setLoadError(check.errors.join(' '))
-        setLoadStatus('error')
-        return null
-      }
+      if (check.errors.length > 0) return check.errors.join(' ')
 
       const key = storageKeyFor(rpt)
       // Migrate any pre-region/realm knockout state saved under an empty-location key.
@@ -378,25 +413,92 @@ export default function App() {
       }
 
       saveLastReportUrl(key, url)
-      setReportUrl('')
-      setLoadStatus('idle')
       return next
     } catch (e) {
-      if (e instanceof ProxyRequestError && e.code === 'unsupported_content') {
-        setLoadError(friendlyUnsupportedContent(e.contentType))
-        setLoadStatus('error')
-        return null
-      }
-      const message = e instanceof ProxyRequestError ? e.message : (e as Error).message
-      setLoadError((e instanceof ProxyRequestError && friendlyReportMismatch(message, 'sim')) || message)
-      setLoadStatus('error')
-      return null
+      return describeFetchError(e)
     }
   }
 
-  function handleFetch() {
-    if (!detectedSource) return
-    void loadReport(reportUrl.trim(), detectedSource, loaded)
+  /** Fetches every filled, recognized, non-duplicate row in parallel, then adds the results in row order. */
+  async function handleFetch() {
+    setTouchedRows(new Set(rows.map((r) => r.id)))
+    setLoadError(null)
+    const targets = rows.flatMap((row) => {
+      const source = detectSource(row.url)
+      return row.url.trim() && source && !rowIssues[row.id] ? [{ row, source, url: row.url.trim() }] : []
+    })
+    const unrecognized = rows.filter((r) => r.url.trim() && !detectSource(r.url))
+    setRowStatus((prev) => {
+      const next = { ...prev }
+      for (const t of targets) next[t.row.id] = { state: 'loading' }
+      for (const r of unrecognized) next[r.id] = { state: 'error', message: 'Unrecognized report URL' }
+      // Freeze blocked rows' message as of this click: once an earlier row loads and clears, its live check would flip to "Already loaded".
+      for (const [id, message] of Object.entries(rowIssues)) next[Number(id)] = { state: 'error', message }
+      return next
+    })
+    if (targets.length === 0) return
+    setLoadStatus('loading')
+    const fetched = await Promise.all(
+      targets.map(async (t) => {
+        try {
+          return { ...t, report: await fetchReport(t.source, t.url), error: '' }
+        } catch (e) {
+          return { ...t, report: null, error: describeFetchError(e) }
+        }
+      })
+    )
+    // One report at a time so each is checked against the set the earlier rows built (same character and
+    // loot spec, baseline drift, one Mythic+ droptimizer). A refused or failed row fails alone.
+    let set = loadedRef.current
+    const outcomes: Record<number, RowStatus> = {}
+    const clearedRows = new Set<number>()
+    for (const f of fetched) {
+      if (!f.report) {
+        outcomes[f.row.id] = { state: 'error', message: f.error }
+        continue
+      }
+      const result = await commitReport(f.report, f.url, f.source, set)
+      if (typeof result === 'string') outcomes[f.row.id] = { state: 'error', message: result }
+      else {
+        set = result
+        clearedRows.add(f.row.id)
+        outcomes[f.row.id] = { state: 'loaded', message: `Loaded ${reportTitle(f.report)}` }
+      }
+    }
+    setRowStatus((prev) => ({ ...prev, ...outcomes }))
+    setRows((prev) => prev.map((r) => (clearedRows.has(r.id) ? { ...r, url: '' } : r)))
+    setLoadStatus('idle')
+  }
+
+  function changeRow(id: number, url: string) {
+    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, url } : r)))
+    setRowStatus((prev) => {
+      if (!prev[id]) return prev
+      const { [id]: _dropped, ...rest } = prev
+      return rest
+    })
+    setTouchedRows((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+  }
+
+  function blurRow(id: number) {
+    setTouchedRows((prev) => (prev.has(id) ? prev : new Set(prev).add(id)))
+  }
+
+  function addReportRow() {
+    setRows((prev) => addRow(prev, nextRowId.current++))
+  }
+
+  function removeReportRow(id: number) {
+    setRows((prev) => removeRow(prev, id))
+    setRowStatus((prev) => {
+      const { [id]: _dropped, ...rest } = prev
+      return rest
+    })
   }
 
   function removeReport(reportId: string) {
@@ -572,33 +674,22 @@ export default function App() {
               )}
             </div>
           )}
-          <div className="field">
-            <label htmlFor="report-url" className="sr-only">
-              Report URL
-            </label>
-            <input
-              id="report-url"
-              type="text"
-              placeholder="https://www.raidbots.com/reports/... or https://questionablyepic.com/..."
-              value={reportUrl}
-              onChange={(e) => setReportUrl(e.target.value)}
-            />
-            <div className="field-hint" style={{ marginBottom: 0 }}>
-              {detectedSource
-                ? `Detected: ${SOURCE_LABELS[detectedSource]}`
-                : reportUrl
-                  ? 'Unrecognized report URL'
-                  : loaded.length
-                    ? 'Add another difficulty or your Mythic+ droptimizer'
-                    : 'Paste a Raidbots or QE Live report URL'}
-            </div>
-          </div>
+          <ReportUrlRows
+            rows={rows}
+            status={rowStatus}
+            issues={shownRowIssues}
+            hasLoaded={loaded.length > 0}
+            onChange={changeRow}
+            onBlur={blurRow}
+            onAdd={addReportRow}
+            onRemove={removeReportRow}
+          />
 
           <div className="fetch-button-group">
-            <button type="button" className={loaded.length ? 'btn-light--outline' : 'btn-light'} disabled={!detectedSource || loadStatus === 'loading'} onClick={handleFetch}>
-              {loadStatus === 'loading' ? 'Fetching…' : loaded.length ? 'Add report' : 'Fetch report'}
+            <button type="button" className={loaded.length ? 'btn-light--outline' : 'btn-light'} disabled={!anyRecognized || loadStatus === 'loading'} onClick={() => void handleFetch()}>
+              {loadStatus === 'loading' ? 'Fetching…' : filledRows.length >= 2 ? 'Fetch all' : loaded.length ? 'Add report' : 'Fetch report'}
             </button>
-            {!detectedSource && loadStatus !== 'loading' && <div className="btn-hint">Needs a report URL</div>}
+            {!anyRecognized && loadStatus !== 'loading' && <div className="btn-hint">Needs a report URL</div>}
           </div>
 
           {loadStatus === 'error' && loadError && <p className="warning-banner" style={{ marginTop: 12 }}>{loadError}</p>}
