@@ -1242,6 +1242,26 @@ tr.excluded .deploy-table__ev {
   margin-bottom: var(--space-2);
 }
 
+/* Version stamp: "v2.14 · <sha> · Source". Muted like the rest of the footer; the two links use the
+   global secondary-text link color (both pairs audited in design/contrast.mts). The link boxes are
+   padded to a 24px-tall target (WCAG 2.2 target size) without moving the line's baseline much. */
+.app-footer__stamp {
+  margin: var(--space-6) 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+  font-variant-numeric: tabular-nums;
+}
+
+.app-footer__stamp a {
+  display: inline-block;
+  padding: var(--space-3) 0;
+}
+
+.app-footer__stamp a:focus-visible {
+  outline: 2px solid var(--border-strong);
+  outline-offset: 1px;
+}
+
 /* Two columns on desktop (disclaimer left, Delves/Prey Hunts note right, per the
    design export's footer) -- single column, stacked, on phone. */
 .app-footer__columns {

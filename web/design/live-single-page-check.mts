@@ -33,11 +33,16 @@
 //     ("Duplicate of row 1") is blocked and never fetched, a bad URL fails on its own row while the good one loads, "Already loaded" blocks
 //     a loaded report, removing rows keeps loaded reports; two real reports (the raid + Mythic+ droptimizers) fetch in parallel via "Fetch all"
 //     and land as their own blocks with per-row status
+//   - v2.14 footer stamp (fresh context per theme x width, all three themes at 1280 and 390): the footer reads "v2.14 · <sha> · Source" with the
+//     sha equal to `git rev-parse --short HEAD` (the commit that was built and deployed; no -dirty), the sha link is the full-commit URL on
+//     github.com/icey2488/gallagioloot, Source is the repo URL, both open in a new tab with rel="noopener noreferrer", accessible names, theme tokens,
+//     Tab order + focus ring, target size, and the stamp fits the footer and the viewport
 // Screenshots + a JSON dump land in design/live-single-page-* (gitignored).
 import { chromium, type Browser, type Page } from 'playwright'
 import { writeFileSync } from 'node:fs'
 import { VOIDCORE_ASSUMPTIONS } from '../../src/core/supply'
 import { runReportRowChecks } from './reportRowsChecks.mts'
+import { currentCommit, runFooterStampChecks } from './footerStampChecks.mts'
 
 const APP_URL = 'https://gallagioloot.icehunter.net'
 const RAID_URL = 'https://www.raidbots.com/simbot/report/6PTZ7TjgU8PdxJhZ97bMUa'
@@ -560,6 +565,20 @@ async function assertReportRows(browser: Browser, width: number, theme: (typeof 
   await ctx.close()
 }
 
+// v2.14 footer stamp on the DEPLOYED site: fresh browser per theme x width; the stamp must name the commit the working copy is on
+// (`git rev-parse --short HEAD` now, i.e. the commit that was built and deployed), be clean, and link to that commit and the repo.
+async function assertFooterStamp(browser: Browser, width: number, theme: (typeof THEME_CASES)[number]) {
+  const ctx = await browser.newContext({ viewport: { width, height: width === 390 ? 900 : 1000 }, timezoneId: 'America/Los_Angeles' })
+  await ctx.addInitScript('window.__name = (f) => f')
+  await ctx.addInitScript(`localStorage.setItem('gallagioloot:theme', '${theme.id}')`)
+  const page = await ctx.newPage()
+  page.on('pageerror', (e) => console.log('[pageerror]', e.message))
+  await page.goto(APP_URL)
+  await page.waitForSelector('.app-footer')
+  await runFooterStampChecks(page, { label: `${width} footer, ${theme.label}`, check, expected: currentCommit(), allowDirty: false, shot: `design/live-single-page-footer-${width}-${theme.id}.png` })
+  await ctx.close()
+}
+
 async function main() {
   const browser = await chromium.launch()
   const out: Record<string, unknown> = {}
@@ -613,6 +632,7 @@ async function main() {
   await assertThemes(browser, 390, '390 themes')
 
   for (const width of [1280, 390]) for (const theme of THEME_CASES) await assertReportRows(browser, width, theme)
+  for (const width of [1280, 390]) for (const theme of THEME_CASES) await assertFooterStamp(browser, width, theme)
 
   await browser.close()
   writeFileSync('design/live-single-page-check.json', JSON.stringify(out, null, 2))

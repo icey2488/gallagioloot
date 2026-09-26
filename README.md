@@ -441,6 +441,10 @@ An optional `ENCOUNTER_ITEMS_KV` KV namespace binding enables persistent caching
 
 ---
 
+### Web footer version stamp (v2.14)
+
+The web footer shows `v2.14 · <short sha> · Source`. `APP_VERSION` (`web/src/lib/buildInfo.ts`) is the version; the sha comes from `git` at build time (Vite `define`), with `-dirty` appended for an unclean tree. The sha links to the commit on <https://github.com/icey2488/gallagioloot>, "Source" to the repo. See DEPLOY.md for building from the pushed commit.
+
 ## Deployment
 
 Not deployed by this job. `wrangler.toml` includes a commented-out `[[routes]]` block for `gallagioloot-proxy.icehunter.net/*` — fill in a `zone_name`/`zone_id` and deploy manually or wire up Cloudflare's Git integration when ready.

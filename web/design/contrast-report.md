@@ -4,9 +4,9 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 
 | Theme | Pairs | Pass | Fail (excluding the documented pre-fix example) |
 |---|---|---|---|
-| Midnight | 88 | 87 | 0 |
-| Felt green | 88 | 87 | 0 |
-| Craps red | 88 | 87 | 0 |
+| Midnight | 92 | 91 | 0 |
+| Felt green | 92 | 91 | 0 |
+| Craps red | 92 | 91 | 0 |
 
 ## Changes made
 
@@ -66,6 +66,10 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Report row error status (warn text) on panel | `#e8c98a` | `#0b1426` | 11.51:1 | 4.5:1 (text) | ✅ |
 | Report row loaded status (ok text) on panel | `#8fd6a4` | `#0b1426` | 10.79:1 | 4.5:1 (text) | ✅ |
 | Report row invalid-input border (warn border) on input fill | `#996f2b` | `#0f1a33` | 3.84:1 | 3:1 (UI component) | ✅ |
+| Footer stamp text (version, separators) on footer background (13px) | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
+| Footer stamp links (sha, Source) on footer background (13px) | `#a3afca` | `#0b1426` | 8.35:1 | 4.5:1 (text) | ✅ |
+| Footer stamp rule (--border) on footer background | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
+| Footer stamp link focus ring on footer background | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (bottom bar) on header panel | `#6b7a9c` | `#0b1426` | 4.28:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (mid bar) on header panel | `#a3afca` | `#0b1426` | 8.35:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (top bar) on header panel | `#a3afca` | `#0b1426` | 8.35:1 | 3:1 (UI component) | ✅ |
@@ -159,6 +163,10 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Report row error status (warn text) on panel | `#e8c98a` | `#082116` | 10.61:1 | 4.5:1 (text) | ✅ |
 | Report row loaded status (ok text) on panel | `#8fd6a4` | `#082116` | 9.94:1 | 4.5:1 (text) | ✅ |
 | Report row invalid-input border (warn border) on input fill | `#996f2b` | `#0c2c1d` | 3.35:1 | 3:1 (UI component) | ✅ |
+| Footer stamp text (version, separators) on footer background (13px) | `#a9c6b4` | `#082116` | 9.22:1 | 4.5:1 (text) | ✅ |
+| Footer stamp links (sha, Source) on footer background (13px) | `#a9c6b4` | `#082116` | 9.22:1 | 4.5:1 (text) | ✅ |
+| Footer stamp rule (--border) on footer background | `#6a9682` | `#082116` | 5.08:1 | 3:1 (UI component) | ✅ |
+| Footer stamp link focus ring on footer background | `#6a9682` | `#082116` | 5.08:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (bottom bar) on header panel | `#6a9682` | `#082116` | 5.08:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (mid bar) on header panel | `#a9c6b4` | `#082116` | 9.22:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (top bar) on header panel | `#a9c6b4` | `#082116` | 9.22:1 | 3:1 (UI component) | ✅ |
@@ -252,6 +260,10 @@ Computed with `design/contrast.mts` (WCAG 2.1 relative-luminance formula, no eye
 | Report row error status (warn text) on panel | `#e8c98a` | `#3d0810` | 10.60:1 | 4.5:1 (text) | ✅ |
 | Report row loaded status (ok text) on panel | `#8fd6a4` | `#3d0810` | 9.93:1 | 4.5:1 (text) | ✅ |
 | Report row invalid-input border (warn border) on input fill | `#996f2b` | `#520b16` | 3.29:1 | 3:1 (UI component) | ✅ |
+| Footer stamp text (version, separators) on footer background (13px) | `#f0c4c4` | `#3d0810` | 10.80:1 | 4.5:1 (text) | ✅ |
+| Footer stamp links (sha, Source) on footer background (13px) | `#f0c4c4` | `#3d0810` | 10.80:1 | 4.5:1 (text) | ✅ |
+| Footer stamp rule (--border) on footer background | `#c07880` | `#3d0810` | 5.03:1 | 3:1 (UI component) | ✅ |
+| Footer stamp link focus ring on footer background | `#c07880` | `#3d0810` | 5.03:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (bottom bar) on header panel | `#c07880` | `#3d0810` | 5.03:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (mid bar) on header panel | `#f0c4c4` | `#3d0810` | 10.80:1 | 3:1 (UI component) | ✅ |
 | Chip-stack glyph (top bar) on header panel | `#f0c4c4` | `#3d0810` | 10.80:1 | 3:1 (UI component) | ✅ |

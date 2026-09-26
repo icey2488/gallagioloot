@@ -11,6 +11,7 @@ import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { runReportRowChecks } from './reportRowsChecks.mts'
+import { currentCommit, runFooterStampChecks } from './footerStampChecks.mts'
 
 const PREVIEW_PORT = 4180
 const APP_URL = `http://localhost:${PREVIEW_PORT}/`
@@ -423,6 +424,19 @@ async function shootReportRows(page: Page, width: number) {
   if (failures.length > 0) throw new Error(`report-row checks failed (${THEME.label}, ${width}px):\n${failures.join('\n')}`)
 }
 
+/** v2.14 footer version stamp at one width, in the current theme: reads the last build's stamp and compares its sha with `git rev-parse --short HEAD`. */
+async function shootFooterStamp(page: Page, width: number) {
+  await page.setViewportSize({ width, height: width === 390 ? 900 : 1000 })
+  await page.goto(APP_URL)
+  const failures: string[] = []
+  const check = (label: string, ok: boolean, detail?: string) => {
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${!ok && detail ? `  -> ${detail}` : ''}`)
+    if (!ok) failures.push(label + (detail ? ` -> ${detail}` : ''))
+  }
+  await runFooterStampChecks(page, { label: `${THEME.label}, ${width}px`, check, expected: currentCommit(), allowDirty: true, shot: out(`design/single-page-footer-${width}.png`) })
+  if (failures.length > 0) throw new Error(`footer stamp checks failed (${THEME.label}, ${width}px):\n${failures.join('\n')}`)
+}
+
 async function main() {
   const preview = spawn('npx', ['vite', 'preview', '--port', String(PREVIEW_PORT), '--strictPort'], {
     stdio: 'ignore',
@@ -447,6 +461,8 @@ async function main() {
       await shootMobile(mobile)
       await shootReportRows(await context.newPage(), 1280)
       await shootReportRows(await context.newPage(), 390)
+      await shootFooterStamp(await context.newPage(), 1280)
+      await shootFooterStamp(await context.newPage(), 390)
       await context.close()
     }
     await browser.close()
