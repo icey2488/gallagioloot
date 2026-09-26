@@ -10,6 +10,7 @@ import { chromium, type Page, type Route } from 'playwright'
 import { spawn } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { runReportRowChecks } from './reportRowsChecks.mts'
 
 const PREVIEW_PORT = 4180
 const APP_URL = `http://localhost:${PREVIEW_PORT}/`
@@ -17,6 +18,8 @@ const RAID_URL = 'https://www.raidbots.com/simbot/report/6PTZ7TjgU8PdxJhZ97bMUa'
 const MPLUS_URL = 'https://www.raidbots.com/simbot/report/a8URThoNZqEXDW3tBtavHq'
 const TOPGEAR_URL = 'https://www.raidbots.com/simbot/report/k3vroAKe6QvF5gN4GeCVAq'
 const EXPANDED_DUNGEON = 'Altar of Fangs'
+// v2.13: a well-formed report id the fixture proxy answers with a 404 (exercises the per-row error).
+const BOGUS_URL = 'https://www.raidbots.com/simbot/report/zzzzzzzzzzzzzzzzzzzzzz'
 
 // v2.12: the whole flow runs once per theme. Expected page background = the theme's --bg-base (Claude Design export);
 // the picker must be present and sit inside the viewport, and nothing in the header may overflow it.
@@ -41,6 +44,7 @@ const LOOT_TABLES: Record<string, string> = {
 async function fulfillFromFixtures(route: Route) {
   const path = new URL(route.request().url()).pathname
   const json = (body: string) => route.fulfill({ status: 200, contentType: 'application/json', body })
+  if (path.includes('/raidbots/') && path.includes('zzzzzzzzzzzzzzzzzzzzzz')) return route.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"not_found","detail":"Report not found"}' })
   if (path.includes('/raidbots/')) return json(path.includes('a8URT') ? MPLUS : RAID)
   if (path.includes('/loot-table/')) {
     const instanceId = decodeURIComponent(path.split('/loot-table/')[1] ?? '')
@@ -405,6 +409,20 @@ async function shootMobile(page: Page) {
   await assertRollList(page, '390px', out('design/single-page-card-rolls-390.png'))
 }
 
+/** v2.13 report URL rows at one width, in the current theme (fixtures behind the routes; every failure is collected and thrown). */
+async function shootReportRows(page: Page, width: number) {
+  await page.setViewportSize({ width, height: width === 390 ? 900 : 1000 })
+  await page.route((url) => url.href.includes('/raidbots/') || url.href.includes('/loot-table/') || url.href.includes('/topgear/'), fulfillFromFixtures)
+  await page.goto(APP_URL)
+  const failures: string[] = []
+  const check = (label: string, ok: boolean, detail?: string) => {
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${label}${!ok && detail ? `  -> ${detail}` : ''}`)
+    if (!ok) failures.push(label + (detail ? ` -> ${detail}` : ''))
+  }
+  await runReportRowChecks(page, { label: `${THEME.label}, ${width}px`, check, raidUrl: RAID_URL, mplusUrl: MPLUS_URL, bogusUrl: BOGUS_URL, shotPrefix: out(`design/single-page-rows-${width}.png`).replace(/\.png$/, '') })
+  if (failures.length > 0) throw new Error(`report-row checks failed (${THEME.label}, ${width}px):\n${failures.join('\n')}`)
+}
+
 async function main() {
   const preview = spawn('npx', ['vite', 'preview', '--port', String(PREVIEW_PORT), '--strictPort'], {
     stdio: 'ignore',
@@ -427,6 +445,8 @@ async function main() {
       await shootDesktop(desktop)
       const mobile = await context.newPage()
       await shootMobile(mobile)
+      await shootReportRows(await context.newPage(), 1280)
+      await shootReportRows(await context.newPage(), 390)
       await context.close()
     }
     await browser.close()

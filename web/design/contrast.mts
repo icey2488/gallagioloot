@@ -150,6 +150,14 @@ return [
   { name: 'Badge-yes border on panel', fg: COLORS.badgeYesBorder, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Badge-no text (muted) on panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'text' },
   { name: 'Badge-no border on panel', fg: COLORS.borderStrong, bg: COLORS.bgPanel, requirement: 'ui' },
+  // Report URL rows (v2.13): + / - controls and the per-row status lines. Existing tokens only; listed so the new
+  // locations are traceable. (The disabled "+" at 8 rows is exempt from WCAG contrast, but its "Max 8 reports" hint is muted text on panel, above.)
+  { name: 'Report row +/- control label on panel', fg: COLORS.text, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Report row +/- control label on hover fill (--bg-hover)', fg: COLORS.text, bg: COLORS.bgHover, requirement: 'text' },
+  { name: 'Report row +/- control border and focus ring on panel', fg: COLORS.borderStrong, bg: COLORS.bgPanel, requirement: 'ui' },
+  { name: 'Report row error status (warn text) on panel', fg: COLORS.warnText, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Report row loaded status (ok text) on panel', fg: COLORS.badgeYesText, bg: COLORS.bgPanel, requirement: 'text' },
+  { name: 'Report row invalid-input border (warn border) on input fill', fg: COLORS.warnBorder, bg: COLORS.bgPanelAlt, requirement: 'ui' },
   { name: 'Chip-stack glyph (bottom bar) on header panel', fg: COLORS.borderStrong, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Chip-stack glyph (mid bar) on header panel', fg: COLORS.textMuted, bg: COLORS.bgPanel, requirement: 'ui' },
   { name: 'Chip-stack glyph (top bar) on header panel', fg: COLORS.textSecondary, bg: COLORS.bgPanel, requirement: 'ui' },
