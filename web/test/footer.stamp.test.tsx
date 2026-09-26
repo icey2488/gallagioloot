@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
@@ -66,7 +67,7 @@ describe('buildFooterStamp', () => {
 
 describe('build stamp cleanliness', () => {
   it("ignores Vite's temporary config file, which exists (untracked) while a build reads `git status` and would ship every build as -dirty", () => {
-    const gitignore = readFileSync(fileURLToPath(new URL('../../.gitignore', import.meta.url)), 'utf8')
+    const gitignore = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), '../../.gitignore'), 'utf8')
     expect(gitignore.split(/\r?\n/)).toContain('*.timestamp-*.mjs')
   })
 })
