@@ -1,4 +1,5 @@
 import { ChipStack } from './ChipStack'
+import { MAX_VOIDCORES } from '@engine/core/rank'
 
 export function CharacterSwitcher(props: {
   keys: string[]
@@ -28,6 +29,7 @@ export function CharacterSwitcher(props: {
         <input
           type="number"
           min={0}
+          max={MAX_VOIDCORES}
           value={voidcoreCount}
           onChange={(e) => onVoidcoreChange(Number(e.target.value) || 0)}
           className="voidcore-pill__input num"

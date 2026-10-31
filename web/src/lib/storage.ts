@@ -1,6 +1,7 @@
 import { deserialize, serialize } from '@engine/core/knockout'
 import type { StorageAdapter } from '@engine/core/knockout'
 import type { KnockoutState } from '@engine/core/types'
+import { clampCount } from '@engine/core/rank'
 
 /**
  * Browser localStorage implementation of the core StorageAdapter interface.
@@ -242,12 +243,11 @@ export function saveLastTopGearUrl(key: string, url: string): void {
 
 export function loadVoidcoreCount(key: string): number {
   const raw = safeStorage.getItem(VOIDCORE_PREFIX + key)
-  const n = raw ? Number(raw) : 0
-  return Number.isFinite(n) && n >= 0 ? n : 0
+  return clampCount(raw ? Number(raw) : 0)
 }
 
 export function saveVoidcoreCount(key: string, count: number): void {
-  safeStorage.setItem(VOIDCORE_PREFIX + key, String(Math.max(0, Math.floor(count))))
+  safeStorage.setItem(VOIDCORE_PREFIX + key, String(clampCount(count)))
 }
 
 const REPORT_SET_PREFIX = `${NS}:reportSet:`

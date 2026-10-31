@@ -3,6 +3,17 @@ import type { Allocation, BossEval, Recommendation, Settings } from './types'
 import { isTossUpGap } from './tossup'
 import { evalKey, isRepeatable } from './targets'
 
+/**
+ * Upper bound on any Voidcore count the engine accepts (held, to spend, earned per week, weeks
+ * left). A season earns well under this; it keeps a typo like 1e9 from building huge roll orders.
+ */
+export const MAX_VOIDCORES = 99
+
+/** A non-negative whole count, clamped to MAX_VOIDCORES; NaN / Infinity / negatives are 0. */
+export function clampCount(n: number): number {
+  return Number.isFinite(n) && n > 0 ? Math.min(MAX_VOIDCORES, Math.floor(n)) : 0
+}
+
 /** Percentage of the leading boss's evPct used as the toss-up band, absent a sim error. */
 const TOSS_UP_PCT_OF_TOP = 0.05
 
@@ -55,9 +66,15 @@ export function rankTargets(targets: BossEval[]): BossEval[] {
 export function rollSequence(ranked: BossEval[], rolls: number): BossEval[] {
   const sequence: BossEval[] = []
   const used = new Set<string>()
-  for (let roll = 0; roll < rolls; roll++) {
+  const total = Number.isFinite(rolls) ? Math.max(0, Math.floor(rolls)) : 0
+  while (sequence.length < total) {
     const target = ranked.find((b) => isRepeatable(b) || !used.has(evalKey(b)))
     if (!target) break
+    if (isRepeatable(target)) {
+      // A repeatable target never gets used up, and it's the best one left, so it takes every
+      // remaining roll: fill arithmetically instead of re-scanning the ranking once per roll.
+      return sequence.concat(new Array<BossEval>(total - sequence.length).fill(target))
+    }
     used.add(evalKey(target))
     sequence.push(target)
   }
@@ -143,7 +160,7 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
   }
 
   const ranked = rankTargets(deployable)
-  const allocations = allocate(ranked, Math.max(1, Math.floor(settings.voidcoresToSpend)))
+  const allocations = allocate(ranked, Math.max(1, clampCount(settings.voidcoresToSpend)))
   return {
     allocations,
     totalExpectedGainPct: allocations.reduce((sum, a) => sum + a.expectedGainPct, 0),

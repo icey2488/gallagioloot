@@ -3,7 +3,7 @@ import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/typ
 import { curioEntryKeys, dropCurioEntries } from '@engine/core/curio'
 import { addEntry, characterKey, createStateFor, deserialize, removeEntry, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
-import { recommend } from '@engine/core/rank'
+import { clampCount, MAX_VOIDCORES, recommend } from '@engine/core/rank'
 import { defaultEarnedPerWeek, extraMplusAssumptionText, planVoidcores, type VoidcoreSupply } from '@engine/core/supply'
 import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
 import { checkCandidate, checkReportSet, DEFAULT_DRIFT_LIMITS, type DriftLimits } from '@engine/core/reportSet'
@@ -639,7 +639,7 @@ export default function App() {
             currentKey={currentKey}
             onSwitch={(key) => void switchCharacter(key)}
             voidcoreCount={voidcoreCount}
-            onVoidcoreChange={setVoidcoreCount}
+            onVoidcoreChange={(n) => setVoidcoreCount(clampCount(n))}
           />
         </div>
       </header>
@@ -661,8 +661,9 @@ export default function App() {
                   id="voidcores-on-hand"
                   type="number"
                   min={0}
+                  max={MAX_VOIDCORES}
                   value={voidcoreCount}
-                  onChange={(e) => setVoidcoreCount(Number(e.target.value) || 0)}
+                  onChange={(e) => setVoidcoreCount(clampCount(Number(e.target.value)))}
                   className="reports-summary__input num"
                 />
               </div>
@@ -782,8 +783,9 @@ export default function App() {
                 <input
                   type="number"
                   min={0}
+                  max={MAX_VOIDCORES}
                   value={voidcoreCount}
-                  onChange={(e) => setVoidcoreCount(Number(e.target.value) || 0)}
+                  onChange={(e) => setVoidcoreCount(clampCount(Number(e.target.value)))}
                   className="voidcore-field__input num"
                   aria-label="Voidcores held"
                 />
@@ -803,7 +805,7 @@ export default function App() {
                 max={voidcoreCount}
                 value={toSpend}
                 onChange={(e) => {
-                  const n = Math.max(0, Math.floor(Number(e.target.value) || 0))
+                  const n = clampCount(Number(e.target.value))
                   setSpendOverride(n >= voidcoreCount ? null : n)
                 }}
                 className="num"
@@ -857,7 +859,8 @@ export default function App() {
                 type="number"
                 min={0}
                 value={weeksLeft ?? ''}
-                onChange={(e) => setWeeksLeft(e.target.value === '' ? null : Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                max={MAX_VOIDCORES}
+                onChange={(e) => setWeeksLeft(e.target.value === '' ? null : clampCount(Number(e.target.value)))}
                 className="num"
               />
             </div>
