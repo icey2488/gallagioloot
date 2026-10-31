@@ -13,6 +13,17 @@ npx wrangler deploy
 ```
 
 - **KV namespace**: `ENCOUNTER_ITEMS_KV`, id `d50d2ff681c24da8b3360cca19c740c5`, declared under `[[kv_namespaces]]` in `wrangler.toml`. Backs the Raidbots encounter-items lookup and the learned tier-slot cache (see README.md). If it's ever lost, recreate with `npx wrangler kv namespace create ENCOUNTER_ITEMS_KV` and paste the new `id` into `wrangler.toml` — everything repopulates lazily from live traffic, nothing to restore.
+- **Debug endpoints** (`/encounter-items`, `/tier-map/:instanceId`): off (404) unless the `DEBUG_TOKEN` secret is set -- `npx wrangler secret put DEBUG_TOKEN` -- and then only for requests sending `X-Debug-Token: <token>`. Delete the secret (`npx wrangler secret delete DEBUG_TOKEN`) to turn them off again. Never commit the token.
+- **Negative cache**: upstream report failures (404/5xx/timeout) are cached 60 s per report id (`NEGATIVE_CACHE_TTL_SECONDS` in `src/index.ts`); nothing to configure.
+- **TODO -- rate limiting (not configured)**: the proxy has no per-client rate limit yet. The intended setup is a Workers Rate Limiting binding in `wrangler.toml`, e.g.
+  ```toml
+  [[unsafe.bindings]]
+  name = "REPORT_RATE_LIMITER"
+  type = "ratelimit"
+  namespace_id = "1001"
+  simple = { limit = 30, period = 60 }
+  ```
+  and in `src/index.ts`, before any upstream fetch on `/raidbots`, `/qelive`, `/topgear`: `const { success } = await env.REPORT_RATE_LIMITER.limit({ key: request.headers.get('cf-connecting-ip') ?? 'anon' })`, answering 429 `{ error: 'rate_limited' }` (with CORS headers) when `!success`. Cache hits (positive and negative) should stay unlimited. Alternatively a zone-level WAF rate-limiting rule on `gallagioloot-proxy.icehunter.net`. Left undone deliberately: it needs a decision on limits and is configured outside the code.
 - **CORS origin**: `wrangler.toml [vars] ALLOWED_ORIGIN` (currently `https://gallagioloot.icehunter.net`). `http://localhost:<any port>` is always allowed in addition, hardcoded in `src/index.ts` (`resolveAllowedOrigin`) — not configurable via `wrangler.toml`.
 - **Route**: `routes = [{ pattern = "gallagioloot-proxy.icehunter.net", custom_domain = true }]` — must appear **before** the `[vars]`/`[observability]`/`[[kv_namespaces]]` table headers in `wrangler.toml`. TOML scopes bare keys to whichever table was most recently opened; a `routes = [...]` line placed after `[[kv_namespaces]]` silently becomes a bogus field on that KV binding instead of a top-level key (hit this exact bug during the first deploy — Wrangler warns `Unexpected fields found in kv_namespaces[0] field: "routes"` and the route is silently not applied).
 

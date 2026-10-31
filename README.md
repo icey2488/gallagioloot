@@ -71,6 +71,12 @@ type TopGearCandidate = TopGearItem & { encounterId?: number; encounterName?: st
 
 Cached like `/raidbots`/`/qelive` (10 minutes, Cache API, keyed by id).
 
+**Upstream failures are cached too**: on `/raidbots`, `/qelive` and `/topgear`, an upstream non-2xx (`upstream_error`, e.g. a 404 for a wrong id) or a network failure / timeout (`fetch_failed`) is stored for 60 seconds under its own cache key and replayed, so a dead id can't be hammered through to Raidbots or QE Live.
+
+### Debug endpoints (`/encounter-items`, `/tier-map/:instanceId`)
+
+Both are disabled (404) unless the `DEBUG_TOKEN` secret is set (`npx wrangler secret put DEBUG_TOKEN`), and then require the request header `X-Debug-Token: <token>` (constant-time compare). They're not listed by `/health`.
+
 ### `GET /encounter-items`
 
 Returns the cached Raidbots item → encounter/instance lookup as JSON, for debugging. Not meant for production consumption — it's a full dump of the lookup maps built from Raidbots' static data files.
