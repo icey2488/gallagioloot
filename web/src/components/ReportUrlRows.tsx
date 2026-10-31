@@ -34,6 +34,7 @@ export function ReportUrlRows({ rows, status, issues, hasLoaded, onChange, onBlu
         const st = status[row.id]
         const issue = issues[row.id]
         const inputId = index === 0 ? 'report-url' : `report-url-${n}`
+        const statusId = `${inputId}-status`
         const message =
           st?.state === 'error' ? { kind: 'error', text: st.message } : st?.state === 'loaded' ? { kind: 'ok', text: st.message } : st?.state === 'loading' ? { kind: 'muted', text: 'Fetching…' } : issue ? { kind: 'error', text: issue } : null
         const hint = source ? `Detected: ${SOURCE_LABELS[source]}` : row.url.trim() ? 'Unrecognized report URL' : emptyHint(index, hasLoaded)
@@ -49,6 +50,7 @@ export function ReportUrlRows({ rows, status, issues, hasLoaded, onChange, onBlu
                 placeholder="https://www.raidbots.com/reports/... or https://questionablyepic.com/..."
                 value={row.url}
                 aria-invalid={issue || st?.state === 'error' ? true : undefined}
+                aria-describedby={statusId}
                 onChange={(e) => onChange(row.id, e.target.value)}
                 onBlur={() => onBlur(row.id)}
               />
@@ -58,7 +60,8 @@ export function ReportUrlRows({ rows, status, issues, hasLoaded, onChange, onBlu
                 </button>
               )}
             </div>
-            <div className={`field-hint report-row__status${message ? ` report-row__status--${message.kind}` : ''}`} role={message ? 'status' : undefined}>
+            {/* Always rendered (a live region added at the same time as its text isn't announced reliably). */}
+            <div id={statusId} className={`field-hint report-row__status${message ? ` report-row__status--${message.kind}` : ''}`} role="status" aria-live="polite">
               {message ? message.text : hint}
             </div>
           </div>
