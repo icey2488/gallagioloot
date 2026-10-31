@@ -3,6 +3,7 @@ import type { BossEval, PoolEntry, Recommendation, RollsToTarget, Settings, Vaul
 import { isTossUpGap } from './tossup'
 import { evalKey } from './targets'
 import { planVoidcores, type ExtraVoidcore, type VoidcoreSupply } from './supply'
+import { rankTargets, rollSequence } from './rank'
 
 /** EV-contributing value of a pool entry: a dud (owned, not rolled) is worth 0 while still occupying the pool. */
 function poolValue(entry: PoolEntry): number {
@@ -148,6 +149,25 @@ function findVaultPool(vaultItem: VaultItemInput, bossEvals: BossEval[]): { boss
   return null
 }
 
+/**
+ * The marginal target: the next one in this week's roll order (deployable targets, best first,
+ * targeting rules applied, `excludeKey`'s target left out) after the rolls the recommendation
+ * already places elsewhere -- i.e. the best target that got no roll. Rolls freed by taking the
+ * vault item go there, not to the best other boss (which already has its roll). Null when the
+ * order has nothing left.
+ */
+export function marginalTarget(bossEvals: BossEval[], recommendation: Recommendation, excludeKey: string | undefined): BossEval | null {
+  const placedElsewhere = recommendation.allocations.filter((a) => evalKey(a) !== excludeKey).reduce((n, a) => n + a.rolls, 0)
+  const ranked = rankTargets(bossEvals.filter((b) => b.deployable && (excludeKey === undefined || evalKey(b) !== excludeKey)))
+  return rollSequence(ranked, placedElsewhere + 1)[placedElsewhere] ?? null
+}
+
+/** EV% of `savedRolls` freed rolls, each valued at the marginal target (see marginalTarget). */
+export function freedRollsValuePct(bossEvals: BossEval[], recommendation: Recommendation, excludeKey: string | undefined, savedRolls: number): number {
+  if (!(savedRolls > 0)) return 0
+  return savedRolls * (marginalTarget(bossEvals, recommendation, excludeKey)?.evPct ?? 0)
+}
+
 /** Why a vault item credits no saved rolls when its loot source isn't one of this week's allocated roll targets. */
 export function noSavedRollsNote(itemName: string, targetName: string): string {
   return `${targetName} isn't a target you'd roll this week, so taking "${itemName}" saves no rolls.`
@@ -168,8 +188,8 @@ export function extraVoidcoreWhere(extra: ExtraVoidcore): string {
  * max(its spend-now EV as the next roll in this week's order, its hold value next week) under
  * `supply` (see `planVoidcores`; defaults to a player with none on hand, for whom it is simply
  * roll 1). `bossEvals` may span several reports (raid difficulties + Mythic+): the vault item is
- * matched against every target's pool, and the alternative roll is the best OTHER target across
- * all of them. `report` only supplies a fallback baseline for evals built without one.
+ * matched against every target's pool, and the rolls it frees are valued at the marginal targets
+ * (see freedRollsValuePct). `report` only supplies a fallback baseline for evals built without one.
  *
  * The saved-rolls credit only applies when the vault item's target is among the targets
  * `recommendation` allocates rolls to this week: you can't save rolls you would never have
@@ -204,9 +224,10 @@ export function compareVault(input: {
   // Roll-only knockout: taking the vault item X does NOT remove X from its boss's roll
   // pool -- X becomes a value-0 dud there, so next week's roll on that boss is diluted, not
   // shrunk (see buildBossPools' `owned` handling). The saved-rolls credit is kept as-is: it
-  // stands for the bonus rolls you'd otherwise spend hunting X, freed to spend on the best
-  // OTHER boss (altRollEvPct below already excludes X's own boss, so X's post-vault dud state
-  // doesn't feed back into this figure).
+  // stands for the bonus rolls you'd otherwise spend hunting X, freed to spend on the MARGINAL
+  // targets -- the next ones in this week's order that got no roll (freedRollsValuePct), not
+  // the best other boss, which already has a roll. X's own boss is excluded, so its post-vault
+  // dud state doesn't feed back into this figure.
   let savedRolls = 0
   let savedRollsNote: string | undefined
   if (found) {
@@ -223,15 +244,9 @@ export function compareVault(input: {
   }
 
   const excludeKey = found ? evalKey(found.boss) : undefined
-  let altBoss: BossEval | null = null
-  for (const boss of bossEvals) {
-    if (!boss.deployable) continue
-    if (excludeKey !== undefined && evalKey(boss) === excludeKey) continue
-    if (!altBoss || boss.evPct > altBoss.evPct) altBoss = boss
-  }
-  const altRollEvPct = altBoss?.evPct ?? 0
+  const freedPct = freedRollsValuePct(bossEvals, recommendation, excludeKey, savedRolls)
 
-  const vaultItemGainPct = (vaultItem?.gainPct ?? 0) + savedRolls * altRollEvPct
+  const vaultItemGainPct = (vaultItem?.gainPct ?? 0) + freedPct
 
   const belowThresholdA = voidcoreGainPct < settings.thresholdPct
   const belowThresholdB = vaultItemGainPct < settings.thresholdPct
