@@ -85,3 +85,29 @@ describe('debug endpoints behind DEBUG_TOKEN', () => {
     expect(((await ok.json()) as { instanceId: number }).instanceId).toBe(1320)
   })
 })
+
+describe('malformed input and internal errors', () => {
+  it('400 invalid_id on a malformed % escape (not a 500)', async () => {
+    vi.stubGlobal('fetch', vi.fn())
+    for (const path of ['/raidbots/%E0%A4%A', '/qelive/%zz', '/topgear/abc%']) {
+      const res = await call(path)
+      expect(res.status).toBe(400)
+      expect(((await res.json()) as { error: string }).error).toBe('invalid_id')
+    }
+  })
+
+  it('a 500 carries no error message', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('caches', {
+      default: {
+        match: async () => {
+          throw new Error('secret internal detail')
+        },
+        put: async () => {},
+      },
+    })
+    const res = await call(`/raidbots/${RB_ID}`)
+    expect(res.status).toBe(500)
+    expect(await res.json()).toEqual({ error: 'Internal server error' })
+  })
+})

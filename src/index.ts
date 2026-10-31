@@ -98,7 +98,8 @@ export default {
       return jsonResponse({ error: 'Not found' }, 404, allowedOrigin)
     } catch (err) {
       console.error('Worker error:', err)
-      return jsonResponse({ error: 'Internal server error', detail: (err as Error).message }, 500, allowedOrigin)
+      // The message stays in the logs; clients get no internals.
+      return jsonResponse({ error: 'Internal server error' }, 500, allowedOrigin)
     }
   },
 }
@@ -114,7 +115,9 @@ async function handleRaidbots(
   ctx: ExecutionContext,
   allowedOrigin: string | null
 ): Promise<Response> {
-  const candidate = decodeURIComponent(rawIdOrUrl) || params.get('url') || params.get('id') || ''
+  const decoded = safeDecode(rawIdOrUrl)
+  if (decoded === null) return jsonResponse({ error: 'invalid_id', detail: 'Malformed percent-encoding in the report id or URL' }, 400, allowedOrigin)
+  const candidate = decoded || params.get('url') || params.get('id') || ''
   const id = extractId(candidate, RAIDBOTS_ID_RE)
   if (!id) {
     return jsonResponse({ error: 'invalid_id', detail: 'Expected a 22-character Raidbots report id or URL' }, 400, allowedOrigin)
@@ -176,7 +179,9 @@ async function handleQELive(
   ctx: ExecutionContext,
   allowedOrigin: string | null
 ): Promise<Response> {
-  const candidate = decodeURIComponent(rawIdOrUrl) || params.get('url') || params.get('id') || ''
+  const decoded = safeDecode(rawIdOrUrl)
+  if (decoded === null) return jsonResponse({ error: 'invalid_id', detail: 'Malformed percent-encoding in the report id or URL' }, 400, allowedOrigin)
+  const candidate = decoded || params.get('url') || params.get('id') || ''
   const id = extractId(candidate, QE_ID_RE)
   if (!id) {
     return jsonResponse({ error: 'invalid_id', detail: 'Expected a 12-letter QE Live report id or URL' }, 400, allowedOrigin)
@@ -235,7 +240,9 @@ async function handleTopGear(
   ctx: ExecutionContext,
   allowedOrigin: string | null
 ): Promise<Response> {
-  const candidate = decodeURIComponent(rawIdOrUrl) || params.get('url') || params.get('id') || ''
+  const decoded = safeDecode(rawIdOrUrl)
+  if (decoded === null) return jsonResponse({ error: 'invalid_id', detail: 'Malformed percent-encoding in the report id or URL' }, 400, allowedOrigin)
+  const candidate = decoded || params.get('url') || params.get('id') || ''
   const id = extractId(candidate, RAIDBOTS_ID_RE)
   if (!id) {
     return jsonResponse({ error: 'invalid_id', detail: 'Expected a 22-character Raidbots report id or URL' }, 400, allowedOrigin)
@@ -346,6 +353,15 @@ async function handleLootTable(
 // ============================================================
 // HELPERS
 // ============================================================
+
+/** decodeURIComponent that returns null instead of throwing a URIError on a malformed % escape. */
+function safeDecode(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return null
+  }
+}
 
 function extractId(input: string, pattern: RegExp): string | null {
   const match = input.match(pattern)
