@@ -6,7 +6,7 @@
  {"name": "Sszorak", "row": "raid", "pool_size": 3, "bis_count": 1, "slots": {"legs": 1}},
  {"name": "The Twin Fangs", "row": "raid", "pool_size": 5, "bis_count": 0, "slots": {"shoulder": 1}},
  {"name": "The Coiled Altar", "row": "raid", "pool_size": 5, "bis_count": 2, "slots": {"hands": 1}},
- {"name": "Ula'tek (incl. Curio as non-BIS)", "row": "raid", "pool_size": 6, "bis_count": 3, "slots": {}},
+ {"name": "Ula'tek (Curio: vault-only, non-BIS)", "row": "raid", "pool_size": 5, "vault_only": 1, "bis_count": 3, "slots": {}},
  {"name": "Nymrissa Wavecaller (Lair)", "row": "raid", "pool_size": 6, "bis_count": 1, "slots": {"chest": 1}},
  {"name": "Altar of Fangs", "row": "mplus", "pool_size": 11, "bis_count": 0, "slots": {"chest": 1, "legs": 1, "hands": 1}},
  {"name": "Murder Row", "row": "mplus", "pool_size": 11, "bis_count": 1, "slots": {"hands": 1, "chest": 1}},
