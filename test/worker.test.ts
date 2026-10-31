@@ -111,3 +111,16 @@ describe('malformed input and internal errors', () => {
     expect(await res.json()).toEqual({ error: 'Internal server error' })
   })
 })
+
+describe('Vary: Origin', () => {
+  it('is set on JSON, cached and preflight responses', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('x', { status: 404 })))
+    expect((await call(`/raidbots/${RB_ID}`, {}, { Origin: 'http://localhost:5173' })).headers.get('Vary')).toBe('Origin')
+    // second call is served from the negative cache
+    const cached = await call(`/raidbots/${RB_ID}`, {}, { Origin: 'http://localhost:5173' })
+    expect(cached.headers.get('Vary')).toBe('Origin')
+    expect(cached.headers.get('Access-Control-Allow-Origin')).toBe('http://localhost:5173')
+    const pre = await worker.fetch(new Request('https://proxy.test/health', { method: 'OPTIONS', headers: { Origin: 'https://gallagioloot.icehunter.net' } }), {}, ctx())
+    expect(pre.headers.get('Vary')).toBe('Origin')
+  })
+})

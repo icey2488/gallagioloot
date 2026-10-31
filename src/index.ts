@@ -468,6 +468,8 @@ function resolveAllowedOrigin(origin: string | null, env: Env): string | null {
 
 function corsHeaders(allowedOrigin: string | null): Record<string, string> {
   const headers: Record<string, string> = {
+    // The allowed origin is echoed per request (prod or any localhost port), so shared caches must key on it.
+    Vary: 'Origin',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',
