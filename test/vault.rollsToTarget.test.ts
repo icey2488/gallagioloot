@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { EXACT_TRUNCATED_LIMIT, expectedTruncatedRolls, rollsToTarget, truncatedExact, truncatedMonteCarlo } from '../src/core/vault'
+import { EXACT_TRUNCATED_LIMIT, expectedTruncatedRolls, truncatedExact, truncatedMonteCarlo } from '../src/core/vault'
 import { buildBossPools } from '../src/core/pool'
 import type { PoolEntry } from '../src/core/types'
 import type { NormalizedReport } from '../src/types'
@@ -39,11 +39,8 @@ describe('rollsToTarget truncated count: exact up to n=10, Monte Carlo above', (
     expect(a).toBeLessThanOrEqual(40)
   })
 
-  it('rollsToTarget still returns the closed forms and the dispatching truncated value', () => {
-    const r = rollsToTarget(pool(12), 'e0', 0)
-    expect(r.expected).toBe(6.5)
-    expect(r.worstCase).toBe(12)
-    expect(r.expectedTruncated).toBeCloseTo(6.5, 0)
+  it('dispatches to the Monte Carlo estimate above the limit', () => {
+    expect(expectedTruncatedRolls(pool(12), 'e0', 0)).toBeCloseTo(6.5, 0)
   })
 })
 

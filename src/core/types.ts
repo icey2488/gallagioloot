@@ -237,12 +237,6 @@ export type Recommendation = {
   tossUp: { bosses: [string, string]; gapPct: number; targetKeys?: [string, string] } | null
 }
 
-export type RollsToTarget = {
-  expected: number
-  worstCase: number
-  expectedTruncated: number
-}
-
 export type VaultItemInput = {
   name: string
   gainPct: number

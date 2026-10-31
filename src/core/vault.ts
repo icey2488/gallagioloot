@@ -1,5 +1,5 @@
 import type { NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../types'
-import type { BossEval, PoolEntry, Recommendation, RollsToTarget, Settings, VaultDecision, VaultItemInput } from './types'
+import type { BossEval, PoolEntry, Recommendation, Settings, VaultDecision, VaultItemInput } from './types'
 import { isTossUpGap } from './tossup'
 import { evalKey } from './targets'
 import { planVoidcores, type ExtraVoidcore, type VoidcoreSupply } from './supply'
@@ -11,38 +11,19 @@ function poolValue(entry: PoolEntry): number {
 }
 
 /**
- * Exact expected/worst-case/threshold-truncated roll counts to land one specific pool
- * entry via uniform sampling without replacement (knockout: each roll permanently
- * removes the drawn entry). `expected` and `worstCase` ignore truncation -- (n+1)/2 and
- * n for a remaining pool of size n, by the standard without-replacement rank argument.
- *
- * `expectedTruncated` models a player who abandons the hunt once, after a miss, the
- * pool's remaining mean value has fallen below `thresholdValue` (absolute). Computed
- * exactly via a recurrence over remaining subsets (memoized on the subset's sorted keys)
- * rather than simulation: each state's continuation depends only on which entries remain,
- * not the order they were drawn in, so this is provably exact, not an approximation.
+ * Threshold-truncated rolls to land one specific pool entry via uniform sampling without
+ * replacement (knockout: each roll permanently removes the drawn entry), for a player who
+ * abandons the hunt once, after a miss, the pool's remaining mean value has fallen below
+ * `thresholdValue` (absolute). (The untruncated figures are closed-form, (n+1)/2 and n, and
+ * buildBossPools sets them on each entry directly.) Only compareVault needs this, for the one
+ * vault target it compares.
  */
-/**
- * `denominatorOverride`, when given, replaces `pool.length` for the two closed-form
- * figures (`expected`, `worstCase`) only -- used when unattributed bonus rolls have
- * fractionally shrunk the boss's effective remaining pool size (see buildBossPools'
- * `unattributedAdjustment`) without removing any specific entry from `pool` itself.
- * `expectedTruncated`'s recursion still runs over the real entries: there's no principled
- * fractional analog for "abandon the hunt once the mean value drops below threshold"
- * that doesn't invent a valuation for a nonexistent entry.
- */
-export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValue: number, denominatorOverride?: number): RollsToTarget {
-  const n = denominatorOverride ?? pool.length
-  if (pool.length === 0) return { expected: 0, worstCase: 0, expectedTruncated: 0 }
-  return { expected: (n + 1) / 2, worstCase: n, expectedTruncated: expectedTruncatedRolls(pool, entryKey, thresholdValue) }
-}
-
 /** Largest pool solved by the exact subset recurrence (2^n memoized states); bigger pools use the seeded Monte Carlo estimate. */
 export const EXACT_TRUNCATED_LIMIT = 10
 /** Monte Carlo sample count above EXACT_TRUNCATED_LIMIT: standard error is well under 0.05 rolls for realistic pools. */
 export const TRUNCATED_SAMPLES = 4000
 
-/** `expectedTruncated` alone: exact up to EXACT_TRUNCATED_LIMIT entries, a deterministic Monte Carlo estimate above that. */
+/** Exact up to EXACT_TRUNCATED_LIMIT entries, a deterministic Monte Carlo estimate above that. */
 export function expectedTruncatedRolls(pool: PoolEntry[], entryKey: string, thresholdValue: number): number {
   if (pool.length === 0) return 0
   return pool.length <= EXACT_TRUNCATED_LIMIT ? truncatedExact(pool, entryKey, thresholdValue) : truncatedMonteCarlo(pool, entryKey, thresholdValue)
