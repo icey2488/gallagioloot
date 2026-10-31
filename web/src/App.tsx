@@ -308,6 +308,10 @@ export default function App() {
     saveReportSet(characterKey(primary), loaded.map((l) => l.url))
   }, [primary, loaded])
 
+  // What each knockout key last held in storage (as serialized), so the save effect below writes
+  // only states that actually changed -- not every state on every settings tweak.
+  const savedKnockouts = useRef(new Map<string, string>())
+
   useEffect(() => {
     // Entries saved against Ula'tek's curio (no longer a bonus-roll outcome) are ignored by the
     // engine on load and dropped here, on the first save once the report / loot table identify them.
@@ -316,7 +320,11 @@ export default function App() {
       for (const s of sectionsData) {
         if (s.loaded.stateKey === key) for (const k of curioEntryKeys(s.loaded.report, s.lootTable?.encounters)) curioKeys.add(k)
       }
-      void storageAdapter.save(key, dropCurioEntries(state, curioKeys))
+      const next = dropCurioEntries(state, curioKeys)
+      const body = serialize(next)
+      if (savedKnockouts.current.get(key) === body) continue
+      savedKnockouts.current.set(key, body)
+      void storageAdapter.save(key, next)
     }
   }, [knockoutStates, sectionsData])
 
@@ -375,6 +383,8 @@ export default function App() {
       // Migrate any pre-region/realm knockout state saved under an empty-location key.
       migrateLegacyLocationKey(key)
       const stored = await storageAdapter.load(key)
+      // Already in storage as-is: no need to write it back.
+      if (stored && !savedKnockouts.current.has(key)) savedKnockouts.current.set(key, serialize(stored))
       setKnockoutStates((prev) => (prev[key] ? prev : { ...prev, [key]: stored ?? createStateFor(rpt) }))
 
       // A changed report set invalidates any priced snapshot.
