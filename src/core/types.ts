@@ -222,6 +222,7 @@ export type Allocation = {
 export type Recommendation = {
   allocations: Allocation[]
   totalExpectedGainPct: number
+  /** reason: 'no-pool' | 'below-threshold' | 'no-expected-targets' (see recommend). */
   fallback: null | { reason: string; message: string }
   assumptions: string[]
   warnings: string[]

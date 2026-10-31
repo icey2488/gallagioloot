@@ -36,6 +36,10 @@ export function fallbackMessage(thresholdPct: number): string {
   return `No boss clears the ${thresholdPct}% threshold this week. Consider taking the 6 Thalassian Tokens of Merit from the Great Vault instead; a socket on your best unsocketed piece is likely the better play.`
 }
 
+/** Fallback copy when every target with loot left is unchecked (not an expected kill / key this week). */
+export const NO_EXPECTED_TARGETS_MESSAGE =
+  'No boss or key with loot left is checked for this week. Check the bosses you expect to kill and the keys you will run to get a recommendation.'
+
 /**
  * Ranks deployable targets best-first: highest evPct (EV as % of its own report's baseline,
  * so targets from several reports sit on one scale -- identical to ranking by ev within one
@@ -149,11 +153,14 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
   ]
 
   if (deployable.length === 0) {
-    const reason = bossEvals.some((b) => b.remaining > 0) ? 'below-threshold' : 'no-pool'
+    // 'no-pool': nothing left anywhere; 'no-expected-targets': loot is left, but only at targets the
+    // player unchecked (so it's not a threshold question); 'below-threshold': in play, but too low.
+    const withLoot = bossEvals.filter((b) => b.remaining > 0)
+    const reason = withLoot.length === 0 ? 'no-pool' : withLoot.every((b) => b.belowThreshold === false) ? 'no-expected-targets' : 'below-threshold'
     return {
       allocations: [],
       totalExpectedGainPct: 0,
-      fallback: { reason, message: fallbackMessage(settings.thresholdPct) },
+      fallback: { reason, message: reason === 'no-expected-targets' ? NO_EXPECTED_TARGETS_MESSAGE : fallbackMessage(settings.thresholdPct) },
       assumptions: ASSUMPTIONS,
       warnings,
       tossUp: null,

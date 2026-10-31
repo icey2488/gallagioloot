@@ -153,7 +153,8 @@ export function buildCardData(params: {
   if (recommendation.fallback) {
     return {
       verdict: 'tokens',
-      headline: 'Take the tokens',
+      // Nothing checked is a setup issue, not a "take the tokens" verdict.
+      headline: recommendation.fallback.reason === 'no-expected-targets' ? 'No targets checked' : 'Take the tokens',
       pct: 0,
       tossUp: false,
       message: recommendation.fallback.message,

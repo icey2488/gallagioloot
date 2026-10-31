@@ -190,3 +190,24 @@ describe('recommend', () => {
     }
   })
 })
+
+describe('recommend: no-expected-targets fallback', () => {
+  it('says to check targets (not "take the tokens") when loot is left only at unchecked targets', async () => {
+    const { buildBossPools } = await import('../src/core/pool')
+    const { createStateFor } = await import('../src/core/knockout')
+    const { NO_EXPECTED_TARGETS_MESSAGE } = await import('../src/core/rank')
+    const report = {
+      source: 'raidbots', reportId: 'r', character: 'c', realm: 'r', region: 'us', spec: 's', role: 'dps', metric: 'dps', baseline: 100000, warnings: [],
+      contentType: 'raid', difficulty: 'raid-vault-heroic',
+      items: [{ itemId: 1, name: 'I', encounterId: 2888, encounterName: 'B', instanceId: 1, ilvl: 300, delta: 5000, pct: 5 }],
+    } as unknown as Parameters<typeof buildBossPools>[0]
+    const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false, expectedTargets: [] as string[] }
+    const evals = buildBossPools(report, createStateFor(report), settings)
+    const rec = recommend(evals, settings, report)
+    expect(rec.fallback?.reason).toBe('no-expected-targets')
+    expect(rec.fallback?.message).toBe(NO_EXPECTED_TARGETS_MESSAGE)
+    // The same boss checked but under the threshold is still 'below-threshold'.
+    const high = { ...settings, thresholdPct: 50, expectedTargets: undefined }
+    expect(recommend(buildBossPools(report, createStateFor(report), high), high, report).fallback?.reason).toBe('below-threshold')
+  })
+})
