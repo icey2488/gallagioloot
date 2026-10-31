@@ -1,6 +1,5 @@
 import type { LootTableEncounter, LootTableItem, NormalizedItem, NormalizedReport } from '../types'
 import type { BossEval, KnockoutState, PoolEntry, Settings } from './types'
-import { rollsToTarget } from './vault'
 import { difficultyLabel, keyLevelOf, knockoutDifficulty, targetKey, targetKindOf } from './targets'
 import { curioEntryKeys } from './curio'
 
@@ -291,12 +290,11 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
     const evPct = report.baseline > 0 ? (ev / report.baseline) * 100 : 0
     const bestCase = remainingEntries.length > 0 ? remainingEntries.reduce((a, b) => (effectiveValue(b) > effectiveValue(a) ? b : a)) : null
 
-    const thresholdValue = (settings.thresholdPct / 100) * report.baseline
+    // Closed-form figures only (O(1) per entry). The threshold-truncated count is exponential to
+    // compute exactly, so it's done lazily in compareVault for the one target being compared.
     for (const entry of remainingEntries) {
-      const { expected, worstCase, expectedTruncated } = rollsToTarget(remainingEntries, entry.key, thresholdValue, remaining)
-      entry.rollsToTargetExpected = expected
-      entry.rollsToTargetWorst = worstCase
-      entry.rollsToTargetTruncated = expectedTruncated
+      entry.rollsToTargetExpected = (remaining + 1) / 2
+      entry.rollsToTargetWorst = remaining
     }
 
     const knockedOutCount = pool.filter((p) => p.ownership === 'rolled').length

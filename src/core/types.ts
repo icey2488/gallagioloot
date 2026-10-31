@@ -153,8 +153,6 @@ export type PoolEntry = {
   rollsToTargetExpected?: number
   /** Worst-case rolls to land this entry (n, the pool's remaining size). Set only for non-knocked-out entries. */
   rollsToTargetWorst?: number
-  /** Expected rolls actually spent hunting this entry, given the player abandons the pool once its remaining mean value falls below threshold after a miss. Set only for non-knocked-out entries. */
-  rollsToTargetTruncated?: number
   /** Sim error for this entry's value, as a percentage of baseline (mirrors `pct`). Set only when the source report carries a per-row error (Raidbots' `mean_error`; QE Live never does). */
   errorPct?: number
 }

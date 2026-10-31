@@ -335,7 +335,8 @@ describe('buildBossPools', () => {
     // 2 remaining entries after the knockout -- (n+1)/2 = 1.5, worst case n = 2.
     expect(remainingEntry.rollsToTargetExpected).toBeCloseTo(1.5, 10)
     expect(remainingEntry.rollsToTargetWorst).toBe(2)
-    expect(remainingEntry.rollsToTargetTruncated).toBeGreaterThan(0)
+    // The truncated count is computed lazily in compareVault, never per entry here.
+    expect('rollsToTargetTruncated' in remainingEntry).toBe(false)
   })
 
   it('converts an entry meanError to errorPct, and evErrorPct to the mean errorPct of the remaining pool', () => {

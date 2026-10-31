@@ -4,10 +4,6 @@ import { isTossUpGap } from './tossup'
 import { evalKey } from './targets'
 import { planVoidcores, type ExtraVoidcore, type VoidcoreSupply } from './supply'
 
-function mean(values: number[]): number {
-  return values.reduce((a, b) => a + b, 0) / values.length
-}
-
 /** EV-contributing value of a pool entry: a dud (owned, not rolled) is worth 0 while still occupying the pool. */
 function poolValue(entry: PoolEntry): number {
   return entry.isDud ? 0 : entry.value
@@ -37,44 +33,98 @@ function poolValue(entry: PoolEntry): number {
 export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValue: number, denominatorOverride?: number): RollsToTarget {
   const n = denominatorOverride ?? pool.length
   if (pool.length === 0) return { expected: 0, worstCase: 0, expectedTruncated: 0 }
+  return { expected: (n + 1) / 2, worstCase: n, expectedTruncated: expectedTruncatedRolls(pool, entryKey, thresholdValue) }
+}
 
-  const expected = (n + 1) / 2
-  const worstCase = n
+/** Largest pool solved by the exact subset recurrence (2^n memoized states); bigger pools use the seeded Monte Carlo estimate. */
+export const EXACT_TRUNCATED_LIMIT = 10
+/** Monte Carlo sample count above EXACT_TRUNCATED_LIMIT: standard error is well under 0.05 rolls for realistic pools. */
+export const TRUNCATED_SAMPLES = 4000
 
-  const memo = new Map<string, number>()
+/** `expectedTruncated` alone: exact up to EXACT_TRUNCATED_LIMIT entries, a deterministic Monte Carlo estimate above that. */
+export function expectedTruncatedRolls(pool: PoolEntry[], entryKey: string, thresholdValue: number): number {
+  if (pool.length === 0) return 0
+  return pool.length <= EXACT_TRUNCATED_LIMIT ? truncatedExact(pool, entryKey, thresholdValue) : truncatedMonteCarlo(pool, entryKey, thresholdValue)
+}
 
-  function stateKey(remaining: PoolEntry[]): string {
-    return remaining
-      .map((p) => p.key)
-      .sort()
-      .join('|')
-  }
+/** Exact recurrence over remaining subsets, memoized on a bitmask (exponential: only for small pools). */
+export function truncatedExact(pool: PoolEntry[], entryKey: string, thresholdValue: number): number {
+  const values = pool.map(poolValue)
+  const target = pool.findIndex((p) => p.key === entryKey)
+  const memo = new Map<number, number>()
 
-  function expectedRemainingRolls(remaining: PoolEntry[]): number {
-    const m = remaining.length
-    if (m === 1) return 1 // the only entry left must be the target
-
-    const key = stateKey(remaining)
-    const cached = memo.get(key)
+  function solve(mask: number, count: number, sum: number): number {
+    if (count === 1) return 1 // the only entry left must be the target
+    const cached = memo.get(mask)
     if (cached !== undefined) return cached
-
     let total = 0
-    for (const drawn of remaining) {
-      if (drawn.key === entryKey) {
+    for (let i = 0; i < values.length; i++) {
+      if (!(mask & (1 << i))) continue
+      if (i === target) {
         total += 1
         continue
       }
-      const after = remaining.filter((p) => p.key !== drawn.key)
-      const keepsHunting = mean(after.map((p) => poolValue(p))) >= thresholdValue
-      total += 1 + (keepsHunting ? expectedRemainingRolls(after) : 0)
+      const afterSum = sum - values[i]
+      const keepsHunting = afterSum / (count - 1) >= thresholdValue
+      total += 1 + (keepsHunting ? solve(mask & ~(1 << i), count - 1, afterSum) : 0)
     }
-
-    const result = total / m
-    memo.set(key, result)
+    const result = total / count
+    memo.set(mask, result)
     return result
   }
 
-  return { expected, worstCase, expectedTruncated: expectedRemainingRolls(pool) }
+  return solve((1 << pool.length) - 1, pool.length, values.reduce((a, b) => a + b, 0))
+}
+
+/** mulberry32: a small seeded PRNG, so the estimate is deterministic (core stays pure and testable). */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function hashString(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619)
+  return h >>> 0
+}
+
+/**
+ * Monte Carlo estimate of the same quantity: draw a uniform order without replacement, stop on
+ * the target or once a miss leaves the remaining mean below threshold. Seeded from the pool's
+ * keys and the target, so the same inputs always give the same estimate.
+ */
+export function truncatedMonteCarlo(pool: PoolEntry[], entryKey: string, thresholdValue: number, samples = TRUNCATED_SAMPLES): number {
+  const values = pool.map(poolValue)
+  const target = pool.findIndex((p) => p.key === entryKey)
+  const totalSum = values.reduce((a, b) => a + b, 0)
+  const rand = mulberry32(hashString(`${entryKey}#${pool.map((p) => p.key).sort().join('|')}`))
+  const idx = values.map((_, i) => i)
+  let total = 0
+  for (let s = 0; s < samples; s++) {
+    let sum = totalSum
+    let rolls = 0
+    for (let k = 0; k < idx.length; k++) {
+      // Partial Fisher-Yates: pick the k-th draw from the not-yet-drawn tail.
+      const j = k + Math.floor(rand() * (idx.length - k))
+      const t = idx[k]
+      idx[k] = idx[j]
+      idx[j] = t
+      const drawn = idx[k]
+      rolls++
+      if (drawn === target) break
+      sum -= values[drawn]
+      const left = idx.length - k - 1
+      if (left === 0 || sum / left < thresholdValue) break
+    }
+    total += rolls
+  }
+  return total / samples
 }
 
 /**
@@ -163,8 +213,8 @@ export function compareVault(input: {
     const allocated = recommendation.allocations.some((a) => evalKey(a) === evalKey(found.boss))
     if (allocated) {
       const remainingPool = found.boss.pool.filter((p) => !p.knockedOut)
-      const { expectedTruncated } = rollsToTarget(remainingPool, found.target.key, thresholdValue)
-      savedRolls = Math.min(expectedTruncated, remainingPool.length)
+      // Computed here, for the one target being compared -- not for every pool entry on every render.
+      savedRolls = Math.min(expectedTruncatedRolls(remainingPool, found.target.key, thresholdValue), remainingPool.length)
     } else {
       savedRollsNote = noSavedRollsNote(vaultItem!.name, found.boss.encounterName)
       notes.push(savedRollsNote)
