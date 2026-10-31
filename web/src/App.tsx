@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/types'
 import { curioEntryKeys, dropCurioEntries } from '@engine/core/curio'
-import { addEntry, characterKey, createStateFor, deserialize, removeEntry, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
+import { addEntry, characterKey, createStateFor, describeCharacter, deserialize, removeEntry, sameCharacter, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
 import { clampCount, MAX_VOIDCORES, recommend } from '@engine/core/rank'
 import { defaultEarnedPerWeek, extraMplusAssumptionText, planVoidcores, type VoidcoreSupply } from '@engine/core/supply'
@@ -592,14 +592,33 @@ export default function App() {
       const states = Array.isArray(parsed?.states) ? parsed!.states.map((s) => deserialize(JSON.stringify(s))) : [deserialize(importText)]
       const updates: Record<string, KnockoutState> = {}
       const unmatched: string[] = []
+      const otherCharacters = new Set<string>()
       for (const state of states) {
         const target = loaded.find((l) => knockoutDifficulty(l.report) === state.difficulty)
-        if (target) updates[target.stateKey] = state
-        else unmatched.push(state.difficulty)
+        if (!target) {
+          unmatched.push(state.difficulty)
+          continue
+        }
+        if (!sameCharacter(state, target.report)) otherCharacters.add(describeCharacter(state))
+        // Stored under the loaded report's key, so it takes that character's identity.
+        updates[target.stateKey] = { ...state, character: target.report.character, realm: target.report.realm, region: target.report.region }
       }
       if (Object.keys(updates).length === 0) {
         setImportError(`Imported state is for difficulty "${unmatched.join('", "')}", which matches no loaded report; not applied.`)
         return
+      }
+      if (otherCharacters.size > 0) {
+        const message = `This knockout state is for ${[...otherCharacters].join(', ')}, but the loaded report is for ${describeCharacter(primary)}. Import it onto ${primary.character} anyway?`
+        let ok = false
+        try {
+          ok = window.confirm(message)
+        } catch {
+          ok = false
+        }
+        if (!ok) {
+          setImportError(`Not imported: the state is for ${[...otherCharacters].join(', ')}, not ${describeCharacter(primary)}.`)
+          return
+        }
       }
       setKnockoutStates((prev) => ({ ...prev, ...updates }))
       if (unmatched.length) setImportError(`Skipped state for "${unmatched.join('", "')}": no loaded report matches.`)
