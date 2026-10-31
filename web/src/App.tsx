@@ -13,7 +13,7 @@ import { detectSource, friendlyReportMismatch, friendlyUnsupportedContent, type 
 import { addRow, checkRows, removeRow, type ReportRow } from './lib/reportRows'
 import { fetchLootTable, fetchReport, fetchTopGear, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData, extraVoidcoreText, type CardData } from './lib/cardData'
-import { isRecognizedDifficulty } from './lib/format'
+import { isRecognizedDifficulty, parseThreshold } from './lib/format'
 import {
   LocalStorageAdapter,
   loadLastReportUrl,
@@ -95,6 +95,7 @@ export default function App() {
   const [seasonWeek, setSeasonWeek] = useState<number | null>(null)
   const [weeksLeft, setWeeksLeft] = useState<number | null>(null)
   const [thresholdPct, setThresholdPct] = useState(0.2)
+  const [thresholdDraft, setThresholdDraft] = useState<string | null>(null)
   const [expectedTargetKeys, setExpectedTargetKeys] = useState<Set<string>>(new Set())
   const [manualVaultGainPct, setManualVaultGainPct] = useState('')
 
@@ -912,7 +913,21 @@ export default function App() {
               <label htmlFor="threshold">
                 <Tooltip term="threshold">Threshold %</Tooltip>
               </label>
-              <input id="threshold" type="number" step="0.01" value={thresholdPct} onChange={(e) => setThresholdPct(Number(e.target.value) || 0)} />
+              <input
+                id="threshold"
+                type="number"
+                step="0.01"
+                min={0}
+                value={thresholdDraft ?? thresholdPct}
+                onChange={(e) => {
+                  // Keep the last valid threshold while the field is empty or mid-edit (e.g. "-" or "");
+                  // only a finite, non-negative number is applied. Leaving the field shows the applied value.
+                  setThresholdDraft(e.target.value)
+                  const n = parseThreshold(e.target.value)
+                  if (n !== null) setThresholdPct(n)
+                }}
+                onBlur={() => setThresholdDraft(null)}
+              />
             </div>
             <div className="field">
               <label htmlFor="manual-vault-gain">Manual vault gain % (overrides the Top Gear report)</label>
