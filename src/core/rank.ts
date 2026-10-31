@@ -114,7 +114,8 @@ function allocate(ranked: BossEval[], rolls: number): Allocation[] {
  * Compares the last allocated boss (by rank) against the next-best deployable boss --
  * rank 1 vs 2 for a single roll, rank 2 vs 3 for two rolls, since both of the first two
  * rolls are allocated regardless of how close they are to each other. Uses the combined
- * `evErrorPct` of both bosses as the band when both report one (Raidbots), else falls
+ * noise of both bosses, sqrt(a^2 + b^2) of their `evErrorPct` (independent errors add in
+ * quadrature), as the band when both report one (Raidbots), else falls
  * back to a fixed percentage of the leading boss's evPct (always the case for QE Live).
  */
 function computeTossUp(ranked: BossEval[], allocations: Allocation[]): Recommendation['tossUp'] {
@@ -129,7 +130,7 @@ function computeTossUp(ranked: BossEval[], allocations: Allocation[]): Recommend
 
   const gapPct = boundary.evPct - nextUp.evPct
   const errorBand =
-    boundary.evErrorPct !== undefined && nextUp.evErrorPct !== undefined ? boundary.evErrorPct + nextUp.evErrorPct : undefined
+    boundary.evErrorPct !== undefined && nextUp.evErrorPct !== undefined ? Math.hypot(boundary.evErrorPct, nextUp.evErrorPct) : undefined
 
   if (!isTossUpGap(gapPct, boundary.evPct, { pctOfReference: TOSS_UP_PCT_OF_TOP, errorBand })) return null
   return { bosses: [boundary.encounterName, nextUp.encounterName], gapPct, targetKeys: [evalKey(boundary), evalKey(nextUp)] }

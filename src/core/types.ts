@@ -202,7 +202,7 @@ export type BossEval = {
    */
   belowThreshold?: boolean
   notes: string[]
-  /** Mean of the remaining pool's `errorPct` values, where known -- the boss-level sim error used for toss-up detection. Undefined when no remaining entry carries an error (e.g. QE Live). */
+  /** Sim noise of `evPct`: sqrt(sum of the remaining entries' `errorPct`^2) / n (the standard error of the pool mean; see poolNoisePct) -- used for toss-up detection. Undefined when no remaining entry carries an error (e.g. QE Live). */
   evErrorPct?: number
 }
 

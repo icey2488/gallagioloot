@@ -76,11 +76,15 @@ function unattributedAdjustment(remainingEntries: PoolEntry[], unattributedCount
   return { numeratorDelta: meanValue * n, denominatorDelta: n }
 }
 
-/** Mean of the remaining pool's `errorPct` values, or undefined if none carry one (e.g. QE Live). */
-function meanErrorPct(entries: PoolEntry[]): number | undefined {
-  const known = entries.map((e) => e.errorPct).filter((e): e is number => e !== undefined)
-  if (known.length === 0) return undefined
-  return known.reduce((a, b) => a + b, 0) / known.length
+/**
+ * Sim noise of the boss's EV (a mean over the n remaining entries): the standard error of a mean
+ * of independent errors, sqrt(sum errPct^2) / n. Entries with no error (phantom value-0 items) and
+ * duds (worth exactly 0) contribute 0 but still count in n. Undefined if no entry carries one (e.g. QE Live).
+ */
+export function poolNoisePct(entries: PoolEntry[]): number | undefined {
+  if (!entries.some((e) => e.errorPct !== undefined)) return undefined
+  const sumSq = entries.reduce((acc, e) => acc + (e.isDud || e.errorPct === undefined ? 0 : e.errorPct * e.errorPct), 0)
+  return Math.sqrt(sumSq) / entries.length
 }
 
 /**
@@ -337,7 +341,7 @@ export function buildBossPools(report: NormalizedReport, knockout: KnockoutState
       deployable: inExpectedKills && remaining > 0 && evPct >= settings.thresholdPct,
       belowThreshold: inExpectedKills && remaining > 0 && evPct < settings.thresholdPct,
       notes,
-      evErrorPct: meanErrorPct(remainingEntries),
+      evErrorPct: poolNoisePct(remainingEntries),
     })
   }
 

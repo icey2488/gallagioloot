@@ -339,7 +339,7 @@ describe('buildBossPools', () => {
     expect('rollsToTargetTruncated' in remainingEntry).toBe(false)
   })
 
-  it('converts an entry meanError to errorPct, and evErrorPct to the mean errorPct of the remaining pool', () => {
+  it('converts an entry meanError to errorPct, and evErrorPct to the pool-mean noise sqrt(sum errPct^2)/n', () => {
     const report = makeReport([
       item({ itemId: 100, delta: 1000, meanError: 200 }), // errorPct 0.2
       item({ itemId: 200, delta: 2000, meanError: 400 }), // errorPct 0.4
@@ -347,7 +347,14 @@ describe('buildBossPools', () => {
     const [boss] = buildBossPools(report, makeKnockout(), SETTINGS)
     expect(boss.pool.find((p) => p.itemIds[0] === 100)?.errorPct).toBeCloseTo(0.2, 10)
     expect(boss.pool.find((p) => p.itemIds[0] === 200)?.errorPct).toBeCloseTo(0.4, 10)
-    expect(boss.evErrorPct).toBeCloseTo(0.3, 10)
+    expect(boss.evErrorPct).toBeCloseTo(Math.sqrt(0.2 ** 2 + 0.4 ** 2) / 2, 10)
+  })
+
+  it('noise counts every remaining entry in n; duds and error-less entries add 0', () => {
+    const report = makeReport([item({ itemId: 100, delta: 1000, meanError: 300 }), item({ itemId: 200, delta: 2000, meanError: 400 }), item({ itemId: 300, delta: 500 })])
+    const knockout = makeKnockout({ entries: [{ itemId: 200, itemName: 'x', encounterId: 2888, receivedAt: '', source: 'manual', state: 'owned' }] })
+    const [boss] = buildBossPools(report, knockout, SETTINGS)
+    expect(boss.evErrorPct).toBeCloseTo(0.3 / 3, 10)
   })
 
   it('leaves evErrorPct undefined when no remaining entry carries a meanError (e.g. QE Live)', () => {

@@ -146,13 +146,20 @@ describe('recommend', () => {
 
     it('flags a toss-up via combined evErrorPct even when the gap exceeds the fixed band', () => {
       // top evPct 5, runner-up 4.5 -- gap 0.5, fixed band max(0.1, 0.25) = 0.25 (would not toss-up alone)
-      // but combined evErrorPct (0.3 + 0.3 = 0.6) exceeds the gap, so it tosses up on sim error
-      const bossA: BossEval = { ...makeBoss(2888, 'Boss A', [5000], 0.2), evErrorPct: 0.3 }
-      const bossB: BossEval = { ...makeBoss(2887, 'Boss B', [4500], 0.2), evErrorPct: 0.3 }
+      // but the combined noise sqrt(0.4^2 + 0.4^2) = 0.566 exceeds the gap, so it tosses up on sim error
+      const bossA: BossEval = { ...makeBoss(2888, 'Boss A', [5000], 0.2), evErrorPct: 0.4 }
+      const bossB: BossEval = { ...makeBoss(2887, 'Boss B', [4500], 0.2), evErrorPct: 0.4 }
       const rec = recommend([bossA, bossB], SETTINGS_1_ROLL, makeReport())
       expect(rec.tossUp).not.toBeNull()
       expect(rec.tossUp?.bosses).toEqual(['Boss A', 'Boss B'])
       expect(rec.tossUp?.gapPct).toBeCloseTo(0.5, 10)
+    })
+
+    it('combines the two bosses in quadrature, not by summing', () => {
+      // gap 0.5; sum 0.3 + 0.3 = 0.6 would toss up, quadrature sqrt(0.18) = 0.424 does not.
+      const bossA: BossEval = { ...makeBoss(2888, 'Boss A', [5000], 0.2), evErrorPct: 0.3 }
+      const bossB: BossEval = { ...makeBoss(2887, 'Boss B', [4500], 0.2), evErrorPct: 0.3 }
+      expect(recommend([bossA, bossB], SETTINGS_1_ROLL, makeReport()).tossUp).toBeNull()
     })
 
     it('with 2 rolls, reports a toss-up between ranks 2 and 3, not ranks 1 and 2', () => {

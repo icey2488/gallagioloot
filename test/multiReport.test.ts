@@ -291,10 +291,16 @@ describe('live fixtures: raid 6PTZ7 + M+ a8URT + Top Gear vault item k3vro', () 
     expect(ulatek.evPct).toBeGreaterThan(evals.find((b) => b.encounterId === 2883)!.evPct)
   })
 
-  it("1 roll: Ula'tek (0.92%), a toss-up with The Coiled Altar; Altar of Fangs isn't allocated, so the Vial saves no rolls", () => {
+  it("1 roll: Ula'tek (0.92%), clear of The Coiled Altar (0.81%); Altar of Fangs isn't allocated, so the Vial saves no rolls", () => {
     const rec = recommend(evals, settings, [raid, mplus])
     expect(rec.allocations.map((a) => a.encounterName)).toEqual(["Ula'tek"])
-    expect(rec.tossUp?.bosses).toEqual(["Ula'tek", 'The Coiled Altar'])
+    // Gap 0.109 is past the 0.1 floor and the combined pool-mean noise sqrt(0.054^2 + 0.044^2) = 0.07
+    // (the old sum of mean entry errors, ~0.21, made this a toss-up).
+    const ulatek = evals.find((b) => b.encounterId === 2895)!
+    const altar = evals.find((b) => b.encounterId === 2883)!
+    expect(ulatek.evErrorPct).toBeCloseTo(0.0536, 3)
+    expect(altar.evErrorPct).toBeCloseTo(0.0443, 3)
+    expect(rec.tossUp).toBeNull()
     const vd = compareVault({ vaultItem, bossEvals: evals, recommendation: rec, settings, report: raid })
     expect(vd.savedRolls).toBe(0)
     expect(vd.savedRollsNote).toBe(`Altar of Fangs isn't a target you'd roll this week, so taking "Vile Vial of Volatile Venom" saves no rolls.`)
