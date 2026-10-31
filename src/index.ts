@@ -1,5 +1,5 @@
 import { getEncounterItemsLookup, getGameDataVersionWithAge, type LookupEnv } from './lookup/encounterItems'
-import { extractLearnedTierData, getAllLearnedTierData, getLearnedTierData, mergeLearnedTierData, saveLearnedTierData } from './lookup/tierLearned'
+import { extractLearnedTierData, getAllLearnedTierData, getLearnedTierData, instanceEncounterIds, mergeLearnedTierData, saveLearnedTierData } from './lookup/tierLearned'
 import { getAllSeedInstanceIds, getCurioEncounterId, getSeedTierMap, isKnownSeedInstance } from './lookup/tierSeed'
 import { buildLootTable } from './lookup/lootTable'
 import { LOOT_ELIGIBILITY_VERSION } from './lookup/specs'
@@ -131,8 +131,8 @@ async function handleRaidbots(
   }
 
   let normalized: NormalizedReport
+  const lookup = await getEncounterItemsLookup(env)
   try {
-    const lookup = await getEncounterItemsLookup(env)
     normalized = normalizeRaidbotsReport(id, raw, lookup, { lastModified: upstream.headers.get('last-modified') })
   } catch (e) {
     if (e instanceof UnsupportedContentError) {
@@ -145,9 +145,12 @@ async function handleRaidbots(
   }
 
   const instanceId = raw.simbot.meta.rawFormData.droptimizer.instance
-  const learnedUpdate = extractLearnedTierData(raw, instanceId)
+  // Only encounters the static data lists for this instance; a mapping is trusted once 2+
+  // distinct reports show it (see tierLearned.ts), and an unchanged store isn't rewritten.
+  const allowed = instanceEncounterIds(lookup, instanceId)
+  const learnedUpdate = allowed.size > 0 ? extractLearnedTierData(raw, instanceId, allowed) : { byItem: {}, bySlot: {} }
   if (Object.keys(learnedUpdate.byItem).length > 0) {
-    ctx.waitUntil(saveLearnedTierData(env, instanceId, learnedUpdate).then(() => undefined))
+    ctx.waitUntil(saveLearnedTierData(env, instanceId, learnedUpdate, id).then(() => undefined))
   }
 
   return respondAndCache(normalized, cacheKey, ctx, allowedOrigin)
