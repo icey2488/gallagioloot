@@ -66,7 +66,9 @@ describe.skipIf(!RUN_LIVE)('live integration', () => {
     expect(instanceId).toBe(1320)
     const env: LookupEnv = {}
     const learnedUpdate = extractLearnedTierData(raw, instanceId)
-    await saveLearnedTierData(env, instanceId, learnedUpdate)
+    // Two distinct reports are needed before a learned mapping is trusted.
+    await saveLearnedTierData(env, instanceId, learnedUpdate, 'live-a')
+    await saveLearnedTierData(env, instanceId, learnedUpdate, 'live-b')
     const learned = await getLearnedTierData(env, instanceId)
     const tierMap = mergeLearnedTierData({ byItem: {}, bySlot: getSeedTierMap(instanceId) }, learned)
 

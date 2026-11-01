@@ -115,6 +115,23 @@ export function characterKey(state: Pick<KnockoutState, 'character' | 'realm' | 
   return `${state.region ?? ''}:${state.realm ?? ''}:${state.character}`.toLowerCase()
 }
 
+/**
+ * Whether two character identities are the same character. Names compare case-insensitively;
+ * region and realm only when both sides carry one (states saved before the normalizer resolved
+ * region/realm have them empty, see the web's migrateLegacyLocationKey).
+ */
+export function sameCharacter(a: Pick<KnockoutState, 'character' | 'realm' | 'region'>, b: Pick<KnockoutState, 'character' | 'realm' | 'region'>): boolean {
+  const norm = (v: string | undefined) => (v ?? '').trim().toLowerCase()
+  const part = (x: string | undefined, y: string | undefined) => !norm(x) || !norm(y) || norm(x) === norm(y)
+  return norm(a.character) === norm(b.character) && part(a.region, b.region) && part(a.realm, b.realm)
+}
+
+/** "Icemagus (hyjal-us)" -- a character for user-facing messages. */
+export function describeCharacter(c: Pick<KnockoutState, 'character' | 'realm' | 'region'>): string {
+  const where = [c.realm, c.region].filter(Boolean).join('-')
+  return where ? `${c.character} (${where})` : c.character
+}
+
 export interface StorageAdapter {
   load(key: string): Promise<KnockoutState | null>
   save(key: string, state: KnockoutState): Promise<void>

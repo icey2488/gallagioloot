@@ -146,13 +146,20 @@ describe('recommend', () => {
 
     it('flags a toss-up via combined evErrorPct even when the gap exceeds the fixed band', () => {
       // top evPct 5, runner-up 4.5 -- gap 0.5, fixed band max(0.1, 0.25) = 0.25 (would not toss-up alone)
-      // but combined evErrorPct (0.3 + 0.3 = 0.6) exceeds the gap, so it tosses up on sim error
-      const bossA: BossEval = { ...makeBoss(2888, 'Boss A', [5000], 0.2), evErrorPct: 0.3 }
-      const bossB: BossEval = { ...makeBoss(2887, 'Boss B', [4500], 0.2), evErrorPct: 0.3 }
+      // but the combined noise sqrt(0.4^2 + 0.4^2) = 0.566 exceeds the gap, so it tosses up on sim error
+      const bossA: BossEval = { ...makeBoss(2888, 'Boss A', [5000], 0.2), evErrorPct: 0.4 }
+      const bossB: BossEval = { ...makeBoss(2887, 'Boss B', [4500], 0.2), evErrorPct: 0.4 }
       const rec = recommend([bossA, bossB], SETTINGS_1_ROLL, makeReport())
       expect(rec.tossUp).not.toBeNull()
       expect(rec.tossUp?.bosses).toEqual(['Boss A', 'Boss B'])
       expect(rec.tossUp?.gapPct).toBeCloseTo(0.5, 10)
+    })
+
+    it('combines the two bosses in quadrature, not by summing', () => {
+      // gap 0.5; sum 0.3 + 0.3 = 0.6 would toss up, quadrature sqrt(0.18) = 0.424 does not.
+      const bossA: BossEval = { ...makeBoss(2888, 'Boss A', [5000], 0.2), evErrorPct: 0.3 }
+      const bossB: BossEval = { ...makeBoss(2887, 'Boss B', [4500], 0.2), evErrorPct: 0.3 }
+      expect(recommend([bossA, bossB], SETTINGS_1_ROLL, makeReport()).tossUp).toBeNull()
     })
 
     it('with 2 rolls, reports a toss-up between ranks 2 and 3, not ranks 1 and 2', () => {
@@ -181,5 +188,26 @@ describe('recommend', () => {
       expect(rec.assumptions.some((a) => a.includes('no second chance on a repeat kill'))).toBe(true)
       expect(rec.assumptions.some((a) => a.includes('bosses you expect to kill this week'))).toBe(true)
     }
+  })
+})
+
+describe('recommend: no-expected-targets fallback', () => {
+  it('says to check targets (not "take the tokens") when loot is left only at unchecked targets', async () => {
+    const { buildBossPools } = await import('../src/core/pool')
+    const { createStateFor } = await import('../src/core/knockout')
+    const { NO_EXPECTED_TARGETS_MESSAGE } = await import('../src/core/rank')
+    const report = {
+      source: 'raidbots', reportId: 'r', character: 'c', realm: 'r', region: 'us', spec: 's', role: 'dps', metric: 'dps', baseline: 100000, warnings: [],
+      contentType: 'raid', difficulty: 'raid-vault-heroic',
+      items: [{ itemId: 1, name: 'I', encounterId: 2888, encounterName: 'B', instanceId: 1, ilvl: 300, delta: 5000, pct: 5 }],
+    } as unknown as Parameters<typeof buildBossPools>[0]
+    const settings = { thresholdPct: 0.2, voidcoresToSpend: 1, includeOffSpec: false, expectedTargets: [] as string[] }
+    const evals = buildBossPools(report, createStateFor(report), settings)
+    const rec = recommend(evals, settings, report)
+    expect(rec.fallback?.reason).toBe('no-expected-targets')
+    expect(rec.fallback?.message).toBe(NO_EXPECTED_TARGETS_MESSAGE)
+    // The same boss checked but under the threshold is still 'below-threshold'.
+    const high = { ...settings, thresholdPct: 50, expectedTargets: undefined }
+    expect(recommend(buildBossPools(report, createStateFor(report), high), high, report).fallback?.reason).toBe('below-threshold')
   })
 })

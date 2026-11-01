@@ -153,8 +153,6 @@ export type PoolEntry = {
   rollsToTargetExpected?: number
   /** Worst-case rolls to land this entry (n, the pool's remaining size). Set only for non-knocked-out entries. */
   rollsToTargetWorst?: number
-  /** Expected rolls actually spent hunting this entry, given the player abandons the pool once its remaining mean value falls below threshold after a miss. Set only for non-knocked-out entries. */
-  rollsToTargetTruncated?: number
   /** Sim error for this entry's value, as a percentage of baseline (mirrors `pct`). Set only when the source report carries a per-row error (Raidbots' `mean_error`; QE Live never does). */
   errorPct?: number
 }
@@ -204,7 +202,7 @@ export type BossEval = {
    */
   belowThreshold?: boolean
   notes: string[]
-  /** Mean of the remaining pool's `errorPct` values, where known -- the boss-level sim error used for toss-up detection. Undefined when no remaining entry carries an error (e.g. QE Live). */
+  /** Sim noise of `evPct`: sqrt(sum of the remaining entries' `errorPct`^2) / n (the standard error of the pool mean; see poolNoisePct) -- used for toss-up detection. Undefined when no remaining entry carries an error (e.g. QE Live). */
   evErrorPct?: number
 }
 
@@ -224,6 +222,7 @@ export type Allocation = {
 export type Recommendation = {
   allocations: Allocation[]
   totalExpectedGainPct: number
+  /** reason: 'no-pool' | 'below-threshold' | 'no-expected-targets' (see recommend). */
   fallback: null | { reason: string; message: string }
   assumptions: string[]
   warnings: string[]
@@ -236,12 +235,6 @@ export type Recommendation = {
    * unaffected -- this only annotates the recommendation for display.
    */
   tossUp: { bosses: [string, string]; gapPct: number; targetKeys?: [string, string] } | null
-}
-
-export type RollsToTarget = {
-  expected: number
-  worstCase: number
-  expectedTruncated: number
 }
 
 export type VaultItemInput = {

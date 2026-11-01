@@ -11,7 +11,8 @@
 //   - Ula'tek's roll pool is the journal's 4 items (4 / 4 remaining): its expanded table lists exactly Aqirbane
 //     Reliquary, Font of Venomous Rage, Jan'thrazet the Soul Fang and Venomkeeper's Horrific Cowl (no Curio row,
 //     no Jaw of the Shackled Goddess / Zatha'tek) plus the note that the Slumbering Coil Curio can't be won with a roll
-//   - none on hand: "Roll Ula'tek (Mythic) or The Coiled Altar (Mythic)" (toss-up on kill order), "One more Voidcore"
+//   - none on hand: Ula'tek is the pick, not a kill-order toss-up with The Coiled Altar (the gap, 0.109 points, is past both the
+//     0.1 floor and the combined sim noise, sqrt(0.054^2 + 0.044^2) = 0.07 -- per-boss noise is sqrt(sum errPct^2)/n), "One more Voidcore"
 //     0.92% (roll 1) vs Vile Vial 0.74%, with the no-saved-rolls explanation
 //   - v2.09 Voidcore supply, 3 on hand + re-price: the ordered roll list (Ula'tek, The Coiled Altar, Sszorak); earning 1 a
 //     week the 3rd reads "spend now 0.65% vs hold ~0.81% next week, playing without ~0.65% for 1 week" and one more Voidcore is ~0.81%
@@ -245,16 +246,12 @@ async function readCard(page: Page) {
 type Card = Awaited<ReturnType<typeof readCard>>
 
 function assertOneRollCard(card: Card, label: string) {
-  check(`[${label}] 1 roll: headline is the kill-order toss-up between Ula'tek and The Coiled Altar`, card.headline === "Roll Ula'tek (Mythic) or The Coiled Altar (Mythic)", card.headline)
-  check(
-    `[${label}] 1 roll: kill-order toss-up note (Next best: The Coiled Altar ~0.81%)`,
-    card.notes.some((n) => n.includes('Next best: The Coiled Altar (Mythic), ~0.81%')) && card.notes.some((n) => n.includes('let kill order decide')),
-    JSON.stringify(card.notes)
-  )
+  check(`[${label}] 1 roll: headline picks Ula'tek, no kill-order toss-up with The Coiled Altar`, card.headline.includes("Ula'tek") && !card.headline.includes('or The Coiled Altar'), card.headline)
+  check(`[${label}] 1 roll: no "let kill order decide" note`, !card.notes.some((n) => n.includes('let kill order decide')), JSON.stringify(card.notes))
   // One toss-up determination: a "Toss-up" note beside a "the pick holds" claim would contradict itself.
   const tossUpNote = card.notes.some((n) => n.startsWith('Toss-up'))
   const claimsPickHolds = card.notes.some((n) => n.includes('the pick holds') || n.includes('Clear of sim noise'))
-  check(`[${label}] 1 roll: the Toss-up note is present and the next-best line does not claim the pick holds`, tossUpNote && !claimsPickHolds, JSON.stringify(card.notes))
+  check(`[${label}] 1 roll: never a Toss-up note beside "the pick holds"`, !(tossUpNote && claimsPickHolds), JSON.stringify(card.notes))
   const voidcore = card.compare.find((o) => o.label === 'One more Voidcore')
   const vial = card.compare.find((o) => o.label === VAULT_ITEM)
   check(`[${label}] 1 roll: One more Voidcore 0.92% (roll 1: Ula'tek) vs ${VAULT_ITEM} 0.74%`, voidcore?.value === '0.92%' && voidcore?.where === "roll 1: Ula'tek (Mythic)" && vial?.value === '0.74%', JSON.stringify(card.compare))

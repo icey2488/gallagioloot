@@ -258,3 +258,15 @@ describe('setRollsSpent / incrementRollsSpent', () => {
     expect(incrementRollsSpent(incrementRollsSpent(base, 2888), 2888).rollsSpent).toEqual({ 2888: 2 })
   })
 })
+
+describe('sameCharacter / describeCharacter', () => {
+  it('matches case-insensitively; empty region/realm on either side is a wildcard', async () => {
+    const { sameCharacter, describeCharacter } = await import('../src/core/knockout')
+    expect(sameCharacter({ character: 'Icemagus', realm: 'hyjal', region: 'us' }, { character: 'icemagus', realm: 'Hyjal', region: 'US' })).toBe(true)
+    expect(sameCharacter({ character: 'Icemagus', realm: '', region: '' }, { character: 'Icemagus', realm: 'hyjal', region: 'us' })).toBe(true)
+    expect(sameCharacter({ character: 'Icemagus', realm: 'stormrage', region: 'us' }, { character: 'Icemagus', realm: 'hyjal', region: 'us' })).toBe(false)
+    expect(sameCharacter({ character: 'Other', realm: 'hyjal', region: 'us' }, { character: 'Icemagus', realm: 'hyjal', region: 'us' })).toBe(false)
+    expect(describeCharacter({ character: 'Icemagus', realm: 'hyjal', region: 'us' })).toBe('Icemagus (hyjal-us)')
+    expect(describeCharacter({ character: 'Icemagus', realm: '', region: '' })).toBe('Icemagus')
+  })
+})

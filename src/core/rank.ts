@@ -3,6 +3,17 @@ import type { Allocation, BossEval, Recommendation, Settings } from './types'
 import { isTossUpGap } from './tossup'
 import { evalKey, isRepeatable } from './targets'
 
+/**
+ * Upper bound on any Voidcore count the engine accepts (held, to spend, earned per week, weeks
+ * left). A season earns well under this; it keeps a typo like 1e9 from building huge roll orders.
+ */
+export const MAX_VOIDCORES = 99
+
+/** A non-negative whole count, clamped to MAX_VOIDCORES; NaN / Infinity / negatives are 0. */
+export function clampCount(n: number): number {
+  return Number.isFinite(n) && n > 0 ? Math.min(MAX_VOIDCORES, Math.floor(n)) : 0
+}
+
 /** Percentage of the leading boss's evPct used as the toss-up band, absent a sim error. */
 const TOSS_UP_PCT_OF_TOP = 0.05
 
@@ -24,6 +35,10 @@ export const ASSUMPTIONS: string[] = [
 export function fallbackMessage(thresholdPct: number): string {
   return `No boss clears the ${thresholdPct}% threshold this week. Consider taking the 6 Thalassian Tokens of Merit from the Great Vault instead; a socket on your best unsocketed piece is likely the better play.`
 }
+
+/** Fallback copy when every target with loot left is unchecked (not an expected kill / key this week). */
+export const NO_EXPECTED_TARGETS_MESSAGE =
+  'No boss or key with loot left is checked for this week. Check the bosses you expect to kill and the keys you will run to get a recommendation.'
 
 /**
  * Ranks deployable targets best-first: highest evPct (EV as % of its own report's baseline,
@@ -55,9 +70,15 @@ export function rankTargets(targets: BossEval[]): BossEval[] {
 export function rollSequence(ranked: BossEval[], rolls: number): BossEval[] {
   const sequence: BossEval[] = []
   const used = new Set<string>()
-  for (let roll = 0; roll < rolls; roll++) {
+  const total = Number.isFinite(rolls) ? Math.max(0, Math.floor(rolls)) : 0
+  while (sequence.length < total) {
     const target = ranked.find((b) => isRepeatable(b) || !used.has(evalKey(b)))
     if (!target) break
+    if (isRepeatable(target)) {
+      // A repeatable target never gets used up, and it's the best one left, so it takes every
+      // remaining roll: fill arithmetically instead of re-scanning the ranking once per roll.
+      return sequence.concat(new Array<BossEval>(total - sequence.length).fill(target))
+    }
     used.add(evalKey(target))
     sequence.push(target)
   }
@@ -97,7 +118,8 @@ function allocate(ranked: BossEval[], rolls: number): Allocation[] {
  * Compares the last allocated boss (by rank) against the next-best deployable boss --
  * rank 1 vs 2 for a single roll, rank 2 vs 3 for two rolls, since both of the first two
  * rolls are allocated regardless of how close they are to each other. Uses the combined
- * `evErrorPct` of both bosses as the band when both report one (Raidbots), else falls
+ * noise of both bosses, sqrt(a^2 + b^2) of their `evErrorPct` (independent errors add in
+ * quadrature), as the band when both report one (Raidbots), else falls
  * back to a fixed percentage of the leading boss's evPct (always the case for QE Live).
  */
 function computeTossUp(ranked: BossEval[], allocations: Allocation[]): Recommendation['tossUp'] {
@@ -112,7 +134,7 @@ function computeTossUp(ranked: BossEval[], allocations: Allocation[]): Recommend
 
   const gapPct = boundary.evPct - nextUp.evPct
   const errorBand =
-    boundary.evErrorPct !== undefined && nextUp.evErrorPct !== undefined ? boundary.evErrorPct + nextUp.evErrorPct : undefined
+    boundary.evErrorPct !== undefined && nextUp.evErrorPct !== undefined ? Math.hypot(boundary.evErrorPct, nextUp.evErrorPct) : undefined
 
   if (!isTossUpGap(gapPct, boundary.evPct, { pctOfReference: TOSS_UP_PCT_OF_TOP, errorBand })) return null
   return { bosses: [boundary.encounterName, nextUp.encounterName], gapPct, targetKeys: [evalKey(boundary), evalKey(nextUp)] }
@@ -131,11 +153,14 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
   ]
 
   if (deployable.length === 0) {
-    const reason = bossEvals.some((b) => b.remaining > 0) ? 'below-threshold' : 'no-pool'
+    // 'no-pool': nothing left anywhere; 'no-expected-targets': loot is left, but only at targets the
+    // player unchecked (so it's not a threshold question); 'below-threshold': in play, but too low.
+    const withLoot = bossEvals.filter((b) => b.remaining > 0)
+    const reason = withLoot.length === 0 ? 'no-pool' : withLoot.every((b) => b.belowThreshold === false) ? 'no-expected-targets' : 'below-threshold'
     return {
       allocations: [],
       totalExpectedGainPct: 0,
-      fallback: { reason, message: fallbackMessage(settings.thresholdPct) },
+      fallback: { reason, message: reason === 'no-expected-targets' ? NO_EXPECTED_TARGETS_MESSAGE : fallbackMessage(settings.thresholdPct) },
       assumptions: ASSUMPTIONS,
       warnings,
       tossUp: null,
@@ -143,7 +168,7 @@ export function recommend(bossEvals: BossEval[], settings: Settings, report: Nor
   }
 
   const ranked = rankTargets(deployable)
-  const allocations = allocate(ranked, Math.max(1, Math.floor(settings.voidcoresToSpend)))
+  const allocations = allocate(ranked, Math.max(1, clampCount(settings.voidcoresToSpend)))
   return {
     allocations,
     totalExpectedGainPct: allocations.reduce((sum, a) => sum + a.expectedGainPct, 0),

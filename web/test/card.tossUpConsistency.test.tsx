@@ -36,37 +36,41 @@ describe("Icemagus, 1 roll, vault comparison: Ula'tek 0.921 vs The Coiled Altar 
   const plan = planVoidcores(evals, { onHand: 0, toSpend: 0, earnedPerWeek: 1 })
   const card = buildCardData({ recommendation: rec, bossEvals: evals, vaultDecision, vaultItemName: vaultItem.name, plan, thresholdPct: 0.2 })
 
-  it('the two values behind the old contradiction: the engine band is the sum of the two bosses\' sim errors (0.167), wider than the 0.109 gap; the "clear" copy had no band at all', () => {
+  it('the gap (0.109) is past the combined pool-mean noise sqrt(a^2 + b^2) and the 0.1 floor, so the engine calls no toss-up', () => {
     const ulatek = evals.find((b) => b.encounterName === "Ula'tek")!
     const altar = evals.find((b) => b.encounterName === 'The Coiled Altar')!
     expect(ulatek.evPct).toBeCloseTo(0.921, 3)
     expect(altar.evPct).toBeCloseTo(0.812, 3)
     const gap = ulatek.evPct - altar.evPct
-    const errorBand = ulatek.evErrorPct! + altar.evErrorPct!
+    const noise = Math.hypot(ulatek.evErrorPct!, altar.evErrorPct!)
     expect(gap).toBeCloseTo(0.109, 3)
-    expect(errorBand).toBeCloseTo(0.167, 3)
-    expect(gap).toBeLessThan(errorBand) // the fixed band (max(0.1, 5% of 0.921) = 0.1) alone would not call it
-    expect(rec.tossUp?.gapPct).toBeCloseTo(gap, 10)
+    expect(noise).toBeLessThan(0.1)
+    // The old band (sum of each boss's MEAN entry error, ~0.167) overstated the noise of a pool mean.
+    expect(ulatek.evErrorPct! + altar.evErrorPct!).toBeLessThan(gap)
+    expect(rec.tossUp).toBeNull()
   })
 
-  it('is a toss-up, and the card never says the pick holds', () => {
+  it('is not a toss-up, and the card says the pick holds (one determination)', () => {
     expect(vaultDecision.verdict).toBe('voidcore')
-    expect(card.tossUp).toBe(true)
-    expect(card.secondBest).toMatchObject({ name: 'The Coiled Altar (Mythic)', clearOfNoise: false })
+    expect(card.tossUp).toBe(false)
+    expect(card.secondBest).toMatchObject({ name: 'The Coiled Altar (Mythic)', clearOfNoise: true })
     const text = cardText(card)
-    expect(text).toMatch(/Toss-up[^:]*: Within 0\.11%/)
-    expect(text).toContain('Next best: The Coiled Altar (Mythic), ~0.81%.')
-    expect(text).not.toContain('the pick holds')
-    expect(text).not.toContain('Clear of sim noise')
-  })
-
-  it('a clear gap still says so (the same determination, the other way)', () => {
-    const clearRec = { ...rec, tossUp: null }
-    const clear = buildCardData({ recommendation: clearRec, bossEvals: evals, vaultDecision, vaultItemName: vaultItem.name, plan, thresholdPct: 0.2 })
-    expect(clear.tossUp).toBe(false)
-    expect(clear.secondBest?.clearOfNoise).toBe(true)
-    const text = cardText(clear)
     expect(text).toContain('Clear of sim noise, so the pick holds.')
     expect(text).not.toContain('Toss-up')
   })
+
+  it('a toss-up never says the pick holds (the same determination, the other way)', () => {
+    const tossRec = { ...rec, tossUp: { bosses: ["Ula'tek", 'The Coiled Altar'] as [string, string], gapPct: 0.109, targetKeys: [evalKeyOf("Ula'tek"), evalKeyOf('The Coiled Altar')] as [string, string] } }
+    const toss = buildCardData({ recommendation: tossRec, bossEvals: evals, vaultDecision, vaultItemName: vaultItem.name, plan, thresholdPct: 0.2 })
+    expect(toss.tossUp).toBe(true)
+    const text = cardText(toss)
+    expect(text).toMatch(/Toss-up[^:]*: Within 0\.11%/)
+    expect(text).not.toContain('the pick holds')
+    expect(text).not.toContain('Clear of sim noise')
+  })
 })
+
+function evalKeyOf(name: string): string {
+  const b = evals.find((e) => e.encounterName === name)!
+  return b.targetKey ?? String(b.encounterId)
+}

@@ -41,3 +41,10 @@ export function formatSimDate(iso: string | undefined, now: Date = new Date(), t
 export function formatBaseline(baseline: number): string {
   return Math.round(baseline).toLocaleString('en-US')
 }
+
+/** A threshold % typed into the input: a finite, non-negative number, or null (empty / invalid -- keep the last valid one). */
+export function parseThreshold(raw: string): number | null {
+  if (raw.trim() === '') return null
+  const n = Number(raw)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}

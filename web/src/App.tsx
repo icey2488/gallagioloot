@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LootTable, NormalizedReport, NormalizedTopGear } from '@engine/types'
 import { curioEntryKeys, dropCurioEntries } from '@engine/core/curio'
-import { addEntry, characterKey, createStateFor, deserialize, removeEntry, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
+import { addEntry, characterKey, createStateFor, describeCharacter, deserialize, removeEntry, sameCharacter, serialize, setRollsSpent, storageKeyFor } from '@engine/core/knockout'
 import { buildBossPools } from '@engine/core/pool'
-import { recommend } from '@engine/core/rank'
+import { clampCount, MAX_VOIDCORES, recommend } from '@engine/core/rank'
 import { defaultEarnedPerWeek, extraMplusAssumptionText, planVoidcores, type VoidcoreSupply } from '@engine/core/supply'
 import { compareVault, vaultItemFromTopGear } from '@engine/core/vault'
 import { checkCandidate, checkReportSet, DEFAULT_DRIFT_LIMITS, type DriftLimits } from '@engine/core/reportSet'
@@ -13,7 +13,7 @@ import { detectSource, friendlyReportMismatch, friendlyUnsupportedContent, type 
 import { addRow, checkRows, removeRow, type ReportRow } from './lib/reportRows'
 import { fetchLootTable, fetchReport, fetchTopGear, ProxyRequestError } from './lib/proxyClient'
 import { buildCardData, extraVoidcoreText, type CardData } from './lib/cardData'
-import { isRecognizedDifficulty } from './lib/format'
+import { isRecognizedDifficulty, parseThreshold } from './lib/format'
 import {
   LocalStorageAdapter,
   loadLastReportUrl,
@@ -95,6 +95,7 @@ export default function App() {
   const [seasonWeek, setSeasonWeek] = useState<number | null>(null)
   const [weeksLeft, setWeeksLeft] = useState<number | null>(null)
   const [thresholdPct, setThresholdPct] = useState(0.2)
+  const [thresholdDraft, setThresholdDraft] = useState<string | null>(null)
   const [expectedTargetKeys, setExpectedTargetKeys] = useState<Set<string>>(new Set())
   const [manualVaultGainPct, setManualVaultGainPct] = useState('')
 
@@ -307,6 +308,10 @@ export default function App() {
     saveReportSet(characterKey(primary), loaded.map((l) => l.url))
   }, [primary, loaded])
 
+  // What each knockout key last held in storage (as serialized), so the save effect below writes
+  // only states that actually changed -- not every state on every settings tweak.
+  const savedKnockouts = useRef(new Map<string, string>())
+
   useEffect(() => {
     // Entries saved against Ula'tek's curio (no longer a bonus-roll outcome) are ignored by the
     // engine on load and dropped here, on the first save once the report / loot table identify them.
@@ -315,7 +320,11 @@ export default function App() {
       for (const s of sectionsData) {
         if (s.loaded.stateKey === key) for (const k of curioEntryKeys(s.loaded.report, s.lootTable?.encounters)) curioKeys.add(k)
       }
-      void storageAdapter.save(key, dropCurioEntries(state, curioKeys))
+      const next = dropCurioEntries(state, curioKeys)
+      const body = serialize(next)
+      if (savedKnockouts.current.get(key) === body) continue
+      savedKnockouts.current.set(key, body)
+      void storageAdapter.save(key, next)
     }
   }, [knockoutStates, sectionsData])
 
@@ -374,6 +383,8 @@ export default function App() {
       // Migrate any pre-region/realm knockout state saved under an empty-location key.
       migrateLegacyLocationKey(key)
       const stored = await storageAdapter.load(key)
+      // Already in storage as-is: no need to write it back.
+      if (stored && !savedKnockouts.current.has(key)) savedKnockouts.current.set(key, serialize(stored))
       setKnockoutStates((prev) => (prev[key] ? prev : { ...prev, [key]: stored ?? createStateFor(rpt) }))
 
       // A changed report set invalidates any priced snapshot.
@@ -592,14 +603,33 @@ export default function App() {
       const states = Array.isArray(parsed?.states) ? parsed!.states.map((s) => deserialize(JSON.stringify(s))) : [deserialize(importText)]
       const updates: Record<string, KnockoutState> = {}
       const unmatched: string[] = []
+      const otherCharacters = new Set<string>()
       for (const state of states) {
         const target = loaded.find((l) => knockoutDifficulty(l.report) === state.difficulty)
-        if (target) updates[target.stateKey] = state
-        else unmatched.push(state.difficulty)
+        if (!target) {
+          unmatched.push(state.difficulty)
+          continue
+        }
+        if (!sameCharacter(state, target.report)) otherCharacters.add(describeCharacter(state))
+        // Stored under the loaded report's key, so it takes that character's identity.
+        updates[target.stateKey] = { ...state, character: target.report.character, realm: target.report.realm, region: target.report.region }
       }
       if (Object.keys(updates).length === 0) {
         setImportError(`Imported state is for difficulty "${unmatched.join('", "')}", which matches no loaded report; not applied.`)
         return
+      }
+      if (otherCharacters.size > 0) {
+        const message = `This knockout state is for ${[...otherCharacters].join(', ')}, but the loaded report is for ${describeCharacter(primary)}. Import it onto ${primary.character} anyway?`
+        let ok = false
+        try {
+          ok = window.confirm(message)
+        } catch {
+          ok = false
+        }
+        if (!ok) {
+          setImportError(`Not imported: the state is for ${[...otherCharacters].join(', ')}, not ${describeCharacter(primary)}.`)
+          return
+        }
       }
       setKnockoutStates((prev) => ({ ...prev, ...updates }))
       if (unmatched.length) setImportError(`Skipped state for "${unmatched.join('", "')}": no loaded report matches.`)
@@ -639,7 +669,7 @@ export default function App() {
             currentKey={currentKey}
             onSwitch={(key) => void switchCharacter(key)}
             voidcoreCount={voidcoreCount}
-            onVoidcoreChange={setVoidcoreCount}
+            onVoidcoreChange={(n) => setVoidcoreCount(clampCount(n))}
           />
         </div>
       </header>
@@ -661,8 +691,9 @@ export default function App() {
                   id="voidcores-on-hand"
                   type="number"
                   min={0}
+                  max={MAX_VOIDCORES}
                   value={voidcoreCount}
-                  onChange={(e) => setVoidcoreCount(Number(e.target.value) || 0)}
+                  onChange={(e) => setVoidcoreCount(clampCount(Number(e.target.value)))}
                   className="reports-summary__input num"
                 />
               </div>
@@ -782,8 +813,9 @@ export default function App() {
                 <input
                   type="number"
                   min={0}
+                  max={MAX_VOIDCORES}
                   value={voidcoreCount}
-                  onChange={(e) => setVoidcoreCount(Number(e.target.value) || 0)}
+                  onChange={(e) => setVoidcoreCount(clampCount(Number(e.target.value)))}
                   className="voidcore-field__input num"
                   aria-label="Voidcores held"
                 />
@@ -803,7 +835,7 @@ export default function App() {
                 max={voidcoreCount}
                 value={toSpend}
                 onChange={(e) => {
-                  const n = Math.max(0, Math.floor(Number(e.target.value) || 0))
+                  const n = clampCount(Number(e.target.value))
                   setSpendOverride(n >= voidcoreCount ? null : n)
                 }}
                 className="num"
@@ -857,7 +889,8 @@ export default function App() {
                 type="number"
                 min={0}
                 value={weeksLeft ?? ''}
-                onChange={(e) => setWeeksLeft(e.target.value === '' ? null : Math.max(0, Math.floor(Number(e.target.value) || 0)))}
+                max={MAX_VOIDCORES}
+                onChange={(e) => setWeeksLeft(e.target.value === '' ? null : clampCount(Number(e.target.value)))}
                 className="num"
               />
             </div>
@@ -890,7 +923,21 @@ export default function App() {
               <label htmlFor="threshold">
                 <Tooltip term="threshold">Threshold %</Tooltip>
               </label>
-              <input id="threshold" type="number" step="0.01" value={thresholdPct} onChange={(e) => setThresholdPct(Number(e.target.value) || 0)} />
+              <input
+                id="threshold"
+                type="number"
+                step="0.01"
+                min={0}
+                value={thresholdDraft ?? thresholdPct}
+                onChange={(e) => {
+                  // Keep the last valid threshold while the field is empty or mid-edit (e.g. "-" or "");
+                  // only a finite, non-negative number is applied. Leaving the field shows the applied value.
+                  setThresholdDraft(e.target.value)
+                  const n = parseThreshold(e.target.value)
+                  if (n !== null) setThresholdPct(n)
+                }}
+                onBlur={() => setThresholdDraft(null)}
+              />
             </div>
             <div className="field">
               <label htmlFor="manual-vault-gain">Manual vault gain % (overrides the Top Gear report)</label>

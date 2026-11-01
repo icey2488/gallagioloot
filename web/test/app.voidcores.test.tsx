@@ -242,3 +242,16 @@ describe('footer assumptions', () => {
     expect(items).toContain('Holding delays the upgrade: every week you wait, you play without it, and a roll never guarantees the item you are holding for.')
   })
 })
+
+describe('Voidcore inputs are capped', () => {
+  it('on-hand and held inputs carry max and clamp a huge value', async () => {
+    const { MAX_VOIDCORES } = await import('@engine/core/rank')
+    await loadRaid()
+    expect(input('#voidcores-on-hand').max).toBe(String(MAX_VOIDCORES))
+    expect(input('input[aria-label="Voidcores held"]').max).toBe(String(MAX_VOIDCORES))
+    expect(input('input[aria-label="Voidcore count"]').max).toBe(String(MAX_VOIDCORES))
+    await set('#voidcores-on-hand', '1000000000')
+    expect(input('#voidcores-on-hand').value).toBe(String(MAX_VOIDCORES))
+    expect(input('#voidcores-to-spend').value).toBe(String(MAX_VOIDCORES))
+  })
+})

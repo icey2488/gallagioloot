@@ -8,6 +8,8 @@ other named BIS stay exact items. This is the "practical BIS" a player actually 
 
 pools: {name, row:'raid'|'mplus', pool_size (all non-curio items), bis_count (named exact BIS),
         slots:{shoulder|chest|hands|legs: count of eligible items in that slot in this pool}}
+Optional `vault_only` (default 0): entries offered by vault doors that never hit and that a Voidcore
+can't draw (the Curio: not a bonus-roll outcome, modeled as a non-BIS vault entry).
 Vault: 3 raid doors uniform over the union of raid pools, 3 M+ doors over M+ pools; one pick/week.
 Voidcores 1/week, 2 from week 8; one roll per boss per week; knockout draws (no replacement).
 vault strategy: take a BIS door if any (named beats slot-fill, then larger pool); else Voidcore.
@@ -19,7 +21,10 @@ SLOTS = ("shoulder", "chest", "hands", "legs")
 
 def mk(pools):
     return [{"name": p["name"], "row": p["row"], "pool": p["pool_size"], "bis": p["bis_count"],
-             "slots": {s: p.get("slots", {}).get(s, 0) for s in SLOTS}} for p in pools]
+             "slots": {s: p.get("slots", {}).get(s, 0) for s in SLOTS}, "vault_only": p.get("vault_only", 0)} for p in pools]
+
+def door_pool(p):  # what a vault door draws from; a Voidcore draws from p["pool"] only
+    return p["pool"] + p["vault_only"]
 
 def hits_in(p, st):
     return p["bis"] + sum(c for s, c in p["slots"].items() if s in st["open"])
@@ -49,7 +54,8 @@ def draw(p, st):
     return False
 
 def door_hit(p, st):
-    r = random.randrange(p["pool"])
+    r = random.randrange(door_pool(p))
+    if r >= p["pool"]: return None  # a vault-only entry (the Curio): never a hit
     if r < p["bis"]: return ("named", None)
     r -= p["bis"]
     for s in SLOTS:
@@ -59,16 +65,17 @@ def door_hit(p, st):
     return None
 
 def doors(st, row, n=3):
-    ps = [p for p in st["pools"] if p["row"] == row and p["pool"] > 0]
-    tot = sum(p["pool"] for p in ps); hits = []
+    ps = [p for p in st["pools"] if p["row"] == row and door_pool(p) > 0]
+    tot = sum(door_pool(p) for p in ps); hits = []
+    if tot == 0: return hits
     for _ in range(n):
         r = random.randrange(tot)
         for p in ps:
-            if r < p["pool"]:
+            if r < door_pool(p):
                 h = door_hit(p, st)
                 if h: hits.append((p, h))
                 break
-            r -= p["pool"]
+            r -= door_pool(p)
     return hits
 
 def take(p, h, st):
@@ -100,7 +107,8 @@ def run(pools, strategy):
                 p, h = max(hs, key=lambda x: (x[1][0] == "named", x[0]["pool"]))
                 take(p, h, st); cores -= 1
         spend(st, cores)
-    return MAX_WEEKS, t_raid or MAX_WEEKS, t_mp or MAX_WEEKS
+    # `is None`, not `or`: a subset finished at week 0 (nothing to chase) is 0, not MAX_WEEKS.
+    return MAX_WEEKS, MAX_WEEKS if t_raid is None else t_raid, MAX_WEEKS if t_mp is None else t_mp
 
 def summ(x):
     x = sorted(x); n = len(x)

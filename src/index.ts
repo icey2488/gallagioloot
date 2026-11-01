@@ -1,5 +1,5 @@
 import { getEncounterItemsLookup, getGameDataVersionWithAge, type LookupEnv } from './lookup/encounterItems'
-import { extractLearnedTierData, getAllLearnedTierData, getLearnedTierData, mergeLearnedTierData, saveLearnedTierData } from './lookup/tierLearned'
+import { extractLearnedTierData, getAllLearnedTierData, getLearnedTierData, instanceEncounterIds, mergeLearnedTierData, saveLearnedTierData } from './lookup/tierLearned'
 import { getAllSeedInstanceIds, getCurioEncounterId, getSeedTierMap, isKnownSeedInstance } from './lookup/tierSeed'
 import { buildLootTable } from './lookup/lootTable'
 import { LOOT_ELIGIBILITY_VERSION } from './lookup/specs'
@@ -20,9 +20,16 @@ const QE_ID_RE = /(?<![a-z])[a-z]{12}(?![a-z])/
 const REPORT_CACHE_TTL_SECONDS = 10 * 60
 const LOOT_TABLE_CACHE_TTL_SECONDS = 24 * 60 * 60
 const FETCH_TIMEOUT_MS = 15000
+/** Upstream failures (404, 5xx, network/timeout) are cached this long, so a dead or mistyped report id can't be hammered through to Raidbots / QE Live. */
+const NEGATIVE_CACHE_TTL_SECONDS = 60
 
 export interface Env extends LookupEnv {
   ALLOWED_ORIGIN?: string
+  /**
+   * Secret (`wrangler secret put DEBUG_TOKEN`) enabling the debug endpoints (`/encounter-items`,
+   * `/tier-map/:instanceId`): requests must send it as `X-Debug-Token`. Unset = those endpoints 404.
+   */
+  DEBUG_TOKEN?: string
 }
 
 export default {
@@ -49,7 +56,7 @@ export default {
             service: 'gallagioloot-proxy',
             version: VERSION,
             status: 'ok',
-            endpoints: ['/raidbots/:id', '/qelive/:id', '/topgear/:id', '/encounter-items', '/tier-map/:instanceId', '/loot-table/:instanceId'],
+            endpoints: ['/raidbots/:id', '/qelive/:id', '/topgear/:id', '/loot-table/:instanceId'],
             dataHash: versionInfo.version,
             dataHashDiscoveredAt: new Date(versionInfo.discoveredAt).toISOString(),
             dataHashAgeSeconds: Math.max(0, Math.floor((Date.now() - versionInfo.discoveredAt) / 1000)),
@@ -71,6 +78,10 @@ export default {
         return await handleTopGear(path.slice('/topgear/'.length), url.searchParams, env, ctx, allowedOrigin)
       }
 
+      if (path === '/encounter-items' || path.startsWith('/tier-map/')) {
+        if (!debugAllowed(request, env)) return jsonResponse({ error: 'Not found' }, 404, allowedOrigin)
+      }
+
       if (path === '/encounter-items') {
         const lookup = await getEncounterItemsLookup(env)
         return jsonResponse(serializeLookupForDebug(lookup), 200, allowedOrigin)
@@ -87,7 +98,8 @@ export default {
       return jsonResponse({ error: 'Not found' }, 404, allowedOrigin)
     } catch (err) {
       console.error('Worker error:', err)
-      return jsonResponse({ error: 'Internal server error', detail: (err as Error).message }, 500, allowedOrigin)
+      // The message stays in the logs; clients get no internals.
+      return jsonResponse({ error: 'Internal server error' }, 500, allowedOrigin)
     }
   },
 }
@@ -103,7 +115,9 @@ async function handleRaidbots(
   ctx: ExecutionContext,
   allowedOrigin: string | null
 ): Promise<Response> {
-  const candidate = decodeURIComponent(rawIdOrUrl) || params.get('url') || params.get('id') || ''
+  const decoded = safeDecode(rawIdOrUrl)
+  if (decoded === null) return jsonResponse({ error: 'invalid_id', detail: 'Malformed percent-encoding in the report id or URL' }, 400, allowedOrigin)
+  const candidate = decoded || params.get('url') || params.get('id') || ''
   const id = extractId(candidate, RAIDBOTS_ID_RE)
   if (!id) {
     return jsonResponse({ error: 'invalid_id', detail: 'Expected a 22-character Raidbots report id or URL' }, 400, allowedOrigin)
@@ -112,15 +126,17 @@ async function handleRaidbots(
   const cacheKey = reportCacheKey('raidbots', id)
   const cached = await caches.default.match(cacheKey)
   if (cached) return withCors(cached, allowedOrigin)
+  const negative = await matchNegative(cacheKey, allowedOrigin)
+  if (negative) return negative
 
   let upstream: Response
   try {
     upstream = await fetchWithTimeout(`https://www.raidbots.com/reports/${id}/data.json`)
   } catch (e) {
-    return jsonResponse({ error: 'fetch_failed', detail: (e as Error).message }, 502, allowedOrigin)
+    return failAndCache({ error: 'fetch_failed', detail: (e as Error).message }, 502, cacheKey, ctx, allowedOrigin)
   }
   if (!upstream.ok) {
-    return jsonResponse({ error: 'upstream_error', status: upstream.status }, 502, allowedOrigin)
+    return failAndCache({ error: 'upstream_error', status: upstream.status }, 502, cacheKey, ctx, allowedOrigin)
   }
 
   let raw: RaidbotsRawReport
@@ -131,8 +147,8 @@ async function handleRaidbots(
   }
 
   let normalized: NormalizedReport
+  const lookup = await getEncounterItemsLookup(env)
   try {
-    const lookup = await getEncounterItemsLookup(env)
     normalized = normalizeRaidbotsReport(id, raw, lookup, { lastModified: upstream.headers.get('last-modified') })
   } catch (e) {
     if (e instanceof UnsupportedContentError) {
@@ -145,9 +161,12 @@ async function handleRaidbots(
   }
 
   const instanceId = raw.simbot.meta.rawFormData.droptimizer.instance
-  const learnedUpdate = extractLearnedTierData(raw, instanceId)
+  // Only encounters the static data lists for this instance; a mapping is trusted once 2+
+  // distinct reports show it (see tierLearned.ts), and an unchanged store isn't rewritten.
+  const allowed = instanceEncounterIds(lookup, instanceId)
+  const learnedUpdate = allowed.size > 0 ? extractLearnedTierData(raw, instanceId, allowed) : { byItem: {}, bySlot: {} }
   if (Object.keys(learnedUpdate.byItem).length > 0) {
-    ctx.waitUntil(saveLearnedTierData(env, instanceId, learnedUpdate).then(() => undefined))
+    ctx.waitUntil(saveLearnedTierData(env, instanceId, learnedUpdate, id).then(() => undefined))
   }
 
   return respondAndCache(normalized, cacheKey, ctx, allowedOrigin)
@@ -160,7 +179,9 @@ async function handleQELive(
   ctx: ExecutionContext,
   allowedOrigin: string | null
 ): Promise<Response> {
-  const candidate = decodeURIComponent(rawIdOrUrl) || params.get('url') || params.get('id') || ''
+  const decoded = safeDecode(rawIdOrUrl)
+  if (decoded === null) return jsonResponse({ error: 'invalid_id', detail: 'Malformed percent-encoding in the report id or URL' }, 400, allowedOrigin)
+  const candidate = decoded || params.get('url') || params.get('id') || ''
   const id = extractId(candidate, QE_ID_RE)
   if (!id) {
     return jsonResponse({ error: 'invalid_id', detail: 'Expected a 12-letter QE Live report id or URL' }, 400, allowedOrigin)
@@ -169,15 +190,17 @@ async function handleQELive(
   const cacheKey = reportCacheKey('qelive', id)
   const cached = await caches.default.match(cacheKey)
   if (cached) return withCors(cached, allowedOrigin)
+  const negative = await matchNegative(cacheKey, allowedOrigin)
+  if (negative) return negative
 
   let upstream: Response
   try {
     upstream = await fetchWithTimeout(`https://questionablyepic.com/api/getUpgradeReport.php?reportID=${id}`)
   } catch (e) {
-    return jsonResponse({ error: 'fetch_failed', detail: (e as Error).message }, 502, allowedOrigin)
+    return failAndCache({ error: 'fetch_failed', detail: (e as Error).message }, 502, cacheKey, ctx, allowedOrigin)
   }
   if (!upstream.ok) {
-    return jsonResponse({ error: 'upstream_error', status: upstream.status }, 502, allowedOrigin)
+    return failAndCache({ error: 'upstream_error', status: upstream.status }, 502, cacheKey, ctx, allowedOrigin)
   }
 
   const bodyText = await upstream.text()
@@ -217,7 +240,9 @@ async function handleTopGear(
   ctx: ExecutionContext,
   allowedOrigin: string | null
 ): Promise<Response> {
-  const candidate = decodeURIComponent(rawIdOrUrl) || params.get('url') || params.get('id') || ''
+  const decoded = safeDecode(rawIdOrUrl)
+  if (decoded === null) return jsonResponse({ error: 'invalid_id', detail: 'Malformed percent-encoding in the report id or URL' }, 400, allowedOrigin)
+  const candidate = decoded || params.get('url') || params.get('id') || ''
   const id = extractId(candidate, RAIDBOTS_ID_RE)
   if (!id) {
     return jsonResponse({ error: 'invalid_id', detail: 'Expected a 22-character Raidbots report id or URL' }, 400, allowedOrigin)
@@ -226,15 +251,17 @@ async function handleTopGear(
   const cacheKey = reportCacheKey('topgear', id)
   const cached = await caches.default.match(cacheKey)
   if (cached) return withCors(cached, allowedOrigin)
+  const negative = await matchNegative(cacheKey, allowedOrigin)
+  if (negative) return negative
 
   let upstream: Response
   try {
     upstream = await fetchWithTimeout(`https://www.raidbots.com/reports/${id}/data.json`)
   } catch (e) {
-    return jsonResponse({ error: 'fetch_failed', detail: (e as Error).message }, 502, allowedOrigin)
+    return failAndCache({ error: 'fetch_failed', detail: (e as Error).message }, 502, cacheKey, ctx, allowedOrigin)
   }
   if (!upstream.ok) {
-    return jsonResponse({ error: 'upstream_error', status: upstream.status }, 502, allowedOrigin)
+    return failAndCache({ error: 'upstream_error', status: upstream.status }, 502, cacheKey, ctx, allowedOrigin)
   }
 
   let raw: RaidbotsTopGearRawReport
@@ -327,6 +354,15 @@ async function handleLootTable(
 // HELPERS
 // ============================================================
 
+/** decodeURIComponent that returns null instead of throwing a URIError on a malformed % escape. */
+function safeDecode(raw: string): string | null {
+  try {
+    return decodeURIComponent(raw)
+  } catch {
+    return null
+  }
+}
+
 function extractId(input: string, pattern: RegExp): string | null {
   const match = input.match(pattern)
   return match ? match[0] : null
@@ -350,6 +386,45 @@ async function respondAndCache(
   })
   ctx.waitUntil(caches.default.put(cacheKey, cacheable.clone()))
   return withCors(cacheable, allowedOrigin)
+}
+
+function negativeCacheKey(cacheKey: Request): Request {
+  return new Request(cacheKey.url.replace('/report/', '/report-failed/'))
+}
+
+/**
+ * Stores an upstream failure for NEGATIVE_CACHE_TTL_SECONDS under its own key, as a 200 wrapper
+ * ({ status, body }) so the Cache API stores it regardless of the error status, then responds.
+ */
+function failAndCache(body: unknown, status: number, cacheKey: Request, ctx: ExecutionContext, allowedOrigin: string | null): Response {
+  const wrapper = new Response(JSON.stringify({ status, body }), {
+    headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': `public, max-age=${NEGATIVE_CACHE_TTL_SECONDS}` },
+  })
+  ctx.waitUntil(caches.default.put(negativeCacheKey(cacheKey), wrapper))
+  return jsonResponse(body, status, allowedOrigin)
+}
+
+async function matchNegative(cacheKey: Request, allowedOrigin: string | null): Promise<Response | null> {
+  const hit = await caches.default.match(negativeCacheKey(cacheKey))
+  if (!hit) return null
+  try {
+    const { status, body } = (await hit.json()) as { status: number; body: unknown }
+    return jsonResponse(body, status, allowedOrigin)
+  } catch {
+    return null
+  }
+}
+
+/** Debug endpoints need DEBUG_TOKEN set and sent as X-Debug-Token (compared in constant time). */
+function debugAllowed(request: Request, env: Env): boolean {
+  const expected = env.DEBUG_TOKEN
+  const given = request.headers.get('x-debug-token')
+  if (!expected || given === null) return false
+  const a = new TextEncoder().encode(expected)
+  const b = new TextEncoder().encode(given)
+  let diff = a.length ^ b.length
+  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a[i] ?? 0) ^ (b[i] ?? 0)
+  return diff === 0
 }
 
 function withCors(response: Response, allowedOrigin: string | null): Response {
@@ -393,6 +468,8 @@ function resolveAllowedOrigin(origin: string | null, env: Env): string | null {
 
 function corsHeaders(allowedOrigin: string | null): Record<string, string> {
   const headers: Record<string, string> = {
+    // The allowed origin is echoed per request (prod or any localhost port), so shared caches must key on it.
+    Vary: 'Origin',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '86400',

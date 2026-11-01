@@ -9,7 +9,7 @@
 // targets, and values one more Voidcore (the Great Vault's Voidcore option). Pure.
 
 import type { BossEval } from './types'
-import { rankTargets, rollSequence } from './rank'
+import { clampCount, rankTargets, rollSequence } from './rank'
 
 /** Footer copy for the supply model; listed after the ranking assumptions (ASSUMPTIONS in rank.ts). */
 export const VOIDCORE_ASSUMPTIONS: string[] = [
@@ -109,7 +109,8 @@ export type VoidcorePlan = {
 /** Displayed to 2 decimals: a hold value within half a display unit of the spend-now value reads as the same number, so it counts as equal. */
 const HOLD_EPSILON = 0.005
 
-const whole = (n: number) => (Number.isFinite(n) && n > 0 ? Math.floor(n) : 0)
+/** Whole, non-negative and at most MAX_VOIDCORES (see rank.ts). */
+const whole = clampCount
 
 /**
  * Season-end stockpile check: more Voidcores (on hand + earned over the remaining weeks) than rolls

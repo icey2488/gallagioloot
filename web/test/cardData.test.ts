@@ -137,3 +137,13 @@ describe('buildCardData vault-vs-Voidcore verdict copy', () => {
     expect(card.tossUpNote).toBe('Voidcore and the vault item are close enough to call a toss-up.')
   })
 })
+
+describe('buildCardData: fallback headlines', () => {
+  const base: Recommendation = { allocations: [], totalExpectedGainPct: 0, fallback: null, assumptions: [], warnings: [], tossUp: null }
+  it('"No targets checked" for the no-expected-targets fallback; "Take the tokens" otherwise', () => {
+    const none = buildCardData({ recommendation: { ...base, fallback: { reason: 'no-expected-targets', message: 'm' } }, bossEvals: [], vaultDecision: null })
+    expect(none.headline).toBe('No targets checked')
+    const below = buildCardData({ recommendation: { ...base, fallback: { reason: 'below-threshold', message: 'm' } }, bossEvals: [], vaultDecision: null })
+    expect(below.headline).toBe('Take the tokens')
+  })
+})

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { compareVault, rollsToTarget, vaultItemFromTopGear } from '../src/core/vault'
+import { compareVault, expectedTruncatedRolls, freedRollsValuePct, marginalTarget, vaultItemFromTopGear } from '../src/core/vault'
+import { evalKey } from '../src/core/targets'
 import { buildBossPools } from '../src/core/pool'
 import type { BossEval, KnockoutState, PoolEntry, Recommendation, Settings } from '../src/core/types'
 import type { NormalizedItem, NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../src/types'
@@ -57,16 +58,7 @@ function bruteForceExpectedTruncated(pool: PoolEntry[], targetKey: string, thres
   return total / orders.length
 }
 
-describe('rollsToTarget', () => {
-  it('computes exact expected ((n+1)/2) and worst-case (n) rolls for n = 1, 3, 5', () => {
-    for (const n of [1, 3, 5]) {
-      const pool = Array.from({ length: n }, (_, i) => makeEntry(`item${i}`, (i + 1) * 100))
-      const result = rollsToTarget(pool, 'item0', 0) // threshold 0 -- never abandons
-      expect(result.expected).toBeCloseTo((n + 1) / 2, 10)
-      expect(result.worstCase).toBe(n)
-    }
-  })
-
+describe('expectedTruncatedRolls', () => {
   it('cross-checks the truncated recurrence against brute-force enumeration on a 4-item pool with mixed values', () => {
     // target (T) dominates the pool's value, so removing a *small* miss (C=5) keeps the
     // remaining mean above threshold (continue hunting), while removing a larger miss
@@ -75,7 +67,7 @@ describe('rollsToTarget', () => {
     const thresholdValue = 100
 
     const bruteForce = bruteForceExpectedTruncated(pool, 'T', thresholdValue)
-    const { expectedTruncated } = rollsToTarget(pool, 'T', thresholdValue)
+    const expectedTruncated = expectedTruncatedRolls(pool, 'T', thresholdValue)
 
     expect(expectedTruncated).toBeCloseTo(bruteForce, 10)
     // Hand-derived via the recurrence (see task notes): 1.5 expected rolls actually spent.
@@ -85,14 +77,12 @@ describe('rollsToTarget', () => {
   it('never abandons before the first roll, even if the full pool mean starts below threshold', () => {
     const pool = [makeEntry('T', 10), makeEntry('A', 1), makeEntry('B', 1)]
     // Full-pool mean (4) is below threshold (100), but the first roll always happens.
-    const result = rollsToTarget(pool, 'T', 100)
-    expect(result.expectedTruncated).toBeGreaterThan(0)
+    expect(expectedTruncatedRolls(pool, 'T', 100)).toBeGreaterThan(0)
   })
 
   it('returns 1 for a single-item pool regardless of threshold', () => {
     const pool = [makeEntry('T', 10)]
-    const result = rollsToTarget(pool, 'T', 1_000_000)
-    expect(result).toEqual({ expected: 1, worstCase: 1, expectedTruncated: 1 })
+    expect(expectedTruncatedRolls(pool, 'T', 1_000_000)).toBe(1)
   })
 })
 
@@ -211,7 +201,7 @@ describe('compareVault', () => {
     expect(decision.explanation).toContain('Thalassian Tokens of Merit')
   })
 
-  it('computes savedRolls via rollsToTarget when the vault item matches a PoolEntry by itemId in an allocated target, capped at the pool size', () => {
+  it('computes savedRolls via expectedTruncatedRolls when the vault item matches a PoolEntry by itemId in an allocated target, capped at the pool size', () => {
     const targetEntry = makeEntry('item:999', 4000, { itemIds: [999] })
     const otherEntry = makeEntry('item:1', 1000, { itemIds: [1] })
     const vaultBoss = makeBoss(2888, "Nek'zali the Soulcoiler", [targetEntry, otherEntry], 0.2)
@@ -225,11 +215,11 @@ describe('compareVault', () => {
       report: makeReport(),
     })
 
-    const { expectedTruncated } = rollsToTarget([targetEntry, otherEntry], 'item:999', (SETTINGS.thresholdPct / 100) * BASELINE)
+    const expectedTruncated = expectedTruncatedRolls([targetEntry, otherEntry], 'item:999', (SETTINGS.thresholdPct / 100) * BASELINE)
     const expectedSavedRolls = Math.min(expectedTruncated, 2)
 
     expect(decision.savedRolls).toBeCloseTo(expectedSavedRolls, 10)
-    // altRollEvPct excludes the vault item's own boss (2888) -- picks 2887's evPct (6%).
+    // Freed rolls go to the marginal target: 2887 (6%), the best one with no roll.
     expect(decision.vaultItemGainPct).toBeCloseTo(3.0 + expectedSavedRolls * 6.0, 10)
   })
 
@@ -382,5 +372,43 @@ describe('vaultItemFromTopGear', () => {
     const result = vaultItemFromTopGear(makeTopGear([candidate]))
     expect(result?.encounterId).toBeUndefined()
     expect(result?.itemId).toBe(999)
+  })
+})
+
+describe('compareVault: freed rolls are valued at the marginal target', () => {
+  it('uses the next unallocated target, not the best other boss (which already has a roll)', () => {
+    const targetEntry = makeEntry('item:999', 4000, { itemIds: [999] })
+    const otherEntry = makeEntry('item:1', 1000, { itemIds: [1] })
+    const vaultBoss = makeBoss(2888, 'Vault boss', [targetEntry, otherEntry], 0.2)
+    const allocatedOther = makeBoss(2887, 'Allocated other', [makeEntry('item:2', 6000, { itemIds: [2] })], 0.2)
+    const marginal = makeBoss(2886, 'Marginal', [makeEntry('item:3', 2000, { itemIds: [3] })], 0.2)
+    const bossEvals = [vaultBoss, allocatedOther, marginal]
+
+    expect(marginalTarget(bossEvals, makeRecommendation(8.5, [vaultBoss, allocatedOther]), evalKey(vaultBoss))?.encounterId).toBe(2886)
+
+    const decision = compareVault({
+      vaultItem: { name: 'Target Item', gainPct: 3.0, itemId: 999 },
+      bossEvals,
+      recommendation: makeRecommendation(8.5, [vaultBoss, allocatedOther]),
+      settings: SETTINGS,
+      report: makeReport(),
+    })
+    expect(decision.savedRolls).toBeGreaterThan(0)
+    // 2% (Marginal), not 6% (Allocated other).
+    expect(decision.vaultItemGainPct).toBeCloseTo(3.0 + decision.savedRolls * 2.0, 10)
+  })
+
+  it('a repeatable dungeon that is already allocated is still the marginal target', () => {
+    const dungeon = makeBoss(1322, 'Dungeon', [makeEntry('item:5', 3000, { itemIds: [5] })], 0.2, { kind: 'mplus', targetKey: 'mplus:1322' })
+    const raid = makeBoss(2888, 'Raid', [makeEntry('item:6', 1000, { itemIds: [6] })], 0.2)
+    const rec = makeRecommendation(3, [dungeon])
+    expect(marginalTarget([dungeon, raid], rec, 'raid-excluded')?.encounterId).toBe(1322)
+    expect(freedRollsValuePct([dungeon, raid], rec, undefined, 0)).toBe(0)
+  })
+
+  it('no target left: freed rolls are worth 0', () => {
+    const only = makeBoss(2888, 'Only', [makeEntry('item:7', 1000, { itemIds: [7] })], 0.2)
+    expect(marginalTarget([only], makeRecommendation(1, [only]), evalKey(only))).toBeNull()
+    expect(freedRollsValuePct([only], makeRecommendation(1, [only]), evalKey(only), 1.5)).toBe(0)
   })
 })

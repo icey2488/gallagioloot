@@ -1,12 +1,9 @@
 import type { NormalizedReport, NormalizedTopGear, TopGearCandidate } from '../types'
-import type { BossEval, PoolEntry, Recommendation, RollsToTarget, Settings, VaultDecision, VaultItemInput } from './types'
+import type { BossEval, PoolEntry, Recommendation, Settings, VaultDecision, VaultItemInput } from './types'
 import { isTossUpGap } from './tossup'
 import { evalKey } from './targets'
 import { planVoidcores, type ExtraVoidcore, type VoidcoreSupply } from './supply'
-
-function mean(values: number[]): number {
-  return values.reduce((a, b) => a + b, 0) / values.length
-}
+import { rankTargets, rollSequence } from './rank'
 
 /** EV-contributing value of a pool entry: a dud (owned, not rolled) is worth 0 while still occupying the pool. */
 function poolValue(entry: PoolEntry): number {
@@ -14,67 +11,102 @@ function poolValue(entry: PoolEntry): number {
 }
 
 /**
- * Exact expected/worst-case/threshold-truncated roll counts to land one specific pool
- * entry via uniform sampling without replacement (knockout: each roll permanently
- * removes the drawn entry). `expected` and `worstCase` ignore truncation -- (n+1)/2 and
- * n for a remaining pool of size n, by the standard without-replacement rank argument.
- *
- * `expectedTruncated` models a player who abandons the hunt once, after a miss, the
- * pool's remaining mean value has fallen below `thresholdValue` (absolute). Computed
- * exactly via a recurrence over remaining subsets (memoized on the subset's sorted keys)
- * rather than simulation: each state's continuation depends only on which entries remain,
- * not the order they were drawn in, so this is provably exact, not an approximation.
+ * Threshold-truncated rolls to land one specific pool entry via uniform sampling without
+ * replacement (knockout: each roll permanently removes the drawn entry), for a player who
+ * abandons the hunt once, after a miss, the pool's remaining mean value has fallen below
+ * `thresholdValue` (absolute). (The untruncated figures are closed-form, (n+1)/2 and n, and
+ * buildBossPools sets them on each entry directly.) Only compareVault needs this, for the one
+ * vault target it compares.
  */
-/**
- * `denominatorOverride`, when given, replaces `pool.length` for the two closed-form
- * figures (`expected`, `worstCase`) only -- used when unattributed bonus rolls have
- * fractionally shrunk the boss's effective remaining pool size (see buildBossPools'
- * `unattributedAdjustment`) without removing any specific entry from `pool` itself.
- * `expectedTruncated`'s recursion still runs over the real entries: there's no principled
- * fractional analog for "abandon the hunt once the mean value drops below threshold"
- * that doesn't invent a valuation for a nonexistent entry.
- */
-export function rollsToTarget(pool: PoolEntry[], entryKey: string, thresholdValue: number, denominatorOverride?: number): RollsToTarget {
-  const n = denominatorOverride ?? pool.length
-  if (pool.length === 0) return { expected: 0, worstCase: 0, expectedTruncated: 0 }
+/** Largest pool solved by the exact subset recurrence (2^n memoized states); bigger pools use the seeded Monte Carlo estimate. */
+export const EXACT_TRUNCATED_LIMIT = 10
+/** Monte Carlo sample count above EXACT_TRUNCATED_LIMIT: standard error is well under 0.05 rolls for realistic pools. */
+export const TRUNCATED_SAMPLES = 4000
 
-  const expected = (n + 1) / 2
-  const worstCase = n
+/** Exact up to EXACT_TRUNCATED_LIMIT entries, a deterministic Monte Carlo estimate above that. */
+export function expectedTruncatedRolls(pool: PoolEntry[], entryKey: string, thresholdValue: number): number {
+  if (pool.length === 0) return 0
+  return pool.length <= EXACT_TRUNCATED_LIMIT ? truncatedExact(pool, entryKey, thresholdValue) : truncatedMonteCarlo(pool, entryKey, thresholdValue)
+}
 
-  const memo = new Map<string, number>()
+/** Exact recurrence over remaining subsets, memoized on a bitmask (exponential: only for small pools). */
+export function truncatedExact(pool: PoolEntry[], entryKey: string, thresholdValue: number): number {
+  const values = pool.map(poolValue)
+  const target = pool.findIndex((p) => p.key === entryKey)
+  const memo = new Map<number, number>()
 
-  function stateKey(remaining: PoolEntry[]): string {
-    return remaining
-      .map((p) => p.key)
-      .sort()
-      .join('|')
-  }
-
-  function expectedRemainingRolls(remaining: PoolEntry[]): number {
-    const m = remaining.length
-    if (m === 1) return 1 // the only entry left must be the target
-
-    const key = stateKey(remaining)
-    const cached = memo.get(key)
+  function solve(mask: number, count: number, sum: number): number {
+    if (count === 1) return 1 // the only entry left must be the target
+    const cached = memo.get(mask)
     if (cached !== undefined) return cached
-
     let total = 0
-    for (const drawn of remaining) {
-      if (drawn.key === entryKey) {
+    for (let i = 0; i < values.length; i++) {
+      if (!(mask & (1 << i))) continue
+      if (i === target) {
         total += 1
         continue
       }
-      const after = remaining.filter((p) => p.key !== drawn.key)
-      const keepsHunting = mean(after.map((p) => poolValue(p))) >= thresholdValue
-      total += 1 + (keepsHunting ? expectedRemainingRolls(after) : 0)
+      const afterSum = sum - values[i]
+      const keepsHunting = afterSum / (count - 1) >= thresholdValue
+      total += 1 + (keepsHunting ? solve(mask & ~(1 << i), count - 1, afterSum) : 0)
     }
-
-    const result = total / m
-    memo.set(key, result)
+    const result = total / count
+    memo.set(mask, result)
     return result
   }
 
-  return { expected, worstCase, expectedTruncated: expectedRemainingRolls(pool) }
+  return solve((1 << pool.length) - 1, pool.length, values.reduce((a, b) => a + b, 0))
+}
+
+/** mulberry32: a small seeded PRNG, so the estimate is deterministic (core stays pure and testable). */
+function mulberry32(seed: number): () => number {
+  let a = seed >>> 0
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+function hashString(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619)
+  return h >>> 0
+}
+
+/**
+ * Monte Carlo estimate of the same quantity: draw a uniform order without replacement, stop on
+ * the target or once a miss leaves the remaining mean below threshold. Seeded from the pool's
+ * keys and the target, so the same inputs always give the same estimate.
+ */
+export function truncatedMonteCarlo(pool: PoolEntry[], entryKey: string, thresholdValue: number, samples = TRUNCATED_SAMPLES): number {
+  const values = pool.map(poolValue)
+  const target = pool.findIndex((p) => p.key === entryKey)
+  const totalSum = values.reduce((a, b) => a + b, 0)
+  const rand = mulberry32(hashString(`${entryKey}#${pool.map((p) => p.key).sort().join('|')}`))
+  const idx = values.map((_, i) => i)
+  let total = 0
+  for (let s = 0; s < samples; s++) {
+    let sum = totalSum
+    let rolls = 0
+    for (let k = 0; k < idx.length; k++) {
+      // Partial Fisher-Yates: pick the k-th draw from the not-yet-drawn tail.
+      const j = k + Math.floor(rand() * (idx.length - k))
+      const t = idx[k]
+      idx[k] = idx[j]
+      idx[j] = t
+      const drawn = idx[k]
+      rolls++
+      if (drawn === target) break
+      sum -= values[drawn]
+      const left = idx.length - k - 1
+      if (left === 0 || sum / left < thresholdValue) break
+    }
+    total += rolls
+  }
+  return total / samples
 }
 
 /**
@@ -98,6 +130,25 @@ function findVaultPool(vaultItem: VaultItemInput, bossEvals: BossEval[]): { boss
   return null
 }
 
+/**
+ * The marginal target: the next one in this week's roll order (deployable targets, best first,
+ * targeting rules applied, `excludeKey`'s target left out) after the rolls the recommendation
+ * already places elsewhere -- i.e. the best target that got no roll. Rolls freed by taking the
+ * vault item go there, not to the best other boss (which already has its roll). Null when the
+ * order has nothing left.
+ */
+export function marginalTarget(bossEvals: BossEval[], recommendation: Recommendation, excludeKey: string | undefined): BossEval | null {
+  const placedElsewhere = recommendation.allocations.filter((a) => evalKey(a) !== excludeKey).reduce((n, a) => n + a.rolls, 0)
+  const ranked = rankTargets(bossEvals.filter((b) => b.deployable && (excludeKey === undefined || evalKey(b) !== excludeKey)))
+  return rollSequence(ranked, placedElsewhere + 1)[placedElsewhere] ?? null
+}
+
+/** EV% of `savedRolls` freed rolls, each valued at the marginal target (see marginalTarget). */
+export function freedRollsValuePct(bossEvals: BossEval[], recommendation: Recommendation, excludeKey: string | undefined, savedRolls: number): number {
+  if (!(savedRolls > 0)) return 0
+  return savedRolls * (marginalTarget(bossEvals, recommendation, excludeKey)?.evPct ?? 0)
+}
+
 /** Why a vault item credits no saved rolls when its loot source isn't one of this week's allocated roll targets. */
 export function noSavedRollsNote(itemName: string, targetName: string): string {
   return `${targetName} isn't a target you'd roll this week, so taking "${itemName}" saves no rolls.`
@@ -118,8 +169,8 @@ export function extraVoidcoreWhere(extra: ExtraVoidcore): string {
  * max(its spend-now EV as the next roll in this week's order, its hold value next week) under
  * `supply` (see `planVoidcores`; defaults to a player with none on hand, for whom it is simply
  * roll 1). `bossEvals` may span several reports (raid difficulties + Mythic+): the vault item is
- * matched against every target's pool, and the alternative roll is the best OTHER target across
- * all of them. `report` only supplies a fallback baseline for evals built without one.
+ * matched against every target's pool, and the rolls it frees are valued at the marginal targets
+ * (see freedRollsValuePct). `report` only supplies a fallback baseline for evals built without one.
  *
  * The saved-rolls credit only applies when the vault item's target is among the targets
  * `recommendation` allocates rolls to this week: you can't save rolls you would never have
@@ -154,17 +205,18 @@ export function compareVault(input: {
   // Roll-only knockout: taking the vault item X does NOT remove X from its boss's roll
   // pool -- X becomes a value-0 dud there, so next week's roll on that boss is diluted, not
   // shrunk (see buildBossPools' `owned` handling). The saved-rolls credit is kept as-is: it
-  // stands for the bonus rolls you'd otherwise spend hunting X, freed to spend on the best
-  // OTHER boss (altRollEvPct below already excludes X's own boss, so X's post-vault dud state
-  // doesn't feed back into this figure).
+  // stands for the bonus rolls you'd otherwise spend hunting X, freed to spend on the MARGINAL
+  // targets -- the next ones in this week's order that got no roll (freedRollsValuePct), not
+  // the best other boss, which already has a roll. X's own boss is excluded, so its post-vault
+  // dud state doesn't feed back into this figure.
   let savedRolls = 0
   let savedRollsNote: string | undefined
   if (found) {
     const allocated = recommendation.allocations.some((a) => evalKey(a) === evalKey(found.boss))
     if (allocated) {
       const remainingPool = found.boss.pool.filter((p) => !p.knockedOut)
-      const { expectedTruncated } = rollsToTarget(remainingPool, found.target.key, thresholdValue)
-      savedRolls = Math.min(expectedTruncated, remainingPool.length)
+      // Computed here, for the one target being compared -- not for every pool entry on every render.
+      savedRolls = Math.min(expectedTruncatedRolls(remainingPool, found.target.key, thresholdValue), remainingPool.length)
     } else {
       savedRollsNote = noSavedRollsNote(vaultItem!.name, found.boss.encounterName)
       notes.push(savedRollsNote)
@@ -173,15 +225,9 @@ export function compareVault(input: {
   }
 
   const excludeKey = found ? evalKey(found.boss) : undefined
-  let altBoss: BossEval | null = null
-  for (const boss of bossEvals) {
-    if (!boss.deployable) continue
-    if (excludeKey !== undefined && evalKey(boss) === excludeKey) continue
-    if (!altBoss || boss.evPct > altBoss.evPct) altBoss = boss
-  }
-  const altRollEvPct = altBoss?.evPct ?? 0
+  const freedPct = freedRollsValuePct(bossEvals, recommendation, excludeKey, savedRolls)
 
-  const vaultItemGainPct = (vaultItem?.gainPct ?? 0) + savedRolls * altRollEvPct
+  const vaultItemGainPct = (vaultItem?.gainPct ?? 0) + freedPct
 
   const belowThresholdA = voidcoreGainPct < settings.thresholdPct
   const belowThresholdB = vaultItemGainPct < settings.thresholdPct

@@ -66,8 +66,8 @@ function printReportTable(label: string, report: NormalizedReport, voidcoresToSp
       remaining: b.remaining,
       'ev%': b.evPct.toFixed(3),
       bestCase: b.bestCase?.name ?? '-',
-      'rollsToTarget(bestCase) exp/worst/trunc': b.bestCase
-        ? `${b.bestCase.rollsToTargetExpected?.toFixed(2)} / ${b.bestCase.rollsToTargetWorst} / ${b.bestCase.rollsToTargetTruncated?.toFixed(2)}`
+      'rollsToTarget(bestCase) exp/worst': b.bestCase
+        ? `${b.bestCase.rollsToTargetExpected?.toFixed(2)} / ${b.bestCase.rollsToTargetWorst}`
         : '-',
       deployable: b.deployable,
     }))
